@@ -1,0 +1,885 @@
+title: TDB
+kiosk_mode:
+  admin_settings:
+    hide_header: false
+  user_settings:
+    - users:
+        - Tablet
+      hide_header: true
+views:
+  - path: default_view
+    title: Maison
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:home
+                icon_color: blue
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground
+                hold_action:
+                  action: navigate
+                  navigation_path: /config/dashboards
+              - type: action
+                icon: mdi:shield-home
+                icon_color: red
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-alarme
+              - type: action
+                icon: mdi:doorbell-video
+                icon_color: purple
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-interphone
+              - type: action
+                icon: mdi:pool
+                icon_color: cyan
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-piscine
+              - type: action
+                icon: mdi:thermometer
+                icon_color: green
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-temperatures
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                  margin-bottom: 10px;
+                }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:digital-clock
+                timeFormat:
+                  hour: 2-digit
+                  minute: 2-digit
+                  second: 2-digit
+                  interval: 200
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+              - type: weather-forecast
+                entity: weather.forecast_maison
+                show_forecast: true
+                forecast_type: daily
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+              - type: custom:mini-graph-card
+                name: Extérieur
+                height: 80
+                line_width: 2
+                entities:
+                  - entity: sensor.lacrosse_tx141thbv2_0_175_temperature
+                    name: Temp. Ext.
+                    color: '#3aaa00'
+                    show_legend: false
+                  - entity: sensor.lacrosse_tx141thbv2_0_175_humidity
+                    name: Humidité
+                    color: '#482ee4'
+                    y_axis: secondary
+                    show_state: true
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+                    .states.flex::after {
+                      content: "{{ relative_time(states['sensor.lacrosse_tx141thbv2_0_175_temperature'].last_changed) }}";
+                      white-space: pre;
+                    }
+          - type: horizontal-stack
+            cards:
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    points_per_hour: 2
+                    name: T° ECS
+                    height: 80
+                    line_width: 2
+                    entities:
+                      - sensor.ballon_temperature
+                    show:
+                      labels: true
+                    color_thresholds:
+                      - value: 25
+                        color: '#245fd7'
+                      - value: 35
+                        color: '#d78824'
+                      - value: 45
+                        color: '#d75024'
+                      - value: 50
+                        color: red
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: switch.manubal
+                        icon: |-
+                          {% if is_state('switch.manubal', 'on') %}
+                            mdi:water-boiler-alert
+                          {% else %}
+                            mdi:water-boiler
+                          {% endif %}
+                        icon_color: |-
+                          {% if is_state('switch.manubal', 'on') %}
+                            red
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          Manubal {% if is_state('switch.manubal', 'on') %}ON{%
+                          else %}OFF{% endif %}
+                        tap_action:
+                          action: toggle
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 4px 4px 4px !important;
+                        }
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: T° Piscine
+                    height: 80
+                    line_width: 2
+                    entities:
+                      - sensor.inkbird_ith20r_64601_temperature
+                    color_thresholds:
+                      - value: 15
+                        color: '#245fd7'
+                      - value: 20
+                        color: '#0cb9c1'
+                      - value: 24
+                        color: '#3aaa00'
+                      - value: 28
+                        color: '#f5b514'
+                      - value: 32
+                        color: '#d75024'
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: switch.piscine_relais
+                        icon: |-
+                          {% if is_state('switch.piscine_relais', 'on') %}
+                            mdi:pump
+                          {% else %}
+                            mdi:pump-off
+                          {% endif %}
+                        icon_color: |-
+                          {% if is_state('switch.piscine_relais', 'on') %}
+                            red
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          Pompe {% if is_state('switch.piscine_relais', 'on')
+                          %}ON{% else %}OFF{% endif %}
+                        tap_action:
+                          action: toggle
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 4px 4px 4px !important;
+                        }
+          - type: horizontal-stack
+            cards:
+              - type: custom:mini-graph-card
+                points_per_hour: 2
+                hours_to_show: 12
+                height: 80
+                bar_spacing: 2
+                entities:
+                  - entity: sensor.garage_pressure
+                    name: Baromètre
+                show:
+                  graph: bar
+                font_size: 80
+                line_color: '#7e69f9'
+                card_mod:
+                  style: |
+                    .states.flex::after {
+                      content: "{{ relative_time(states['sensor.garage_pressure'].last_changed) }}";
+                      white-space: pre;
+                      background-color: rgba(50,50,50,0.1);
+                      border-radius: 5px;
+                    }
+              - type: custom:mini-graph-card
+                color_thresholds:
+                  - color: '#00FF00'
+                    value: 0
+                  - color: '#FF9900'
+                    value: 20
+                  - color: '#EA9999'
+                    value: 30
+                  - color: '#CC0000'
+                    value: 100
+                color_thresholds_transition: hard
+                line_width: 2
+                icon: mdi:blur
+                show:
+                  fill: true
+                  icon: true
+                  labels: false
+                  name: true
+                  state: true
+                hour24: true
+                points_per_hour: 4
+                hours_to_show: 24
+                height: 80
+                group: false
+                entities:
+                  - entity: sensor.particulate_matter_2_5mm_concentration
+                    name: µg/m3
+                name: PM2.5
+                card_mod:
+                  style: |
+                    .states.flex::after {
+                      {% set pm = states('sensor.particulate_matter_2_5mm_concentration') | float(0) %}
+                      {% if pm < 10 %}
+                        content: " Bon";
+                        color: #00FF00;
+                      {% elif pm < 20 %}
+                        content: " Correct";
+                        color: #99CC00;
+                      {% elif pm < 30 %}
+                        content: " Modéré";
+                        color: #FF9900;
+                      {% elif pm < 50 %}
+                        content: " Dégradé";
+                        color: #EA9999;
+                      {% else %}
+                        content: " Mauvais";
+                        color: #CC0000;
+                      {% endif %}
+                      white-space: pre;
+                      font-weight: bold;
+                      font-size: 0.85em;
+                    }
+      - type: vertical-stack
+        cards:
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mini-graph-card
+                name: Energie
+                decimals: 0
+                points_per_hour: 2
+                line_width: 2
+                height: 120
+                entities:
+                  - entity: sensor.msunpv_powreso
+                    color: '#0867ec'
+                    name: Consommation
+                  - entity: sensor.current_power_production
+                    show_state: true
+                    color: '#f5b514'
+                    name: Production
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    icon: mdi:transmission-tower
+                    badge_icon: mdi:swap-horizontal
+                    badge_color: purple
+                    icon_color: blue
+                    primary: >-
+                      → {{ (states('sensor.msunpv_enconso') | float / 1000) |
+                      round(2) }} kWh
+                    secondary: >-
+                      ← {{ (states('sensor.msunpv_eninj') | float / 1000) |
+                      round(2) | abs }} kWh
+                    tap_action:
+                      action: more-info
+                      entity: sensor.msunpv_enconso
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+                  - type: custom:mushroom-template-card
+                    icon: mdi:solar-power
+                    icon_color: yellow
+                    primary: '{{ states(''sensor.today_power_production'') }} kWh'
+                    secondary: >-
+                      {{
+                      states('sensor.envoy_122152048399_today_s_energy_production')
+                      | round(2) }} kWh + {{ states('sensor.prod_apsys') |
+                      round(2) }} kWh
+                    entity: sensor.today_power_production
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    icon: mdi:solar-power-variant
+                    icon_color: blue
+                    primary: >
+                      auj. {{ (states('sensor.energy_production_today') | float
+                      +
+                       states('sensor.energy_production_today_2') | float) | round(2) }} kWh
+                    secondary: >
+                      dem. {{ (states('sensor.energy_production_tomorrow') |
+                      float + states('sensor.energy_production_tomorrow_2') |
+                      float) | round(2) }} kWh
+                    tap_action:
+                      action: more-info
+                      entity: sensor.energy_production_today
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+                  - type: custom:mushroom-template-card
+                    icon: mdi:solar-power-variant
+                    icon_color: yellow
+                    primary: >
+                      E {{
+                      (states('sensor.envoy_122152048399_current_power_production')
+                      | float) | round(2) }} W
+                    secondary: >
+                      AP {{ (states('sensor.solar_total_power') | float) |
+                      round(2) }} W
+                    tap_action:
+                      action: more-info
+                      entity: sensor.solar_total_power
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: >-
+                      {% set state =
+                      states('binary_sensor.rte_tempo_heures_creuses') %} {% if
+                      state == 'on' %}
+                        HC
+                      {% elif state == 'off' %}
+                        HP
+                      {% endif %}
+                    secondary: >-
+                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
+                      %} {% if state == 'Bleu' %}
+                        Tarif bleu
+                      {% elif state == 'Blanc' %}
+                        Tarif blanc
+                      {% elif state == 'Rouge' %}
+                        Tarif rouge
+                      {% endif %}
+                    icon: mdi:lightning-bolt
+                    entity: sensor.rte_tempo_couleur_actuelle
+                    badge_color: >-
+                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
+                      %} {% if state == 'Rouge' %}
+                        red
+                      {% endif %}
+                    icon_color: >-
+                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
+                      %} {% if state == 'Bleu' %}
+                        blue
+                      {% elif state == 'Blanc' %}
+                        grey
+                      {% elif state == 'Rouge' %}
+                        red
+                      {% endif %}
+                    badge_icon: >-
+                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
+                      %} {% if state == 'Rouge' %}
+                        mdi:alert
+                      {% endif %}
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+                  - type: custom:mushroom-template-card
+                    entity: sensor.rte_tempo_prochaine_couleur
+                    primary: Demain
+                    secondary: '{{ states(''sensor.rte_tempo_prochaine_couleur'') }}'
+                    icon_color: >-
+                      {% set state =
+                      states('sensor.rte_tempo_prochaine_couleur') %} {% if
+                      state == 'Bleu' %}
+                        blue
+                      {% elif state == 'Blanc' %}
+                        grey
+                      {% elif state == 'Rouge' %}
+                        red
+                      {% endif %}
+                    icon: mdi:calendar
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.rte_tempo_cycle_jours_restants_bleu
+                    icon: mdi:numeric
+                    icon_color: blue
+                    content: >-
+                      Bleu {{
+                      states('sensor.rte_tempo_cycle_jours_restants_bleu') }}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.rte_tempo_cycle_jours_restants_blanc
+                    icon: mdi:numeric
+                    icon_color: grey
+                    content: >-
+                      Blanc {{
+                      states('sensor.rte_tempo_cycle_jours_restants_blanc') }}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.rte_tempo_cycle_jours_restants_rouge
+                    icon: mdi:numeric
+                    icon_color: red
+                    content: >-
+                      Rouge {{
+                      states('sensor.rte_tempo_cycle_jours_restants_rouge') }}
+                    tap_action:
+                      action: more-info
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: cover.awning_0001
+                primary: Store
+                secondary: >-
+                  {% if is_state('cover.awning_0001', 'open') %}Ouvert{% else
+                  %}Fermé{% endif %}
+                icon: >-
+                  {% if is_state('cover.awning_0001', 'open')
+                  %}mdi:storefront-outline{% else %}mdi:storefront{% endif %}
+                icon_color: >-
+                  {% if is_state('cover.awning_0001', 'open') %}orange{% else
+                  %}grey{% endif %}
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: light.wled_outside
+                primary: WLED
+                secondary: >-
+                  {% if is_state('light.wled_outside', 'on') %}ON{% else %}OFF{%
+                  endif %}
+                icon: mdi:led-strip-variant
+                icon_color: >-
+                  {% if is_state('light.wled_outside', 'on') %}yellow{% else
+                  %}grey{% endif %}
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: more-info
+          - type: custom:webrtc-camera
+            title: Sonette
+            url: camera.reolink_doorbell_sub
+            media: video, audio
+            style: 'video {aspect-ratio: 16/9; object-fit: fill;}'
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: binary_sensor.qemu_dd_frigate_104_status
+                icon: mdi:cctv
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  'on') %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.qemu_dd_haos_103_status
+                icon: mdi:home-assistant
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_haos_103_status', 'on')
+                  %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_haos_103_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.qemu_dd_storage_102_status
+                icon: mdi:nas
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                  'on') %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_storage_102_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.node_prox_status
+                icon: mdi:server
+                icon_color: >-
+                  {% if is_state('binary_sensor.node_prox_status', 'on') %}green
+                  {% else %}red{% endif %}
+                content: '{{ states(''sensor.node_prox_cpu_used'') | float | round(0) }}%'
+                tap_action:
+                  action: more-info
+      - type: vertical-stack
+        cards:
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mini-graph-card
+                name: Salon
+                height: 50
+                decimals: 1
+                line_width: 2
+                entities:
+                  - entity: sensor.atc_0d03_temperature
+                    name: Temp.
+                    color: '#e45e33'
+                  - entity: sensor.atc_0d03_humidity
+                    name: Hyg.
+                    color: '#1e5eee'
+                    y_axis: secondary
+                    show_state: true
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+                    .states.flex::after {
+                      content: "{{ relative_time(states['sensor.atc_0d03_temperature'].last_changed) }}";
+                      white-space: pre;
+                      font-size: 0.8em;
+                      opacity: 0.7;
+                    }
+                    .flex {
+                      padding: 5px;
+                    }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-climate-card
+                    entity: climate.mitsusalon_mitsusalon
+                    name: Salon
+                    show_temperature_control: true
+                    hvac_modes:
+                      - 'off'
+                      - heat
+                      - dry
+                      - cool
+                      - fan_only
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+                  - type: custom:mushroom-climate-card
+                    entity: climate.mitsucouloir_mitsucouloir
+                    name: Couloir
+                    show_temperature_control: true
+                    hvac_modes:
+                      - 'off'
+                      - heat
+                      - dry
+                      - cool
+                      - fan_only
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+          - type: horizontal-stack
+            cards:
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Chambre 1
+                    height: 40
+                    font_size: 55
+                    font_size_header: 10
+                    decimals: 1
+                    line_width: 2
+                    entities:
+                      - entity: sensor.atc_9d9d_temperature
+                        name: Temp.
+                        color: '#e45e33'
+                      - entity: sensor.atc_9d9d_humidity
+                        name: Hyg.
+                        color: '#1e5eee'
+                        y_axis: secondary
+                        show_state: true
+                    card_mod:
+                      style: |
+                        .states.flex::after {
+                          content: "{{ relative_time(states['sensor.atc_9d9d_temperature'].last_changed) }}";
+                          white-space: pre;
+                          font-size: 0.7em;
+                          opacity: 0.6;
+                        }
+                        .flex {
+                          padding: 5px;
+                        }
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: climate.maxpilot_ch1_radiateur_ch1
+                        icon: mdi:radiator
+                        icon_color: >-
+                          {% if state_attr('climate.maxpilot_ch1_radiateur_ch1',
+                          'hvac_action') == 'heating' %}
+                            red
+                          {% elif is_state('climate.maxpilot_ch1_radiateur_ch1',
+                          'heat') %}
+                            orange
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          {{ state_attr('climate.maxpilot_ch1_radiateur_ch1',
+                          'temperature') | int }}°C
+                        tap_action:
+                          action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 8px 4px 8px !important;
+                        }
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Chambre 2
+                    height: 40
+                    font_size: 55
+                    font_size_header: 10
+                    decimals: 1
+                    line_width: 2
+                    entities:
+                      - entity: sensor.atc_501e_temperature
+                        name: Temp.
+                        color: '#e45e33'
+                      - entity: sensor.atc_501e_humidity
+                        name: Hyg.
+                        color: '#1e5eee'
+                        y_axis: secondary
+                        show_state: true
+                    card_mod:
+                      style: |
+                        .states.flex::after {
+                          content: "{{ relative_time(states['sensor.atc_501e_temperature'].last_changed) }}";
+                          white-space: pre;
+                          font-size: 0.7em;
+                          opacity: 0.6;
+                        }
+                        .flex {
+                          padding: 5px;
+                        }
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: climate.maxpilot_ch2_radiateur_ch2
+                        icon: mdi:radiator
+                        icon_color: >-
+                          {% if state_attr('climate.maxpilot_ch2_radiateur_ch2',
+                          'hvac_action') == 'heating' %}
+                            red
+                          {% elif is_state('climate.maxpilot_ch2_radiateur_ch2',
+                          'heat') %}
+                            orange
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          {{ state_attr('climate.maxpilot_ch2_radiateur_ch2',
+                          'temperature') | int }}°C
+                        tap_action:
+                          action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 8px 4px 8px !important;
+                        }
+          - type: horizontal-stack
+            cards:
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Chambre 3
+                    height: 40
+                    font_size: 55
+                    font_size_header: 10
+                    decimals: 1
+                    line_width: 2
+                    entities:
+                      - entity: sensor.atc_63738e_738e_temperature
+                        name: Temp.
+                        color: '#e45e33'
+                      - entity: sensor.atc_63738e_738e_humidity
+                        name: Hyg.
+                        color: '#1e5eee'
+                        y_axis: secondary
+                        show_state: true
+                    card_mod:
+                      style: |
+                        .states.flex::after {
+                          content: "{{ relative_time(states['sensor.atc_63738e_738e_temperature'].last_changed) }}";
+                          white-space: pre;
+                          font-size: 0.7em;
+                          opacity: 0.6;
+                        }
+                        .flex {
+                          padding: 5px;
+                        }
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: climate.maxpilot_ch3_radiateur_ch3
+                        icon: mdi:radiator
+                        icon_color: >-
+                          {% if state_attr('climate.maxpilot_ch3_radiateur_ch3',
+                          'hvac_action') == 'heating' %}
+                            red
+                          {% elif is_state('climate.maxpilot_ch3_radiateur_ch3',
+                          'heat') %}
+                            orange
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          {{ state_attr('climate.maxpilot_ch3_radiateur_ch3',
+                          'temperature') | int }}°C
+                        tap_action:
+                          action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 8px 4px 8px !important;
+                        }
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Salle de bain
+                    height: 40
+                    font_size: 55
+                    font_size_header: 10
+                    decimals: 1
+                    line_width: 2
+                    entities:
+                      - entity: sensor.atc_335e_temperature
+                        name: Temp.
+                        color: '#e45e33'
+                      - entity: sensor.atc_335e_humidity
+                        name: Hyg.
+                        color: '#1e5eee'
+                        y_axis: secondary
+                        show_state: true
+                    card_mod:
+                      style: |
+                        .states.flex::after {
+                          content: "{{ relative_time(states['sensor.atc_335e_temperature'].last_changed) }}";
+                          white-space: pre;
+                          font-size: 0.7em;
+                          opacity: 0.6;
+                        }
+                        .flex {
+                          padding: 5px;
+                        }
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: climate.maxpilot_sdb_radiateur_sdb
+                        icon: mdi:radiator
+                        icon_color: >-
+                          {% if state_attr('climate.maxpilot_sdb_radiateur_sdb',
+                          'hvac_action') == 'heating' %}
+                            red
+                          {% elif is_state('climate.maxpilot_sdb_radiateur_sdb',
+                          'heat') %}
+                            orange
+                          {% else %}
+                            grey
+                          {% endif %}
+                        content: >-
+                          {{ state_attr('climate.maxpilot_sdb_radiateur_sdb',
+                          'temperature') | int }}°C
+                        tap_action:
+                          action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 8px 4px 8px !important;
+                        }
+          - type: custom:scheduler-card
+            include:
+              - switch.valve_controller_switch
+              - climate.clim_salon
+              - climate.mitsucouloir_clim_couloir
+              - switch.piscine_relais
+              - light.wled_outside
+              - switch.manubal
+              - cover.awning_0001
