@@ -606,42 +606,104 @@ views:
                     }
               - type: horizontal-stack
                 cards:
-                  - type: custom:mushroom-climate-card
-                    entity: climate.mitsusalon_mitsusalon
-                    name: Salon
-                    show_temperature_control: true
-                    hvac_modes:
-                      - 'off'
-                      - heat
-                      - dry
-                      - cool
-                      - fan_only
-                    tap_action:
-                      action: more-info
+                  - type: custom:stack-in-card
+                    mode: vertical
                     card_mod:
                       style: |
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
                         }
-                  - type: custom:mushroom-climate-card
-                    entity: climate.mitsucouloir_mitsucouloir
-                    name: Couloir
-                    show_temperature_control: true
-                    hvac_modes:
-                      - 'off'
-                      - heat
-                      - dry
-                      - cool
-                      - fan_only
-                    tap_action:
-                      action: more-info
+                    cards:
+                      - type: custom:mushroom-climate-card
+                        entity: climate.mitsusalon_mitsusalon
+                        name: Salon
+                        show_temperature_control: true
+                        hvac_modes:
+                          - 'off'
+                          - heat
+                          - dry
+                          - cool
+                          - fan_only
+                        tap_action:
+                          action: more-info
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border: none !important;
+                              box-shadow: none !important;
+                            }
+                      - type: custom:mushroom-chips-card
+                        alignment: center
+                        chips:
+                          - type: template
+                            entity: sensor.input_power
+                            icon: mdi:lightning-bolt
+                            icon_color: >-
+                              {% if states('sensor.input_power') | float(0) > 1 %}
+                                orange
+                              {% else %}
+                                grey
+                              {% endif %}
+                            content: >-
+                              {{ states('sensor.input_power') | float(0) | round(0) }} W
+                            tap_action:
+                              action: more-info
+                        card_mod:
+                          style: |
+                            ha-card {
+                              --chip-spacing: 0;
+                              padding: 0 8px 4px 8px !important;
+                            }
+                  - type: custom:stack-in-card
+                    mode: vertical
                     card_mod:
                       style: |
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
                         }
+                    cards:
+                      - type: custom:mushroom-climate-card
+                        entity: climate.mitsucouloir_mitsucouloir
+                        name: Couloir
+                        show_temperature_control: true
+                        hvac_modes:
+                          - 'off'
+                          - heat
+                          - dry
+                          - cool
+                          - fan_only
+                        tap_action:
+                          action: more-info
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border: none !important;
+                              box-shadow: none !important;
+                            }
+                      - type: custom:mushroom-chips-card
+                        alignment: center
+                        chips:
+                          - type: template
+                            entity: sensor.mitsucouloir_input_power
+                            icon: mdi:lightning-bolt
+                            icon_color: >-
+                              {% if states('sensor.mitsucouloir_input_power') | float(0) > 1 %}
+                                orange
+                              {% else %}
+                                grey
+                              {% endif %}
+                            content: >-
+                              {{ states('sensor.mitsucouloir_input_power') | float(0) | round(0) }} W
+                            tap_action:
+                              action: more-info
+                        card_mod:
+                          style: |
+                            ha-card {
+                              --chip-spacing: 0;
+                              padding: 0 8px 4px 8px !important;
+                            }
           - type: horizontal-stack
             cards:
               - type: custom:stack-in-card
