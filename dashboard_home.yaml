@@ -4,8 +4,9 @@ kiosk_mode:
     hide_header: false
   user_settings:
     - users:
-        - Tablet
+        - tablet
       hide_header: true
+      kiosk: true
 views:
   - path: default_view
     title: Maison
@@ -48,6 +49,12 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: /lovelace-temperatures
+              - type: action
+                icon: mdi:cctv
+                icon_color: teal
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-video
             card_mod:
               style: |
                 ha-card {
@@ -279,6 +286,56 @@ views:
                     }
       - type: vertical-stack
         cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: binary_sensor.qemu_dd_frigate_104_status
+                icon: mdi:cctv
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  'on') %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.qemu_dd_haos_103_status
+                icon: mdi:home-assistant
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_haos_103_status', 'on')
+                  %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_haos_103_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.qemu_dd_storage_102_status
+                icon: mdi:nas
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                  'on') %}green {% else %}red{% endif %}
+                content: >-
+                  {{ states('sensor.qemu_dd_storage_102_cpu_used') | float |
+                  round(0) }}%
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.node_prox_status
+                icon: mdi:server
+                icon_color: >-
+                  {% if is_state('binary_sensor.node_prox_status', 'on') %}green
+                  {% else %}red{% endif %}
+                content: '{{ states(''sensor.node_prox_cpu_used'') | float | round(0) }}%'
+                tap_action:
+                  action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  margin-bottom: 10px;
+                }
           - type: custom:stack-in-card
             mode: vertical
             cards:
@@ -525,51 +582,6 @@ views:
             url: camera.reolink_doorbell_sub
             media: video, audio
             style: 'video {aspect-ratio: 16/9; object-fit: fill;}'
-          - type: custom:mushroom-chips-card
-            alignment: center
-            chips:
-              - type: template
-                entity: binary_sensor.qemu_dd_frigate_104_status
-                icon: mdi:cctv
-                icon_color: >-
-                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
-                  'on') %}green {% else %}red{% endif %}
-                content: >-
-                  {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
-                  round(0) }}%
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: binary_sensor.qemu_dd_haos_103_status
-                icon: mdi:home-assistant
-                icon_color: >-
-                  {% if is_state('binary_sensor.qemu_dd_haos_103_status', 'on')
-                  %}green {% else %}red{% endif %}
-                content: >-
-                  {{ states('sensor.qemu_dd_haos_103_cpu_used') | float |
-                  round(0) }}%
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: binary_sensor.qemu_dd_storage_102_status
-                icon: mdi:nas
-                icon_color: >-
-                  {% if is_state('binary_sensor.qemu_dd_storage_102_status',
-                  'on') %}green {% else %}red{% endif %}
-                content: >-
-                  {{ states('sensor.qemu_dd_storage_102_cpu_used') | float |
-                  round(0) }}%
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: binary_sensor.node_prox_status
-                icon: mdi:server
-                icon_color: >-
-                  {% if is_state('binary_sensor.node_prox_status', 'on') %}green
-                  {% else %}red{% endif %}
-                content: '{{ states(''sensor.node_prox_cpu_used'') | float | round(0) }}%'
-                tap_action:
-                  action: more-info
       - type: vertical-stack
         cards:
           - type: custom:stack-in-card

@@ -1,0 +1,301 @@
+views:
+  - path: default_view
+    title: Impression 3D
+    cards:
+      # === Colonne 1 : Caméra + Contrôles ===
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: sensor.x4_pro_printer_state
+                icon: mdi:printer-3d
+                icon_color: >-
+                  {% set s = states('sensor.x4_pro_printer_state') %}
+                  {% if s == 'ready' %}green
+                  {% elif s in ['error','shutdown'] %}red
+                  {% else %}grey{% endif %}
+                content: '{{ states("sensor.x4_pro_printer_state") }}'
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.x4_pro_current_print_state
+                icon: mdi:progress-clock
+                icon_color: >-
+                  {% set s = states('sensor.x4_pro_current_print_state') %}
+                  {% if s == 'printing' %}green
+                  {% elif s == 'paused' %}orange
+                  {% elif s == 'complete' %}blue
+                  {% elif s in ['error','cancelled'] %}red
+                  {% else %}grey{% endif %}
+                content: '{{ states("sensor.x4_pro_current_print_state") }}'
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: binary_sensor.x4_pro_fila
+                icon: >-
+                  {% if is_state('binary_sensor.x4_pro_fila', 'on') %}mdi:printer-3d-nozzle
+                  {% else %}mdi:printer-3d-nozzle-alert{% endif %}
+                icon_color: >-
+                  {% if is_state('binary_sensor.x4_pro_fila', 'on') %}green
+                  {% else %}red{% endif %}
+                content: >-
+                  {% if is_state('binary_sensor.x4_pro_fila', 'on') %}Fila OK
+                  {% else %}Fila !{% endif %}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.x4_pro_printer_message
+                icon: mdi:message-text-outline
+                icon_color: grey
+                content: '{{ states("sensor.x4_pro_printer_message") | truncate(20, true, "…") }}'
+                tap_action:
+                  action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  margin-bottom: 8px;
+                }
+
+          - type: custom:webrtc-camera
+            url: camera.3D_printer
+            media: video
+
+          - type: grid
+            square: false
+            columns: 3
+            cards:
+              - type: button
+                entity: button.x4_pro_pause_print
+                icon: mdi:pause
+                name: Pause
+              - type: button
+                entity: button.x4_pro_resume_print
+                icon: mdi:play
+                name: Reprise
+              - type: button
+                entity: button.x4_pro_cancel_print
+                icon: mdi:stop
+                name: Annuler
+
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                entity: light.x4_pro_neopixel_my_neopixel
+                primary: Neopixel
+                secondary: >-
+                  {% if is_state('light.x4_pro_neopixel_my_neopixel', 'on') %}ON{% else %}OFF{% endif %}
+                icon: mdi:led-variant-on
+                icon_color: >-
+                  {% if is_state('light.x4_pro_neopixel_my_neopixel', 'on') %}yellow{% else %}grey{% endif %}
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: light.yeelight_stripe_0x4553435
+                primary: Placard
+                secondary: >-
+                  {% if is_state('light.yeelight_stripe_0x4553435', 'on') %}ON{% else %}OFF{% endif %}
+                icon: mdi:led-strip-variant
+                icon_color: >-
+                  {% if is_state('light.yeelight_stripe_0x4553435', 'on') %}yellow{% else %}grey{% endif %}
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: more-info
+
+      # === Colonne 2 : Températures + Infos impression ===
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.x4_pro_bed_temperature_2
+                    name: Bed
+                line_color: '#bb5f0e'
+                hours_to_show: 2
+                points_per_hour: 6
+                card_mod:
+                  style: |
+                    .states.flex::after {
+                      content: "→ {{ states('number.x4_pro_bed_target') }}°C";
+                      white-space: pre;
+                      font-size: 0.85em;
+                      opacity: 0.8;
+                    }
+              - type: custom:mini-graph-card
+                entities:
+                  - entity: sensor.x4_pro_extruder_temperature
+                    name: Buse
+                line_color: '#ab0ebb'
+                hours_to_show: 2
+                points_per_hour: 6
+                card_mod:
+                  style: |
+                    .states.flex::after {
+                      content: "→ {{ states('number.x4_pro_extruder_target') }}°C";
+                      white-space: pre;
+                      font-size: 0.85em;
+                      opacity: 0.8;
+                    }
+
+          - type: custom:mushroom-template-card
+            entity: sensor.x4_pro_progress
+            primary: >-
+              {{ states("sensor.x4_pro_filename") | truncate(38, true, "…") if states("sensor.x4_pro_filename") != "" else "Aucune impression" }}
+            secondary: >-
+              {% set p = states('sensor.x4_pro_progress') | float(0) %}
+              {% set l = states('sensor.x4_pro_current_layer') | int(0) %}
+              {% set t = states('sensor.x4_pro_total_layer') | int(0) %}
+              {{ p | round(1) }}%
+              {% if t > 0 %} — Couche {{ l }}/{{ t }}{% endif %}
+            icon: mdi:printer-3d-nozzle
+            icon_color: >-
+              {% set s = states('sensor.x4_pro_current_print_state') %}
+              {% if s == 'printing' %}green
+              {% elif s == 'paused' %}orange
+              {% elif s == 'complete' %}blue
+              {% elif s in ['error','cancelled'] %}red
+              {% else %}grey{% endif %}
+            tap_action:
+              action: more-info
+
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: entities
+                title: Impression en cours
+                entities:
+                  - entity: sensor.x4_pro_print_duration
+                    name: Durée
+                    icon: mdi:timer
+                  - entity: sensor.x4_pro_print_time_left
+                    name: Temps restant
+                    icon: mdi:timer-sand
+                  - entity: sensor.x4_pro_print_eta
+                    name: ETA
+                    icon: mdi:calendar-clock
+                  - entity: sensor.x4_pro_slicer_print_duration_estimate
+                    name: Durée estimée (slicer)
+                    icon: mdi:timer-check
+                  - entity: sensor.x4_pro_print_speed
+                    name: Vitesse
+                    icon: mdi:speedometer
+                  - entity: sensor.x4_pro_filament_used
+                    name: Filament utilisé
+                    icon: mdi:tape-measure
+                  - entity: sensor.x4_pro_object_height
+                    name: Hauteur objet
+                    icon: mdi:axis-z-arrow
+
+          - type: entities
+            title: Réglages
+            entities:
+              - entity: number.x4_pro_bed_target
+                name: Cible bed
+              - entity: number.x4_pro_extruder_target
+                name: Cible buse
+              - entity: number.x4_pro_fan_speed
+                name: Ventilateur
+              - entity: number.x4_pro_speed_factor
+                name: Facteur vitesse
+
+      # === Colonne 3 : Thumbnail + Système + Stats ===
+      - type: vertical-stack
+        cards:
+          - type: picture-entity
+            entity: camera.x4_pro_thumbnail
+            camera_view: auto
+            show_state: false
+            show_name: false
+
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                icon: mdi:axis-x-arrow
+                icon_color: red
+                content: 'X: {{ states("sensor.x4_pro_toolhead_position_x") | float(0) | round(1) }}'
+                tap_action:
+                  action: more-info
+                  entity: sensor.x4_pro_toolhead_position_x
+              - type: template
+                icon: mdi:axis-y-arrow
+                icon_color: green
+                content: 'Y: {{ states("sensor.x4_pro_toolhead_position_y") | float(0) | round(1) }}'
+                tap_action:
+                  action: more-info
+                  entity: sensor.x4_pro_toolhead_position_y
+              - type: template
+                icon: mdi:axis-z-arrow
+                icon_color: blue
+                content: 'Z: {{ states("sensor.x4_pro_toolhead_position_z") | float(0) | round(2) }}'
+                tap_action:
+                  action: more-info
+                  entity: sensor.x4_pro_toolhead_position_z
+
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: entities
+                title: Système
+                entities:
+                  - entity: sensor.x4_pro_mcu_load
+                    name: MCU load
+                    icon: mdi:cpu-64-bit
+                  - entity: sensor.x4_pro_mcu_rpi_load
+                    name: RPi load
+                    icon: mdi:cpu-64-bit
+                  - entity: sensor.x4_pro_memory_used
+                    name: Mémoire
+                    icon: mdi:memory
+                  - entity: sensor.x4_pro_system_load
+                    name: Charge système
+                    icon: mdi:gauge
+                  - entity: sensor.x4_pro_bed_power_2
+                    name: Puissance bed
+                    icon: mdi:flash
+                  - entity: sensor.x4_pro_extruder_power
+                    name: Puissance buse
+                    icon: mdi:flash
+                  - entity: sensor.x4_pro_fan0
+                    name: Fan0
+                    icon: mdi:fan
+                  - entity: sensor.x4_pro_fan2
+                    name: Fan2
+                    icon: mdi:fan
+
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: entities
+                title: Statistiques globales
+                entities:
+                  - entity: sensor.x4_pro_totals_jobs
+                    name: Jobs totaux
+                    icon: mdi:numeric
+                  - entity: sensor.x4_pro_totals_print_time
+                    name: Temps total
+                    icon: mdi:clock-outline
+                  - entity: sensor.x4_pro_totals_filament_used
+                    name: Filament total (m)
+                    icon: mdi:tape-measure
+                  - entity: sensor.x4_pro_longest_print
+                    name: Impression la plus longue
+                    icon: mdi:clock-star-four-points
+
+          - type: grid
+            square: false
+            columns: 2
+            cards:
+              - type: button
+                entity: button.x4_pro_home_all_axes
+                icon: mdi:axis-arrow
+                name: Home all
+              - type: button
+                entity: button.x4_pro_emergency_stop
+                icon: mdi:alert-octagon-outline
+                name: STOP URG.

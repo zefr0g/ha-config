@@ -37,6 +37,12 @@ views:
             tap_action:
               action: navigate
               navigation_path: /lovelace-temperatures
+          - type: action
+            icon: mdi:cctv
+            icon_color: teal
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-video
         card_mod:
           style: |-
             ha-card {
@@ -187,5 +193,5 @@ kiosk_mode:
     hide_header: false
   user_settings:
     - users:
-        - Tablet
+        - tablet
       hide_header: true

@@ -1,0 +1,90 @@
+title: Piscine
+kiosk_mode:
+  admin_settings:
+    hide_header: false
+  user_settings:
+    - users:
+        - tablet
+      hide_header: true
+views:
+  - path: default_view
+    title: Piscine
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:home
+                icon_color: blue
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground
+                hold_action:
+                  action: navigate
+                  navigation_path: /config/dashboards
+              - type: action
+                icon: mdi:shield-home
+                icon_color: red
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-alarme
+              - type: action
+                icon: mdi:doorbell-video
+                icon_color: purple
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-interphone
+              - type: action
+                icon: mdi:pool
+                icon_color: cyan
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-piscine
+              - type: action
+                icon: mdi:thermometer
+                icon_color: green
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-temperatures
+              - type: action
+                icon: mdi:cctv
+                icon_color: teal
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-video
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                  margin-bottom: 10px;
+                }
+      - type: vertical-stack
+        cards:
+          - type: custom:mini-graph-card
+            entities:
+              - entity: sensor.inkbird_ith20r_64601_temperature
+                color: '#75bbf3'
+          - type: custom:mushroom-entity-card
+            entity: switch.piscine_relais
+            name: Pompe piscine
+            tap_action:
+              action: toggle
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: sensor.piscine_filtration_last_24h
+                name: 24h
+                icon: mdi:water-pump
+              - type: custom:mushroom-entity-card
+                entity: sensor.piscine_filtration_auj
+                name: Auj.
+                icon: mdi:water-pump
+              - type: custom:mushroom-entity-card
+                entity: sensor.piscine_filtration_hier
+                name: Hier
+                icon: mdi:water-pump
+                icon_color: white
+
