@@ -71,31 +71,96 @@ views:
                   grid-template-columns: 1fr
                   grid-auto-rows: 50vh
             cards:
-              - type: custom:webrtc-camera
-                url: camera.reolink_doorbell
-                media: video, audio
-                style: 'video {width: 100%; height: 100%; object-fit: contain; background: #000;}'
-              - type: custom:webrtc-camera
-                poster: snap.entree
-                url: camera.entree
-                media: video
-                style: 'video {width: 100%; height: 100%; object-fit: contain; background: #000;}'
-              - type: custom:webrtc-camera
-                url: camera.back
-                media: video
-                style: 'video {width: 100%; height: 100%; object-fit: contain; background: #000;}'
-              - type: custom:webrtc-camera
-                url: camera.garage
-                media: video, audio
-                style: 'video {width: 100%; height: 100%; object-fit: contain; background: #000;}'
-                ptz:
-                  service: button.press
-                  position: left
-                  data_left:
-                    entity_id: button.ty2_garage_ptz_gauche
-                  data_right:
-                    entity_id: button.ty2_garage_ptz_droite
-                  data_up:
-                    entity_id: button.ty2_garage_ptz_haut
-                  data_down:
-                    entity_id: button.ty2_garage_ptz_bas
+              - type: custom:advanced-camera-card
+                cameras:
+                  - camera_entity: camera.doorbell
+                    live_provider: go2rtc
+                    frigate:
+                      camera_name: doorbell
+                view:
+                  default: live
+                status_bar:
+                  style: none
+              - type: custom:advanced-camera-card
+                cameras:
+                  - camera_entity: camera.entree
+                    live_provider: go2rtc
+                    frigate:
+                      camera_name: entree
+                view:
+                  default: live
+                status_bar:
+                  style: none
+              - type: custom:advanced-camera-card
+                cameras:
+                  - camera_entity: camera.back
+                    live_provider: go2rtc
+                    frigate:
+                      camera_name: back
+                view:
+                  default: live
+                status_bar:
+                  style: none
+              - type: custom:advanced-camera-card
+                cameras:
+                  - camera_entity: camera.garage
+                    live_provider: go2rtc
+                    frigate:
+                      camera_name: garage
+                view:
+                  default: live
+                status_bar:
+                  style: none
+                elements:
+                  - type: icon
+                    icon: mdi:arrow-left
+                    tap_action:
+                      action: perform-action
+                      perform_action: button.press
+                      target:
+                        entity_id: button.ty2_garage_ptz_gauche
+                    style:
+                      top: 50%
+                      left: 5%
+                      transform: translateY(-50%)
+                      color: white
+                      opacity: 0.8
+                  - type: icon
+                    icon: mdi:arrow-right
+                    tap_action:
+                      action: perform-action
+                      perform_action: button.press
+                      target:
+                        entity_id: button.ty2_garage_ptz_droite
+                    style:
+                      top: 50%
+                      right: 5%
+                      transform: translateY(-50%)
+                      color: white
+                      opacity: 0.8
+                  - type: icon
+                    icon: mdi:arrow-up
+                    tap_action:
+                      action: perform-action
+                      perform_action: button.press
+                      target:
+                        entity_id: button.ty2_garage_ptz_haut
+                    style:
+                      top: 5%
+                      left: 50%
+                      transform: translateX(-50%)
+                      color: white
+                      opacity: 0.8
+                  - type: icon
+                    icon: mdi:arrow-down
+                    tap_action:
+                      action: perform-action
+                      perform_action: button.press
+                      target:
+                        entity_id: button.ty2_garage_ptz_bas
+                    style:
+                      bottom: 5%
+                      left: 50%
+                      transform: translateX(-50%)
+                      color: white
+                      opacity: 0.8

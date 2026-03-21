@@ -1,0 +1,31 @@
+alias: Doorbell — notification mouvement Frigate
+description: >-
+  Envoie une notification avec snapshot Frigate lors d'une détection de
+  mouvement sur la sonnette
+triggers:
+  - entity_id: binary_sensor.doorbell_person_occupancy
+    from: "off"
+    to: "on"
+    trigger: state
+actions:
+  - target:
+      entity_id: camera.sonette_clair
+    data:
+      filename: "{{ snapshot_path }}"
+    action: camera.snapshot
+  - device_id: b98be6937e84e0a13bcc68f2631c1423
+    domain: mobile_app
+    type: notify
+    title: Personne détectée à la sonnette
+    message: Frigate a détecté une personne devant la porte
+    data:
+      image: "{{ snapshot_url }}"
+      clickAction: https://homeassistant.douail.in{{ snapshot_url }}
+      ttl: 0
+      priority: high
+      channel: doorbell
+mode: single
+max_exceeded: silent
+variables:
+  snapshot_path: /config/www/tmp/snapshot_doorbell_{{ now().strftime('%y%m%d_%H%M%S') }}.jpg
+  snapshot_url: "{{ snapshot_path | replace('/config/www', '/local') }}"

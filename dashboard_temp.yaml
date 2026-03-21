@@ -67,7 +67,7 @@ views:
           - type: custom:mushroom-climate-card
             primary_info: state
             secondary_info: last-changed
-            entity: climate.clim_salon
+            entity: climate.mitsusalon_mitsusalon
             show_temperature_control: true
             hvac_modes:
               - 'off'

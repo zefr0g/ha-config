@@ -1,0 +1,14 @@
+alias: "Piscine — Arrêter pompe au coucher du soleil"
+description: "Coupe la pompe au coucher du soleil."
+trigger:
+  - platform: sun
+    event: sunset
+condition:
+  - condition: state
+    entity_id: switch.piscine_relais
+    state: "on"
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: switch.piscine_relais
+mode: single

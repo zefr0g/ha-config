@@ -1,0 +1,21 @@
+alias: "Piscine — Compléter filtration avant coucher du soleil"
+description: "Toutes les 30 min, force la pompe si le temps restant dépasse le temps avant le coucher."
+trigger:
+  - platform: time_pattern
+    minutes: "/30"
+condition:
+  - condition: template
+    value_template: >
+      {% set temp = states('sensor.temperature_piscine') | float(0) %}
+      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set remaining_h = (temp / 2) - done %}
+      {% set hours_to_sunset = ((as_datetime(state_attr('sun.sun', 'next_setting')) - now()).total_seconds() / 3600) %}
+      {{ temp > 10 and remaining_h > 0.25 and hours_to_sunset > 0 and hours_to_sunset <= (remaining_h + 0.5) }}
+  - condition: state
+    entity_id: switch.piscine_relais
+    state: "off"
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: switch.piscine_relais
+mode: single

@@ -60,7 +60,7 @@ views:
                 ha-card {
                   --chip-box-shadow: none;
                   --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
-                  margin-bottom: 10px;
+                  margin-bottom: 4px;
                 }
           - type: custom:stack-in-card
             mode: vertical
@@ -334,17 +334,24 @@ views:
             card_mod:
               style: |
                 ha-card {
-                  margin-bottom: 10px;
+                  margin-bottom: 4px;
                 }
           - type: custom:stack-in-card
             mode: vertical
+            card_mod:
+              style: |
+                ha-card {
+                  border: none !important;
+                  box-shadow: none !important;
+                  --mush-spacing: 6px;
+                }
             cards:
               - type: custom:mini-graph-card
                 name: Energie
                 decimals: 0
                 points_per_hour: 2
                 line_width: 2
-                height: 120
+                height: 80
                 entities:
                   - entity: sensor.msunpv_powreso
                     color: '#0867ec'
@@ -380,6 +387,7 @@ views:
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
+                          --spacing: 6px;
                         }
                   - type: custom:mushroom-template-card
                     icon: mdi:solar-power
@@ -398,6 +406,7 @@ views:
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
+                          --spacing: 6px;
                         }
               - type: horizontal-stack
                 cards:
@@ -420,6 +429,7 @@ views:
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
+                          --spacing: 6px;
                         }
                   - type: custom:mushroom-template-card
                     icon: mdi:solar-power-variant
@@ -439,112 +449,36 @@ views:
                         ha-card {
                           border: none !important;
                           box-shadow: none !important;
+                          --spacing: 6px;
                         }
-          - type: custom:stack-in-card
-            mode: vertical
-            cards:
-              - type: horizontal-stack
-                cards:
-                  - type: custom:mushroom-template-card
-                    primary: >-
-                      {% set state =
-                      states('binary_sensor.rte_tempo_heures_creuses') %} {% if
-                      state == 'on' %}
-                        HC
-                      {% elif state == 'off' %}
-                        HP
-                      {% endif %}
-                    secondary: >-
-                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
-                      %} {% if state == 'Bleu' %}
-                        Tarif bleu
-                      {% elif state == 'Blanc' %}
-                        Tarif blanc
-                      {% elif state == 'Rouge' %}
-                        Tarif rouge
-                      {% endif %}
-                    icon: mdi:lightning-bolt
-                    entity: sensor.rte_tempo_couleur_actuelle
-                    badge_color: >-
-                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
-                      %} {% if state == 'Rouge' %}
-                        red
-                      {% endif %}
-                    icon_color: >-
-                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
-                      %} {% if state == 'Bleu' %}
-                        blue
-                      {% elif state == 'Blanc' %}
-                        grey
-                      {% elif state == 'Rouge' %}
-                        red
-                      {% endif %}
-                    badge_icon: >-
-                      {% set state = states('sensor.rte_tempo_couleur_actuelle')
-                      %} {% if state == 'Rouge' %}
-                        mdi:alert
-                      {% endif %}
-                    tap_action:
-                      action: more-info
-                    card_mod:
-                      style: |
-                        ha-card {
-                          border: none !important;
-                          box-shadow: none !important;
-                        }
-                  - type: custom:mushroom-template-card
-                    entity: sensor.rte_tempo_prochaine_couleur
-                    primary: Demain
-                    secondary: '{{ states(''sensor.rte_tempo_prochaine_couleur'') }}'
-                    icon_color: >-
-                      {% set state =
-                      states('sensor.rte_tempo_prochaine_couleur') %} {% if
-                      state == 'Bleu' %}
-                        blue
-                      {% elif state == 'Blanc' %}
-                        grey
-                      {% elif state == 'Rouge' %}
-                        red
-                      {% endif %}
-                    icon: mdi:calendar
-                    tap_action:
-                      action: more-info
-                    card_mod:
-                      style: |
-                        ha-card {
-                          border: none !important;
-                          box-shadow: none !important;
-                        }
-              - type: custom:mushroom-chips-card
-                alignment: center
-                chips:
-                  - type: template
-                    entity: sensor.rte_tempo_cycle_jours_restants_bleu
-                    icon: mdi:numeric
-                    icon_color: blue
-                    content: >-
-                      Bleu {{
-                      states('sensor.rte_tempo_cycle_jours_restants_bleu') }}
-                    tap_action:
-                      action: more-info
-                  - type: template
-                    entity: sensor.rte_tempo_cycle_jours_restants_blanc
-                    icon: mdi:numeric
-                    icon_color: grey
-                    content: >-
-                      Blanc {{
-                      states('sensor.rte_tempo_cycle_jours_restants_blanc') }}
-                    tap_action:
-                      action: more-info
-                  - type: template
-                    entity: sensor.rte_tempo_cycle_jours_restants_rouge
-                    icon: mdi:numeric
-                    icon_color: red
-                    content: >-
-                      Rouge {{
-                      states('sensor.rte_tempo_cycle_jours_restants_rouge') }}
-                    tap_action:
-                      action: more-info
+              - type: custom:mushroom-template-card
+                entity: sensor.teleinfo_libelle_tarif_en_cours
+                primary: >-
+                  {{ states('sensor.teleinfo_libelle_tarif_en_cours') | title }}
+                secondary: >-
+                  HC: {{ (states('sensor.teleinfo_index_tarif_1_hc') | float / 1000) | round(0) }} kWh
+                  · HP: {{ (states('sensor.teleinfo_index_tarif_2_hp') | float / 1000) | round(0) }} kWh
+                icon: >-
+                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                    mdi:lightning-bolt-outline
+                  {% else %}
+                    mdi:lightning-bolt
+                  {% endif %}
+                icon_color: >-
+                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                    blue
+                  {% else %}
+                    orange
+                  {% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                      --spacing: 6px;
+                    }
           - type: horizontal-stack
             cards:
               - type: custom:mushroom-template-card
@@ -581,9 +515,50 @@ views:
             title: Sonette
             url: camera.reolink_doorbell_sub
             media: video, audio
-            style: 'video {aspect-ratio: 16/9; object-fit: fill;}'
       - type: vertical-stack
         cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: sensor.teleinfo_libelle_tarif_en_cours
+                icon: >-
+                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                    mdi:lightning-bolt-outline
+                  {% else %}
+                    mdi:lightning-bolt
+                  {% endif %}
+                icon_color: >-
+                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                    blue
+                  {% else %}
+                    orange
+                  {% endif %}
+                content: >-
+                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}HC{% else %}HP{% endif %}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.teleinfo_puissance_apparente
+                icon: mdi:transmission-tower
+                icon_color: blue
+                content: >-
+                  TIC {{ states('sensor.teleinfo_puissance_apparente') | float(0) | round(0) }} VA
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.msunpv_powreso
+                icon: mdi:solar-power
+                icon_color: yellow
+                content: >-
+                  PV {{ states('sensor.msunpv_powreso') | float(0) | round(0) }} W
+                tap_action:
+                  action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  margin-bottom: 4px;
+                }
           - type: custom:stack-in-card
             mode: vertical
             cards:
@@ -652,13 +627,15 @@ views:
                             entity: sensor.input_power
                             icon: mdi:lightning-bolt
                             icon_color: >-
-                              {% if states('sensor.input_power') | float(0) > 1 %}
+                              {% if states('sensor.input_power') | float(0) > 1
+                              %}
                                 orange
                               {% else %}
                                 grey
                               {% endif %}
                             content: >-
-                              {{ states('sensor.input_power') | float(0) | round(0) }} W
+                              {{ states('sensor.input_power') | float(0) |
+                              round(0) }} W
                             tap_action:
                               action: more-info
                         card_mod:
@@ -701,13 +678,15 @@ views:
                             entity: sensor.mitsucouloir_input_power
                             icon: mdi:lightning-bolt
                             icon_color: >-
-                              {% if states('sensor.mitsucouloir_input_power') | float(0) > 1 %}
+                              {% if states('sensor.mitsucouloir_input_power') |
+                              float(0) > 1 %}
                                 orange
                               {% else %}
                                 grey
                               {% endif %}
                             content: >-
-                              {{ states('sensor.mitsucouloir_input_power') | float(0) | round(0) }} W
+                              {{ states('sensor.mitsucouloir_input_power') |
+                              float(0) | round(0) }} W
                             tap_action:
                               action: more-info
                         card_mod:
@@ -951,8 +930,8 @@ views:
           - type: custom:scheduler-card
             include:
               - switch.valve_controller_switch
-              - climate.clim_salon
-              - climate.mitsucouloir_clim_couloir
+              - climate.mitsusalon_mitsusalon
+              - climate.mitsucouloir_mitsucouloir
               - switch.piscine_relais
               - light.wled_outside
               - switch.manubal

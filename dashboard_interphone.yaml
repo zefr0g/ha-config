@@ -59,8 +59,9 @@ views:
                 columns: 1
                 cards:
                   - type: custom:webrtc-camera
-                    url: camera.reolink_doorbell_interphone
-                    media: video, audio, microphone
+                    entity: camera.sonette_clair
+                    media: video,audio,microphone
+                    muted: false
                     style: 'video {aspect-ratio: 16/9; object-fit: fill;}'
     type: panel
 kiosk_mode:
