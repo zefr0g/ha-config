@@ -55,7 +55,7 @@ views:
             card_mod:
               style: |
                 ha-card {
-                  margin-bottom: 8px;
+                  margin-bottom: 4px;
                 }
 
           - type: custom:webrtc-camera

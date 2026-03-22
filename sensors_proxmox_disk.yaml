@@ -1,0 +1,146 @@
+# REST sensors for Proxmox VM disk usage via guest agent (per-mountpoint)
+# Add to configuration.yaml:
+#   rest: !include sensors_proxmox_disk.yaml
+#
+# Prerequisites:
+# 1. Create API token: pveum user token add supervision@pam ha --privsep 0
+# 2. Add to secrets.yaml: proxmox_api_token: "PVEAPIToken=supervision@pam!ha=YOUR_TOKEN"
+# 3. qemu-guest-agent must be installed and running in each VM
+
+# ── dd-frigate (104) ──
+- resource: "https://prox.home:8006/api2/json/nodes/prox/qemu/104/agent/get-fsinfo"
+  headers:
+    Authorization: !secret proxmox_api_token
+  verify_ssl: false
+  scan_interval: 300
+  sensor:
+    # / (root)
+    - name: "dd-frigate Disk Root Pct"
+      unique_id: proxmox_frigate_disk_root_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / fs[0]['total-bytes-privileged']) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-frigate Disk Root Used"
+      unique_id: proxmox_frigate_disk_root_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    - name: "dd-frigate Disk Root Total"
+      unique_id: proxmox_frigate_disk_root_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ (fs[0]['total-bytes-privileged'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    # /var
+    - name: "dd-frigate Disk Var Pct"
+      unique_id: proxmox_frigate_disk_var_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/var') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / fs[0]['total-bytes-privileged']) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-frigate Disk Var Used"
+      unique_id: proxmox_frigate_disk_var_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/var') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    - name: "dd-frigate Disk Var Total"
+      unique_id: proxmox_frigate_disk_var_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/var') | list %}
+        {% if fs %}{{ (fs[0]['total-bytes-privileged'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    # /mnt/storage
+    - name: "dd-frigate Disk Storage Pct"
+      unique_id: proxmox_frigate_disk_storage_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/storage') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / fs[0]['total-bytes-privileged']) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-frigate Disk Storage Used"
+      unique_id: proxmox_frigate_disk_storage_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/storage') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1099511627776) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "TB"
+    - name: "dd-frigate Disk Storage Total"
+      unique_id: proxmox_frigate_disk_storage_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/storage') | list %}
+        {% if fs %}{{ (fs[0]['total-bytes-privileged'] / 1099511627776) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "TB"
+
+# ── dd-haos (103) ──
+- resource: "https://prox.home:8006/api2/json/nodes/prox/qemu/103/agent/get-fsinfo"
+  headers:
+    Authorization: !secret proxmox_api_token
+  verify_ssl: false
+  scan_interval: 300
+  sensor:
+    # /mnt/data (main HA OS data partition — 29.5 GB)
+    - name: "dd-haos Disk Data Pct"
+      unique_id: proxmox_haos_disk_data_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/data') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / (fs[0].get('total-bytes-privileged', fs[0]['total-bytes']))) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-haos Disk Data Used"
+      unique_id: proxmox_haos_disk_data_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/data') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    - name: "dd-haos Disk Data Total"
+      unique_id: proxmox_haos_disk_data_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/mnt/data') | list %}
+        {% if fs %}{{ ((fs[0].get('total-bytes-privileged', fs[0]['total-bytes'])) / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+
+# ── dd-storage (102) ──
+- resource: "https://prox.home:8006/api2/json/nodes/prox/qemu/102/agent/get-fsinfo"
+  headers:
+    Authorization: !secret proxmox_api_token
+  verify_ssl: false
+  scan_interval: 300
+  sensor:
+    # / (root — 13 GB, currently 88.5% full!)
+    - name: "dd-storage Disk Root Pct"
+      unique_id: proxmox_storage_disk_root_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / (fs[0].get('total-bytes-privileged', fs[0]['total-bytes']))) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-storage Disk Root Used"
+      unique_id: proxmox_storage_disk_root_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    - name: "dd-storage Disk Root Total"
+      unique_id: proxmox_storage_disk_root_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/') | list %}
+        {% if fs %}{{ ((fs[0].get('total-bytes-privileged', fs[0]['total-bytes'])) / 1073741824) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "GB"
+    # /media/volume1 (main data volume — 1.7 TB)
+    - name: "dd-storage Disk Volume1 Pct"
+      unique_id: proxmox_storage_disk_volume1_pct
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/media/volume1') | list %}
+        {% if fs %}{{ ((fs[0]['used-bytes'] / (fs[0].get('total-bytes-privileged', fs[0]['total-bytes']))) * 100) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "%"
+    - name: "dd-storage Disk Volume1 Used"
+      unique_id: proxmox_storage_disk_volume1_used
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/media/volume1') | list %}
+        {% if fs %}{{ (fs[0]['used-bytes'] / 1099511627776) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "TB"
+    - name: "dd-storage Disk Volume1 Total"
+      unique_id: proxmox_storage_disk_volume1_total
+      value_template: >
+        {% set fs = value_json.data.result | selectattr('mountpoint', 'eq', '/media/volume1') | list %}
+        {% if fs %}{{ ((fs[0].get('total-bytes-privileged', fs[0]['total-bytes'])) / 1099511627776) | round(1) }}{% else %}0{% endif %}
+      unit_of_measurement: "TB"

@@ -1,0 +1,19 @@
+alias: "Piscine 6 — Arrêter pompe quand objectif de filtration atteint"
+description: "Coupe la pompe dès que le temps de filtration cible (T°/3) est atteint."
+trigger:
+  - platform: state
+    entity_id: sensor.piscine_filtration_auj
+condition:
+  - condition: state
+    entity_id: switch.piscine_relais
+    state: "on"
+  - condition: template
+    value_template: >
+      {% set temp = states('sensor.temperature_piscine') | float(0) %}
+      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {{ temp > 10 and done >= (temp / 3) }}
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: switch.piscine_relais
+mode: single

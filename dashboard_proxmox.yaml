@@ -1,0 +1,862 @@
+title: Proxmox
+views:
+  - path: proxmox
+    title: Proxmox
+    icon: mdi:server
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: Node — prox
+                subtitle: >-
+                  Up since {{ as_timestamp(states('sensor.node_prox_last_boot'))
+                  | timestamp_custom('%d/%m %H:%M') }} ({{
+                  relative_time(states('sensor.node_prox_last_boot') |
+                  as_datetime) }})
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.node_prox_status
+                    icon: mdi:server-network
+                    icon_color: >-
+                      {% if is_state('binary_sensor.node_prox_status', 'on')
+                      %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.node_prox_status', 'on')
+                      %}Online {% else %}Offline{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.node_prox_virtual_machines_running
+                    icon: mdi:server
+                    icon_color: cyan
+                    content: >-
+                      {{ states('sensor.node_prox_virtual_machines_running') }}
+                      VMs
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.node_prox_total_updates
+                    icon: mdi:update
+                    icon_color: >-
+                      {% if states('sensor.node_prox_total_updates') | int(0) >
+                      0 %}orange {% else %}green{% endif %}
+                    content: >-
+                      {% set n = states('sensor.node_prox_total_updates') |
+                      int(0) %} {% if n > 0 %}{{ n }} update{{ 's' if n > 1 }}
+                      {% else %}Up to date{% endif %}
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-spacing: 4px;
+                      padding: 0 8px 8px 8px !important;
+                    }
+          - type: horizontal-stack
+            cards:
+              - type: custom:mini-graph-card
+                name: CPU
+                icon: mdi:cpu-64-bit
+                height: 100
+                line_width: 2
+                hours_to_show: 24
+                points_per_hour: 4
+                entities:
+                  - entity: sensor.node_prox_cpu_used
+                    name: CPU %
+                color_thresholds:
+                  - value: 0
+                    color: '#3aaa00'
+                  - value: 50
+                    color: '#f5b514'
+                  - value: 80
+                    color: '#d75024'
+                show:
+                  fill: true
+                  labels: true
+              - type: custom:mini-graph-card
+                name: RAM
+                icon: mdi:memory
+                height: 100
+                line_width: 2
+                hours_to_show: 24
+                points_per_hour: 4
+                entities:
+                  - entity: sensor.node_prox_memory_used_percentage
+                    name: RAM %
+                color_thresholds:
+                  - value: 0
+                    color: '#3aaa00'
+                  - value: 60
+                    color: '#f5b514'
+                  - value: 85
+                    color: '#d75024'
+                show:
+                  fill: true
+                  labels: true
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-template-card
+                icon: mdi:memory
+                icon_color: purple
+                primary: >-
+                  RAM {{ states('sensor.node_prox_memory_used') | float |
+                  round(2) }} / {{ (states('sensor.node_prox_memory_used') |
+                  float + states('sensor.node_prox_memory_free') | float) |
+                  round(2) }} GB
+                secondary: >-
+                  {{ states('sensor.node_prox_memory_used_percentage') | float |
+                  round(1) }}% used • {{ states('sensor.node_prox_memory_free')
+                  | float | round(2) }} GB free
+                tap_action:
+                  action: more-info
+                  entity: sensor.node_prox_memory_used_percentage
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-template-card
+                icon: mdi:harddisk
+                icon_color: blue
+                primary: >-
+                  Boot disk {{ states('sensor.node_prox_disk_used') | float |
+                  round(2) }} / {{ states('sensor.node_prox_disk_total') | float
+                  | round(2) }} GB
+                secondary: >-
+                  {{ states('sensor.node_prox_disk_used_percentage') | float |
+                  round(1) }}% used • {{ states('sensor.node_prox_disk_free') |
+                  float | round(2) }} GB free
+                tap_action:
+                  action: more-info
+                  entity: sensor.node_prox_disk_used_percentage
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: Storage Pools
+              - type: horizontal-stack
+                cards:
+                  - type: gauge
+                    entity: sensor.storage_prox_local_disk_used_percentage
+                    name: local
+                    min: 0
+                    max: 100
+                    needle: true
+                    severity:
+                      green: 0
+                      yellow: 70
+                      red: 90
+                  - type: gauge
+                    entity: sensor.storage_prox_local_lvm_disk_used_percentage
+                    name: local-lvm
+                    min: 0
+                    max: 100
+                    needle: true
+                    severity:
+                      green: 0
+                      yellow: 70
+                      red: 90
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: Physical Disks
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.disk_prox_flash_disk_health
+                    icon: mdi:usb-flash-drive
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_flash_disk_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: >-
+                      Flash {{ states('sensor.disk_prox_flash_disk_size') |
+                      float | round(0) }}GB {% if
+                      is_state('binary_sensor.disk_prox_flash_disk_health',
+                      'on') %}⚠{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.disk_prox_intel_ssdsc2cw120a3_health
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_intel_ssdsc2cw120a3_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: Intel 120GB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.disk_prox_sandisk_ultra_ii_240gb_health
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_sandisk_ultra_ii_240gb_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: SanDisk 240GB
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.disk_prox_wdc_wd20efrx_68ax9n0_health
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_wdc_wd20efrx_68ax9n0_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: 'WD Red 2TB #1'
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.disk_prox_wdc_wd20efrx_68ax9n0_health_2
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_wdc_wd20efrx_68ax9n0_health_2',
+                      'off') %}green {% else %}red{% endif %}
+                    content: 'WD Red 2TB #2'
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.disk_prox_wdc_wd40efzx_68awun0_health
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% if
+                      is_state('binary_sensor.disk_prox_wdc_wd40efzx_68awun0_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: WD Red 4TB
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; }
+              - type: custom:mini-graph-card
+                name: Disk Temperatures
+                icon: mdi:thermometer
+                height: 60
+                line_width: 2
+                hours_to_show: 24
+                points_per_hour: 2
+                show:
+                  labels: true
+                  legend: true
+                entities:
+                  - entity: sensor.disk_prox_sandisk_ultra_ii_240gb_temperature
+                    name: SanDisk
+                    color: '#0867ec'
+                  - entity: sensor.disk_prox_wdc_wd20efrx_68ax9n0_temperature
+                    name: WD 2TB
+                    color: '#f5b514'
+                  - entity: sensor.disk_prox_wdc_wd20efrx_68ax9n0_temperature_2
+                    name: WD 2TB
+                    color: '#e45e33'
+                  - entity: sensor.disk_prox_wdc_wd40efzx_68awun0_temperature
+                    name: WD 4TB
+                    color: '#3aaa00'
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.disk_prox_intel_ssdsc2cw120a3_wearout
+                    icon: mdi:clipboard-pulse-outline
+                    icon_color: >-
+                      {% set w =
+                      states('sensor.disk_prox_intel_ssdsc2cw120a3_wearout') |
+                      float(0) %} {% if w < 50 %}green{% elif w < 80 %}orange{%
+                      else %}red{% endif %}
+                    content: >-
+                      Intel wear {{
+                      states('sensor.disk_prox_intel_ssdsc2cw120a3_wearout') }}%
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.disk_prox_sandisk_ultra_ii_240gb_wearout
+                    icon: mdi:clipboard-pulse-outline
+                    icon_color: >-
+                      {% set w =
+                      states('sensor.disk_prox_sandisk_ultra_ii_240gb_wearout')
+                      | float(0) %} {% if w < 50 %}green{% elif w < 80
+                      %}orange{% else %}red{% endif %}
+                    content: >-
+                      SanDisk wear {{
+                      states('sensor.disk_prox_sandisk_ultra_ii_240gb_wearout')
+                      }}%
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.disk_prox_intel_ssdsc2cw120a3_power_on_hours
+                    icon: mdi:clock-outline
+                    icon_color: grey
+                    content: >-
+                      Intel {{
+                      (states('sensor.disk_prox_intel_ssdsc2cw120a3_power_on_hours')
+                      | int / 24 / 365.25) | round(1) }}y
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; padding: 0 8px 8px 8px
+                    !important; }
+      - type: vertical-stack
+        cards:
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: dd-frigate (104)
+                subtitle: >-
+                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  'on') %}
+                    Since {{ as_timestamp(states('sensor.qemu_dd_frigate_104_last_boot'))
+                    | timestamp_custom('%d/%m %H:%M') }}
+                    ({{ relative_time(states('sensor.qemu_dd_frigate_104_last_boot') | as_datetime) }})
+                  {% else %}Stopped{% endif %}
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.qemu_dd_frigate_104_status
+                    icon: mdi:cctv
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                      'on') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                      'on') %}Running {% else %}Stopped{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.qemu_dd_frigate_104_health
+                    icon: mdi:heart-pulse
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_frigate_104_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_frigate_104_health',
+                      'off') %}Healthy {% else %}Problem{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_frigate_104_cpu_used
+                    icon: mdi:cpu-64-bit
+                    icon_color: >-
+                      {% set v = states('sensor.qemu_dd_frigate_104_cpu_used') |
+                      float(0) %} {% if v < 50 %}green{% elif v < 80 %}orange{%
+                      else %}red{% endif %}
+                    content: >-
+                      CPU {{ states('sensor.qemu_dd_frigate_104_cpu_used') |
+                      float | round(1) }}%
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_frigate_104_memory_used_percentage
+                    icon: mdi:memory
+                    icon_color: >-
+                      {% set v =
+                      states('sensor.qemu_dd_frigate_104_memory_used_percentage')
+                      | float(0) %} {% if v < 60 %}green{% elif v < 85
+                      %}orange{% else %}red{% endif %}
+                    content: >-
+                      RAM {{
+                      states('sensor.qemu_dd_frigate_104_memory_used_percentage')
+                      | float | round(1) }}%
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; padding: 0 8px 4px 8px
+                    !important; border: none !important; box-shadow: none
+                    !important; }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mini-graph-card
+                    name: CPU
+                    icon: mdi:cpu-64-bit
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_frigate_104_cpu_used
+                        name: CPU %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 50
+                        color: '#f5b514'
+                      - value: 80
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+                  - type: custom:mini-graph-card
+                    name: RAM
+                    icon: mdi:memory
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_frigate_104_memory_used_percentage
+                        name: RAM %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 60
+                        color: '#f5b514'
+                      - value: 85
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.dd_frigate_disk_root_pct
+                    icon: mdi:folder
+                    icon_color: >-
+                      {% set p = states('sensor.dd_frigate_disk_root_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      / {{ states('sensor.dd_frigate_disk_root_used') }}/{{ states('sensor.dd_frigate_disk_root_total') }} GB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.dd_frigate_disk_var_pct
+                    icon: mdi:folder-cog
+                    icon_color: >-
+                      {% set p = states('sensor.dd_frigate_disk_var_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      /var {{ states('sensor.dd_frigate_disk_var_used') }}/{{ states('sensor.dd_frigate_disk_var_total') }} GB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.dd_frigate_disk_storage_pct
+                    icon: mdi:database
+                    icon_color: >-
+                      {% set p = states('sensor.dd_frigate_disk_storage_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      storage {{ states('sensor.dd_frigate_disk_storage_used') }}/{{ states('sensor.dd_frigate_disk_storage_total') }} TB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_frigate_104_network_in
+                    icon: mdi:swap-vertical
+                    icon_color: cyan
+                    content: >-
+                      ↓{{ states('sensor.qemu_dd_frigate_104_network_in') | float | round(0) }}
+                      ↑{{ states('sensor.qemu_dd_frigate_104_network_out') | float | round(0) }} MB
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-spacing: 0;
+                      border: none !important;
+                      box-shadow: none !important;
+                      padding: 0 4px !important;
+                    }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: dd-haos (103)
+                subtitle: >-
+                  {% if is_state('binary_sensor.qemu_dd_haos_103_status', 'on')
+                  %}
+                    Since {{ as_timestamp(states('sensor.qemu_dd_haos_103_last_boot'))
+                    | timestamp_custom('%d/%m %H:%M') }}
+                    ({{ relative_time(states('sensor.qemu_dd_haos_103_last_boot') | as_datetime) }})
+                  {% else %}Stopped{% endif %}
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.qemu_dd_haos_103_status
+                    icon: mdi:home-assistant
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_haos_103_status',
+                      'on') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_haos_103_status',
+                      'on') %}Running {% else %}Stopped{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.qemu_dd_haos_103_health
+                    icon: mdi:heart-pulse
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_haos_103_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_haos_103_health',
+                      'off') %}Healthy {% else %}Problem{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_haos_103_cpu_used
+                    icon: mdi:cpu-64-bit
+                    icon_color: >-
+                      {% set v = states('sensor.qemu_dd_haos_103_cpu_used') |
+                      float(0) %} {% if v < 50 %}green{% elif v < 80 %}orange{%
+                      else %}red{% endif %}
+                    content: >-
+                      CPU {{ states('sensor.qemu_dd_haos_103_cpu_used') | float
+                      | round(1) }}%
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_haos_103_memory_used_percentage
+                    icon: mdi:memory
+                    icon_color: >-
+                      {% set v =
+                      states('sensor.qemu_dd_haos_103_memory_used_percentage') |
+                      float(0) %} {% if v < 60 %}green{% elif v < 85 %}orange{%
+                      else %}red{% endif %}
+                    content: >-
+                      RAM {{
+                      states('sensor.qemu_dd_haos_103_memory_used_percentage') |
+                      float | round(1) }}%
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; padding: 0 8px 4px 8px
+                    !important; border: none !important; box-shadow: none
+                    !important; }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mini-graph-card
+                    name: CPU
+                    icon: mdi:cpu-64-bit
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_haos_103_cpu_used
+                        name: CPU %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 50
+                        color: '#f5b514'
+                      - value: 80
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+                  - type: custom:mini-graph-card
+                    name: RAM
+                    icon: mdi:memory
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_haos_103_memory_used_percentage
+                        name: RAM %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 60
+                        color: '#f5b514'
+                      - value: 85
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.dd_haos_disk_data_pct
+                    icon: mdi:database
+                    icon_color: >-
+                      {% set p = states('sensor.dd_haos_disk_data_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      data {{ states('sensor.dd_haos_disk_data_used') }}/{{ states('sensor.dd_haos_disk_data_total') }} GB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_haos_103_network_in
+                    icon: mdi:swap-vertical
+                    icon_color: cyan
+                    content: >-
+                      ↓{{ states('sensor.qemu_dd_haos_103_network_in') | float | round(0) }}
+                      ↑{{ states('sensor.qemu_dd_haos_103_network_out') | float | round(0) }} MB
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+      - type: vertical-stack
+        cards:
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: dd-storage (102)
+                subtitle: >-
+                  {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                  'on') %}
+                    Since {{ as_timestamp(states('sensor.qemu_dd_storage_102_last_boot'))
+                    | timestamp_custom('%d/%m %H:%M') }}
+                    ({{ relative_time(states('sensor.qemu_dd_storage_102_last_boot') | as_datetime) }})
+                  {% else %}Stopped{% endif %}
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: binary_sensor.qemu_dd_storage_102_status
+                    icon: mdi:nas
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                      'on') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                      'on') %}Running {% else %}Stopped{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: binary_sensor.qemu_dd_storage_102_health
+                    icon: mdi:heart-pulse
+                    icon_color: >-
+                      {% if is_state('binary_sensor.qemu_dd_storage_102_health',
+                      'off') %}green {% else %}red{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.qemu_dd_storage_102_health',
+                      'off') %}Healthy {% else %}Problem{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_storage_102_cpu_used
+                    icon: mdi:cpu-64-bit
+                    icon_color: >-
+                      {% set v = states('sensor.qemu_dd_storage_102_cpu_used') |
+                      float(0) %} {% if v < 50 %}green{% elif v < 80 %}orange{%
+                      else %}red{% endif %}
+                    content: >-
+                      CPU {{ states('sensor.qemu_dd_storage_102_cpu_used') |
+                      float | round(1) }}%
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_storage_102_memory_used_percentage
+                    icon: mdi:memory
+                    icon_color: >-
+                      {% set v =
+                      states('sensor.qemu_dd_storage_102_memory_used_percentage')
+                      | float(0) %} {% if v < 60 %}green{% elif v < 85
+                      %}orange{% else %}red{% endif %}
+                    content: >-
+                      RAM {{
+                      states('sensor.qemu_dd_storage_102_memory_used_percentage')
+                      | float | round(1) }}%
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; padding: 0 8px 4px 8px
+                    !important; border: none !important; box-shadow: none
+                    !important; }
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mini-graph-card
+                    name: CPU
+                    icon: mdi:cpu-64-bit
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_storage_102_cpu_used
+                        name: CPU %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 50
+                        color: '#f5b514'
+                      - value: 80
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+                  - type: custom:mini-graph-card
+                    name: RAM
+                    icon: mdi:memory
+                    height: 70
+                    line_width: 2
+                    hours_to_show: 24
+                    points_per_hour: 4
+                    entities:
+                      - entity: sensor.qemu_dd_storage_102_memory_used_percentage
+                        name: RAM %
+                    color_thresholds:
+                      - value: 0
+                        color: '#3aaa00'
+                      - value: 60
+                        color: '#f5b514'
+                      - value: 85
+                        color: '#d75024'
+                    show:
+                      fill: true
+                    card_mod:
+                      style: >
+                        ha-card { border: none !important; box-shadow: none
+                        !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.dd_storage_disk_root_pct
+                    icon: mdi:folder
+                    icon_color: >-
+                      {% set p = states('sensor.dd_storage_disk_root_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      / {{ states('sensor.dd_storage_disk_root_used') }}/{{ states('sensor.dd_storage_disk_root_total') }} GB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.dd_storage_disk_volume1_pct
+                    icon: mdi:database
+                    icon_color: >-
+                      {% set p = states('sensor.dd_storage_disk_volume1_pct') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
+                    content: >-
+                      vol1 {{ states('sensor.dd_storage_disk_volume1_used') }}/{{ states('sensor.dd_storage_disk_volume1_total') }} TB
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.qemu_dd_storage_102_network_in
+                    icon: mdi:swap-vertical
+                    icon_color: cyan
+                    content: >-
+                      ↓{{ states('sensor.qemu_dd_storage_102_network_in') | float | round(0) }}
+                      ↑{{ states('sensor.qemu_dd_storage_102_network_out') | float | round(0) }} MB
+                    tap_action:
+                      action: more-info
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: VMs Overview
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.qemu_dd_frigate_104_status
+                icon: mdi:cctv
+                primary: dd-frigate
+                secondary: >-
+                  CPU {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
+                  round(1) }}% • RAM {{
+                  states('sensor.qemu_dd_frigate_104_memory_used') | float |
+                  round(2) }}GB / {{
+                  (states('sensor.qemu_dd_frigate_104_memory_used') | float +
+                  states('sensor.qemu_dd_frigate_104_memory_free') | float) |
+                  round(1) }}GB • Net ↓{{
+                  states('sensor.qemu_dd_frigate_104_network_in') | float |
+                  round(0) }} ↑{{
+                  states('sensor.qemu_dd_frigate_104_network_out') | float |
+                  round(0) }}MB
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  'on') %}green {% else %}red{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.qemu_dd_haos_103_status
+                icon: mdi:home-assistant
+                primary: dd-haos
+                secondary: >-
+                  CPU {{ states('sensor.qemu_dd_haos_103_cpu_used') | float |
+                  round(1) }}% • RAM {{
+                  states('sensor.qemu_dd_haos_103_memory_used') | float |
+                  round(2) }}GB / {{
+                  (states('sensor.qemu_dd_haos_103_memory_used') | float +
+                  states('sensor.qemu_dd_haos_103_memory_free') | float) |
+                  round(1) }}GB • Net ↓{{
+                  states('sensor.qemu_dd_haos_103_network_in') | float |
+                  round(0) }} ↑{{ states('sensor.qemu_dd_haos_103_network_out')
+                  | float | round(0) }}MB
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_haos_103_status', 'on')
+                  %}green {% else %}red{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-template-card
+                entity: binary_sensor.qemu_dd_storage_102_status
+                icon: mdi:nas
+                primary: dd-storage
+                secondary: >-
+                  CPU {{ states('sensor.qemu_dd_storage_102_cpu_used') | float |
+                  round(1) }}% • RAM {{
+                  states('sensor.qemu_dd_storage_102_memory_used') | float |
+                  round(2) }}GB / {{
+                  (states('sensor.qemu_dd_storage_102_memory_used') | float +
+                  states('sensor.qemu_dd_storage_102_memory_free') | float) |
+                  round(1) }}GB • Net ↓{{
+                  states('sensor.qemu_dd_storage_102_network_in') | float |
+                  round(0) }} ↑{{
+                  states('sensor.qemu_dd_storage_102_network_out') | float |
+                  round(0) }}MB
+                icon_color: >-
+                  {% if is_state('binary_sensor.qemu_dd_storage_102_status',
+                  'on') %}green {% else %}red{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }

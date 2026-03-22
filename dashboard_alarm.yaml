@@ -56,7 +56,7 @@ views:
             ha-card {
               --chip-box-shadow: none;
               --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
-              margin-bottom: 10px;
+              margin-bottom: 4px;
             }
       - type: vertical-stack
         cards:

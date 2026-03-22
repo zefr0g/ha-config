@@ -1,14 +1,21 @@
-alias: "Piscine — Démarrage journalier (lever + 3h)"
-description: "Démarre la pompe chaque matin 3h après le lever du soleil."
+alias: "Piscine 1 — Démarrer pompe sur surplus solaire"
+description: "Démarre la pompe quand la production solaire est suffisante (> 1000W pendant 3 min) et que l'objectif de filtration n'est pas atteint."
 trigger:
-  - platform: sun
-    event: sunrise
-    offset: "03:00:00"
+  - platform: numeric_state
+    entity_id: sensor.current_power_production
+    above: 1000
+    for: "00:03:00"
 condition:
+  - condition: numeric_state
+    entity_id: sensor.msunpv_powreso
+    below: 100
   - condition: template
     value_template: >
       {% set temp = states('sensor.temperature_piscine') | float(0) %}
-      {{ temp > 10 }}
+      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {{ temp > 10 and done < (temp / 3) }}
+  - condition: sun
+    before: sunset
   - condition: state
     entity_id: switch.piscine_relais
     state: "off"

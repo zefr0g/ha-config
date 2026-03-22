@@ -1,4 +1,4 @@
-alias: "Piscine — Arrêter pompe au coucher du soleil"
+alias: "Piscine 4 — Arrêter pompe au coucher du soleil"
 description: "Coupe la pompe au coucher du soleil."
 trigger:
   - platform: sun

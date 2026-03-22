@@ -1,0 +1,18 @@
+alias: "Piscine 5 — Arrêter pompe fin heure creuse"
+description: "Coupe la pompe quand les heures creuses se terminent la nuit."
+trigger:
+  - platform: state
+    entity_id: binary_sensor.heure_creuse
+    to: "off"
+condition:
+  - condition: state
+    entity_id: switch.piscine_relais
+    state: "on"
+  - condition: sun
+    after: sunset
+    before: sunrise
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: switch.piscine_relais
+mode: single

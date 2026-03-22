@@ -1,4 +1,4 @@
-alias: "Piscine — Arrêter pompe quand surplus insuffisant"
+alias: "Piscine 2 — Arrêter pompe quand surplus insuffisant"
 description: "Arrête la pompe si production < 700W ou import > 200W pendant 1 min."
 trigger:
   - platform: numeric_state
@@ -13,9 +13,12 @@ condition:
   - condition: state
     entity_id: switch.piscine_relais
     state: "on"
-  - condition: template
-    value_template: >
-      {{ now() > as_datetime(state_attr('sun.sun', 'next_rising')) + timedelta(hours=3) }}
+  - condition: sun
+    after: sunrise
+    before: sunset
+  - condition: state
+    entity_id: binary_sensor.heure_creuse
+    state: "off"
 action:
   - service: switch.turn_off
     target:

@@ -59,32 +59,213 @@ views:
                 ha-card {
                   --chip-box-shadow: none;
                   --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
-                  margin-bottom: 10px;
+                  margin-bottom: 4px;
                 }
-      - type: vertical-stack
-        cards:
-          - type: custom:mini-graph-card
-            entities:
-              - entity: sensor.inkbird_ith20r_64601_temperature
-                color: '#75bbf3'
-          - type: custom:mushroom-entity-card
-            entity: switch.piscine_relais
-            name: Pompe piscine
-            tap_action:
-              action: toggle
-          - type: horizontal-stack
-            cards:
-              - type: custom:mushroom-entity-card
-                entity: sensor.piscine_filtration_last_24h
-                name: 24h
-                icon: mdi:water-pump
-              - type: custom:mushroom-entity-card
-                entity: sensor.piscine_filtration_auj
-                name: Auj.
-                icon: mdi:water-pump
-              - type: custom:mushroom-entity-card
-                entity: sensor.piscine_filtration_hier
-                name: Hier
-                icon: mdi:water-pump
-                icon_color: white
 
+          # --- Temperature graph + pump status ---
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mini-graph-card
+                name: T° Piscine
+                height: 120
+                line_width: 2
+                hours_to_show: 72
+                points_per_hour: 2
+                entities:
+                  - entity: sensor.temperature_piscine
+                    name: Température
+                color_thresholds:
+                  - value: 15
+                    color: '#245fd7'
+                  - value: 20
+                    color: '#0cb9c1'
+                  - value: 24
+                    color: '#3aaa00'
+                  - value: 28
+                    color: '#f5b514'
+                  - value: 32
+                    color: '#d75024'
+                show:
+                  labels: true
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: switch.piscine_relais
+                    icon: |-
+                      {% if is_state('switch.piscine_relais', 'on') %}
+                        mdi:pump
+                      {% else %}
+                        mdi:pump-off
+                      {% endif %}
+                    icon_color: |-
+                      {% if is_state('switch.piscine_relais', 'on') %}
+                        red
+                      {% else %}
+                        grey
+                      {% endif %}
+                    content: >-
+                      Pompe {% if is_state('switch.piscine_relais', 'on')
+                      %}ON{% else %}OFF{% endif %}
+                    tap_action:
+                      action: toggle
+                  - type: template
+                    entity: sensor.current_power_production
+                    icon: mdi:solar-power
+                    icon_color: >-
+                      {% set prod = states('sensor.current_power_production') | float(0) %}
+                      {% if prod >= 1000 %}green
+                      {% elif prod >= 700 %}orange
+                      {% else %}grey{% endif %}
+                    content: >-
+                      {{ states('sensor.current_power_production') | float(0) | round(0) }} W
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-spacing: 0;
+                      padding: 0 4px 4px 4px !important;
+                    }
+
+          # --- Filtration progress ---
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.piscine_filtration_auj
+                primary: Filtration du jour
+                secondary: >-
+                  {% set temp = states('sensor.temperature_piscine') | float(0) %}
+                  {% set target = (temp / 3) | round(1) %}
+                  {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% set remaining = [target - done, 0] | max %}
+                  {{ done | round(1) }}h / {{ target }}h cible
+                  {% if remaining > 0 %} — reste {{ remaining | round(1) }}h{% else %} — objectif atteint ✓{% endif %}
+                icon: mdi:progress-clock
+                icon_color: >-
+                  {% set temp = states('sensor.temperature_piscine') | float(0) %}
+                  {% set target = temp / 3 %}
+                  {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% if done >= target %}green
+                  {% elif done >= target * 0.5 %}orange
+                  {% else %}red{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                    }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.piscine_filtration_auj
+                    icon: mdi:water-pump
+                    icon_color: cyan
+                    content: >-
+                      Auj. {{ states('sensor.piscine_filtration_auj') | float(0) | round(1) }}h
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.piscine_filtration_hier
+                    icon: mdi:water-pump
+                    icon_color: grey
+                    content: >-
+                      Hier {{ states('sensor.piscine_filtration_hier') | float(0) | round(1) }}h
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.piscine_filtration_last_24h
+                    icon: mdi:water-pump
+                    icon_color: grey
+                    content: >-
+                      24h {{ states('sensor.piscine_filtration_last_24h') | float(0) | round(1) }}h
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-spacing: 0;
+                      padding: 0 4px 4px 4px !important;
+                    }
+
+          # --- Automation status ---
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
+                title: Automations
+                card_mod:
+                  style: |
+                    ha-card {
+                      padding-bottom: 0 !important;
+                    }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: automation.piscine_demarrage_journalier_lever_3h
+                    icon: mdi:weather-sunset-up
+                    icon_color: >-
+                      {% if is_state('automation.piscine_demarrage_journalier_lever_3h', 'on') %}green{% else %}grey{% endif %}
+                    content: Démarrage
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_arreter_pompe_quand_surplus_insuffisant
+                    icon: mdi:cloud
+                    icon_color: >-
+                      {% if is_state('automation.piscine_arreter_pompe_quand_surplus_insuffisant', 'on') %}green{% else %}grey{% endif %}
+                    content: Nuage
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_redemarrer_pompe_quand_soleil_revient
+                    icon: mdi:white-balance-sunny
+                    icon_color: >-
+                      {% if is_state('automation.piscine_redemarrer_pompe_quand_soleil_revient', 'on') %}green{% else %}grey{% endif %}
+                    content: Soleil
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_completer_filtration_avant_coucher_du_soleil
+                    icon: mdi:timer-check
+                    icon_color: >-
+                      {% if is_state('automation.piscine_completer_filtration_avant_coucher_du_soleil', 'on') %}green{% else %}grey{% endif %}
+                    content: Compléter
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_arreter_pompe_au_coucher_du_soleil
+                    icon: mdi:weather-sunset-down
+                    icon_color: >-
+                      {% if is_state('automation.piscine_arreter_pompe_au_coucher_du_soleil', 'on') %}green{% else %}grey{% endif %}
+                    content: Coucher
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      --chip-spacing: 0;
+                      padding: 0 4px 8px 4px !important;
+                    }

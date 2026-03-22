@@ -170,7 +170,7 @@ views:
                     height: 80
                     line_width: 2
                     entities:
-                      - sensor.inkbird_ith20r_64601_temperature
+                      - sensor.temperature_piscine
                     color_thresholds:
                       - value: 15
                         color: '#245fd7'
@@ -355,7 +355,10 @@ views:
                 entities:
                   - entity: sensor.msunpv_powreso
                     color: '#0867ec'
-                    name: Consommation
+                    name: MSunPV
+                  - entity: sensor.teleinfo_puissance_apparente
+                    color: '#17b897'
+                    name: Téléinfo
                   - entity: sensor.current_power_production
                     show_state: true
                     color: '#f5b514'
@@ -454,18 +457,18 @@ views:
               - type: custom:mushroom-template-card
                 entity: sensor.teleinfo_libelle_tarif_en_cours
                 primary: >-
-                  {{ states('sensor.teleinfo_libelle_tarif_en_cours') | title }}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}Heure Creuse{% else %}Heure Pleine{% endif %}
                 secondary: >-
                   HC: {{ (states('sensor.teleinfo_index_tarif_1_hc') | float / 1000) | round(0) }} kWh
                   · HP: {{ (states('sensor.teleinfo_index_tarif_2_hp') | float / 1000) | round(0) }} kWh
                 icon: >-
-                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
                     mdi:lightning-bolt-outline
                   {% else %}
                     mdi:lightning-bolt
                   {% endif %}
                 icon_color: >-
-                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
                     blue
                   {% else %}
                     orange
@@ -523,19 +526,19 @@ views:
               - type: template
                 entity: sensor.teleinfo_libelle_tarif_en_cours
                 icon: >-
-                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
                     mdi:lightning-bolt-outline
                   {% else %}
                     mdi:lightning-bolt
                   {% endif %}
                 icon_color: >-
-                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
                     blue
                   {% else %}
                     orange
                   {% endif %}
                 content: >-
-                  {% if states('sensor.teleinfo_libelle_tarif_en_cours') == 'HEURE CREUSE' %}HC{% else %}HP{% endif %}
+                  {% if is_state('binary_sensor.heure_creuse', 'on') %}HC{% else %}HP{% endif %}
                 tap_action:
                   action: more-info
               - type: template
