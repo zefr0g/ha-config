@@ -144,11 +144,12 @@ views:
                 primary: Filtration du jour
                 secondary: >-
                   {% set temp = states('sensor.temperature_piscine') | float(0) %}
-                  {% set target = (temp / 3) | round(1) %}
+                  {% set target = temp / 3 %}
                   {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
                   {% set remaining = [target - done, 0] | max %}
-                  {{ done | round(1) }}h / {{ target }}h cible
-                  {% if remaining > 0 %} — reste {{ remaining | round(1) }}h{% else %} — objectif atteint ✓{% endif %}
+                  {% macro hm(v) %}{{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}{% endmacro %}
+                  {{ hm(done) }} / {{ hm(target) }} cible
+                  {% if remaining > 0 %} — reste {{ hm(remaining) }}{% else %} — objectif atteint ✓{% endif %}
                 icon: mdi:progress-clock
                 icon_color: >-
                   {% set temp = states('sensor.temperature_piscine') | float(0) %}
@@ -173,7 +174,8 @@ views:
                     icon: mdi:water-pump
                     icon_color: cyan
                     content: >-
-                      Auj. {{ states('sensor.piscine_filtration_auj') | float(0) | round(1) }}h
+                      {% set v = states('sensor.piscine_filtration_auj') | float(0) %}
+                      Auj. {{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}
                     tap_action:
                       action: more-info
                   - type: template
@@ -181,7 +183,8 @@ views:
                     icon: mdi:water-pump
                     icon_color: grey
                     content: >-
-                      Hier {{ states('sensor.piscine_filtration_hier') | float(0) | round(1) }}h
+                      {% set v = states('sensor.piscine_filtration_hier') | float(0) %}
+                      Hier {{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}
                     tap_action:
                       action: more-info
                   - type: template
@@ -189,7 +192,8 @@ views:
                     icon: mdi:water-pump
                     icon_color: grey
                     content: >-
-                      24h {{ states('sensor.piscine_filtration_last_24h') | float(0) | round(1) }}h
+                      {% set v = states('sensor.piscine_filtration_last_24h') | float(0) %}
+                      24h {{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}
                     tap_action:
                       action: more-info
                 card_mod:

@@ -8,9 +8,6 @@ condition:
   - condition: state
     entity_id: switch.piscine_relais
     state: "on"
-  - condition: sun
-    after: sunset
-    before: sunrise
 action:
   - service: switch.turn_off
     target:
