@@ -15,7 +15,7 @@ esp8266:
 logger:
   baud_rate: 0
   logs:
-    teleinfo: NONE
+    teleinfo: DEBUG
 
 # Teleinfo (TIC) UART — GPIO13 = D7 on D1 Mini (alternate RX for UART0)
 # Standard (Linky) mode: 9600 baud, 7E1
@@ -86,6 +86,56 @@ sensor:
     state_class: total_increasing
     accuracy_decimals: 0
 
+  # --- Injection (production photovoltaïque) ---
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "EAIT"
+    name: "Énergie active injectée totale"
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "SINSTI"
+    name: "Puissance apparente injectée"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ1"
+    name: "Énergie réactive Q1"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ2"
+    name: "Énergie réactive Q2"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ3"
+    name: "Énergie réactive Q3"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ4"
+    name: "Énergie réactive Q4"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
   - platform: teleinfo
     teleinfo_id: tic
     tag_name: "PREF"
@@ -117,6 +167,27 @@ text_sensor:
     teleinfo_id: tic
     tag_name: "LTARF"
     name: "Libellé tarif en cours"
+    filters:
+      - lambda: |-
+          // Trim and collapse multiple spaces
+          std::string s = x;
+          // trim leading
+          s.erase(0, s.find_first_not_of(' '));
+          // trim trailing
+          s.erase(s.find_last_not_of(' ') + 1);
+          // collapse double spaces
+          std::string result;
+          bool prev_space = false;
+          for (char c : s) {
+            if (c == ' ') {
+              if (!prev_space) result += c;
+              prev_space = true;
+            } else {
+              result += c;
+              prev_space = false;
+            }
+          }
+          return result;
 
   - platform: teleinfo
     teleinfo_id: tic
