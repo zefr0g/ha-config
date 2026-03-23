@@ -1,0 +1,67 @@
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome@main
+
+uart:
+  id: uart_bus
+  baud_rate: 2400
+  tx_pin: ${tx_pin}
+  rx_pin: ${rx_pin}
+
+climate:
+  - platform: cn105
+    uart_id: uart_bus
+    name: ${friendly_name}
+    id: ${climate_id}
+    update_interval: 2s
+    remote_temperature_timeout: 30min
+    visual:
+      min_temperature: 10
+      max_temperature: 31
+      temperature_step:
+        target_temperature: 0.5
+        current_temperature: 0.1
+    horizontal_vane_select:
+      name: Horizontal Vane
+      disabled_by_default: true
+    vertical_vane_select:
+      name: Vertical Vane
+      disabled_by_default: false
+    auto_sub_mode_sensor:
+      name: Auto Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    compressor_frequency_sensor:
+      name: Compressor Frequency
+      entity_category: diagnostic
+      disabled_by_default: true
+    input_power_sensor:
+      name: Input Power
+      disabled_by_default: true
+    kwh_sensor:
+      name: Energy Usage
+      disabled_by_default: true
+    outside_air_temperature_sensor:
+      name: Outside Air Temp
+      disabled_by_default: true
+    runtime_hours_sensor:
+      name: Runtime Hours
+      entity_category: diagnostic
+      disabled_by_default: true
+
+button:
+  - platform: restart
+    name: "Restart ${friendly_name}"
+
+sensor:
+  - platform: homeassistant
+    id: remote_temp
+    entity_id: ${remote_temp_sensor}
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            level: INFO
+            format: "Remote temperature received from HA: %.1f C"
+            args: ["x"]
+        - lambda: "id(${climate_id}).set_remote_temperature(x);"
+

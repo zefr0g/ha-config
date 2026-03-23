@@ -1,0 +1,17 @@
+substitutions:
+  name: maxpilot_ch3
+  ch_name: "CH3"
+  ssr1_pin: D3
+  ssr2_pin: D7
+  uptime_name: "Uptime Sensor"
+  temp_sensor_entity: "sensor.atc_63738e_738e_temperature"
+  temp_sensor_internal: "false"
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+  maxpilot: !include common/maxpilot.yaml
+  climate: !include common/maxpilot_climate.yaml
+
+esphome:
+  name: ${name}

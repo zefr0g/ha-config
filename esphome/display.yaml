@@ -1,0 +1,78 @@
+api: null
+color:
+- blue: 5%
+  green: 3%
+  id: red
+  red: 100%
+- blue: 100%
+  green: 3%
+  id: blue
+  red: 5%
+- blue: 0%
+  green: 0%
+  id: black
+  red: 0%
+display:
+- cs_pin: D8
+  dc_pin: D1
+  lambda: "it.strftime(0, 0, id(roboto10), \"%d/%m/%y %H:%M:%S\", id(esptime).now());\n\
+    it.line(0, 12, 95, 12);\nit.printf(0, 14, id(roboto16), \"P %dW\", (int)id(current_prod).state);\n\
+    it.printf(0, 31, id(roboto16), \"C %dW\", (int)id(current_power).state);\nit.printf(0,\
+    \ 48, id(roboto16), \"T %.1fkWh\", id(today_prod).state);\n// Tempo aujourd'hui\n\
+    if(\"Rouge\" == id(tempo_color_today).state)\n    it.filled_circle(85, 12, 10,\
+    \ id(red));\nif (\"Bleu\" == id(tempo_color_today).state)\n    it.filled_circle(85,\
+    \ 12, 10, id(blue));\nif (\"Blanc\" == id(tempo_color_today).state)\n    it.filled_circle(85,\
+    \ 12, 10);\n// Tempo demain\nif(\"Rouge\" == id(tempo_color_tomorrow).state)\n\
+    \    it.filled_circle(85, 42, 10, id(red));\nif (\"Bleu\" == id(tempo_color_tomorrow).state)\n\
+    \    it.filled_circle(85, 42, 10, id(blue));\nif (\"Blanc\" == id(tempo_color_tomorrow).state)\n\
+    \    it.filled_circle(85, 42, 10);\nif (\"Blanc\" == id(tempo_color_today).state)\n\
+    \  it.print(83, 6, id(roboto10), id(black), \"A\");\nelse\n  it.print(83, 6, id(roboto10),\
+    \ \"A\");\nif (\"Blanc\" == id(tempo_color_tomorrow).state)\n  it.print(83, 36,\
+    \ id(roboto10), id(black), \"D\");\nelse\n  it.print(83, 36, id(roboto10), \"\
+    D\");"
+  platform: ssd1331_spi
+  reset_pin: D0
+esp8266:
+  board: d1_mini
+esphome:
+  name: tempo_display
+font:
+- file: gfonts://Roboto
+  id: roboto10
+  size: 8
+- file: gfonts://Roboto
+  id: roboto16
+  size: 16
+logger: null
+ota: null
+sensor:
+- entity_id: sensor.msunpv_powreso
+  id: current_power
+  internal: true
+  platform: homeassistant
+- entity_id: sensor.current_power_production
+  id: current_prod
+  internal: true
+  platform: homeassistant
+- entity_id: sensor.today_power_production
+  id: today_prod
+  internal: true
+  platform: homeassistant
+spi:
+  clk_pin: D5
+  mosi_pin: D7
+text_sensor:
+- entity_id: sensor.rte_tempo_couleur_actuelle
+  id: tempo_color_today
+  internal: true
+  platform: homeassistant
+- entity_id: sensor.rte_tempo_prochaine_couleur
+  id: tempo_color_tomorrow
+  internal: true
+  platform: homeassistant
+time:
+- id: esptime
+  platform: homeassistant
+wifi:
+  password: !secret 'wifi_password'
+  ssid: !secret 'wifi_ssid'

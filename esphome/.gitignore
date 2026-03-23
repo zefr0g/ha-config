@@ -1,0 +1,22 @@
+# ESPHome build directories and artifacts
+.esphome/
+.pio/
+.piolibdeps/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Secrets file (contains credentials - DO NOT COMMIT)
+secrets.yaml
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# IDE settings (optional)
+.vscode/
+.idea/
+.claude/
+.gemini/

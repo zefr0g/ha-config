@@ -1,0 +1,20 @@
+esphome:
+  name: livingroom
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret livingroom_ssid
+  password: !secret livingroom_password
+  ap:
+    ssid: !secret livingroom_fallback_ssid
+    password: !secret livingroom_fallback_password
+
+api:
+
+ota:
+
+logger:
+
+captive_portal:
+

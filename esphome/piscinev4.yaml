@@ -1,0 +1,43 @@
+api: null
+captive_portal: null
+esp32:
+  framework:
+    type: esp-idf
+  variant: esp32
+esphome:
+  name: piscinev4
+logger: null
+ota:
+  platform: esphome
+sensor:
+- name: Uptime Sensor
+  platform: uptime
+  type: seconds
+status_led:
+  pin: GPIO23
+switch:
+- name: Relay 1
+  pin: GPIO32
+  platform: gpio
+  restore_mode: RESTORE_DEFAULT_OFF
+- name: Relay 2
+  pin: GPIO33
+  platform: gpio
+  restore_mode: RESTORE_DEFAULT_OFF
+- name: Relay 3
+  pin: GPIO25
+  platform: gpio
+  restore_mode: RESTORE_DEFAULT_OFF
+- name: Relay 4
+  pin: GPIO26
+  platform: gpio
+  restore_mode: RESTORE_DEFAULT_OFF
+text_sensor:
+- name: ESPHome Version
+  platform: version
+wifi:
+  ap:
+    password: !secret 'piscine_fallback_password'
+    ssid: !secret 'piscine_fallback_ssid'
+  password: !secret 'wifi_password'
+  ssid: !secret 'wifi_ssid'

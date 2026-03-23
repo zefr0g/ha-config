@@ -1,0 +1,13 @@
+esp8266:
+  board: d1_mini
+esphome:
+  name: testboard
+logger: null
+remote_receiver:
+  buffer_size: 2kb
+  dump:
+  - rc_switch
+  filter: 250us
+  idle: 4ms
+  pin: D1
+  tolerance: 50%

@@ -1,0 +1,35 @@
+substitutions:
+  name: temperature_esp
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+
+esphome:
+  name: ${name}
+
+esp8266:
+  board: d1_mini
+
+i2c:
+  scl: D6
+  sda: D5
+
+one_wire:
+  - pin: D1
+    platform: gpio
+
+sensor:
+  - platform: dallas_temp
+    address: 11584884166787096872
+    name: "ballon_temperature"
+  
+  - platform: bme280_i2c
+    address: 118
+    temperature:
+      name: "garage_temperature"
+    humidity:
+      name: "garage_humidity"
+    pressure:
+      name: "garage_pressure"
+    update_interval: 60s

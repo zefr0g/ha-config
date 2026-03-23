@@ -1,0 +1,13 @@
+substitutions:
+  name: maxpilot1
+  ch_name: ""
+  ssr1_pin: D3
+  ssr2_pin: D4
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+  maxpilot: !include common/maxpilot.yaml
+
+esphome:
+  name: ${name}

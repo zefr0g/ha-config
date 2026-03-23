@@ -1,0 +1,25 @@
+substitutions:
+  name: piscine
+  uptime_name: "Uptime Sensor"
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+
+esphome:
+  name: ${name}
+
+esp8266:
+  board: esp12e
+  restore_from_flash: true
+
+status_led:
+  pin:
+    inverted: true
+    number: 16
+
+switch:
+  - name: "Piscine Relais"
+    pin: 5
+    platform: gpio
+    restore_mode: RESTORE_DEFAULT_OFF

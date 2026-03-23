@@ -1,0 +1,210 @@
+substitutions:
+  name: teleinfo
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+
+esphome:
+  name: ${name}
+
+esp8266:
+  board: d1_mini
+
+# Disable serial logger — GPIO13 (teleinfo RX) conflicts with UART0 used by logger
+logger:
+  baud_rate: 0
+  logs:
+    teleinfo: DEBUG
+
+# Teleinfo (TIC) UART — GPIO13 = D7 on D1 Mini (alternate RX for UART0)
+# Standard (Linky) mode: 9600 baud, 7E1
+uart:
+  id: uart_teleinfo
+  rx_pin: GPIO13
+  baud_rate: 9600
+  parity: EVEN
+  stop_bits: 1
+  data_bits: 7
+  rx_buffer_size: 1024
+
+teleinfo:
+  id: tic
+  uart_id: uart_teleinfo
+  historical_mode: false
+  update_interval: 2s
+
+sensor:
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "SINSTS"
+    name: "Puissance apparente"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "IRMS1"
+    name: "Intensité phase 1"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "URMS1"
+    name: "Tension phase 1"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "EAST"
+    name: "Énergie active totale"
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "EASF01"
+    name: "Index tarif 1 (HC)"
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "EASF02"
+    name: "Index tarif 2 (HP)"
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  # --- Injection (production photovoltaïque) ---
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "EAIT"
+    name: "Énergie active injectée totale"
+    unit_of_measurement: "Wh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "SINSTI"
+    name: "Puissance apparente injectée"
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ1"
+    name: "Énergie réactive Q1"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ2"
+    name: "Énergie réactive Q2"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ3"
+    name: "Énergie réactive Q3"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ERQ4"
+    name: "Énergie réactive Q4"
+    unit_of_measurement: "VArh"
+    state_class: total_increasing
+    accuracy_decimals: 0
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "PREF"
+    name: "Puissance de référence"
+    unit_of_measurement: "kVA"
+    entity_category: diagnostic
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "PCOUP"
+    name: "Puissance coupure"
+    unit_of_measurement: "kVA"
+    entity_category: diagnostic
+
+text_sensor:
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "ADSC"
+    name: "Numéro compteur"
+    entity_category: diagnostic
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "NGTF"
+    name: "Option tarifaire"
+    entity_category: diagnostic
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "LTARF"
+    name: "Libellé tarif en cours"
+    filters:
+      - lambda: |-
+          // Trim and collapse multiple spaces
+          std::string s = x;
+          // trim leading
+          s.erase(0, s.find_first_not_of(' '));
+          // trim trailing
+          s.erase(s.find_last_not_of(' ') + 1);
+          // collapse double spaces
+          std::string result;
+          bool prev_space = false;
+          for (char c : s) {
+            if (c == ' ') {
+              if (!prev_space) result += c;
+              prev_space = true;
+            } else {
+              result += c;
+              prev_space = false;
+            }
+          }
+          return result;
+
+  - platform: teleinfo
+    teleinfo_id: tic
+    tag_name: "NTARF"
+    name: "Numéro index tarif"
+
+# WS2812 RGB LED — GPIO14 = D5 on D1 Mini
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: GPIO14
+    num_leds: 1
+    name: "TIC LED"
+    id: status_led
+
+# I2C — GPIO4=SDA(D2), GPIO5=SCL(D1) — uncomment if you add a display/sensor
+# i2c:
+#   sda: GPIO4
+#   scl: GPIO5

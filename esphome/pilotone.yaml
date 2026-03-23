@@ -1,0 +1,22 @@
+api: null
+esphome:
+  board: d1_mini
+  name: pilotone
+  platform: ESP8266
+logger: null
+switch:
+- id: ssr1
+  name: SSR 1
+  pin:
+    inverted: true
+    number: GPIO14
+  platform: gpio
+- id: ssr2
+  name: SSR 2
+  pin:
+    inverted: true
+    number: GPIO12
+  platform: gpio
+wifi:
+  password: !secret 'wifi_password'
+  ssid: !secret 'wifi_ssid'
