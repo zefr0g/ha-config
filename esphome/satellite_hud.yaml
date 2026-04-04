@@ -1,0 +1,479 @@
+substitutions:
+  name: esp-satellite
+  friendly_name: "ESP Satellite"
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: "2024.11.0"
+  on_boot:
+    - priority: 600
+      then:
+        - output.turn_off: max98357_sd
+    - priority: -100
+      then:
+        - delay: 2s
+        - speaker.volume_set:
+            id: spk_max98357
+            volume: !lambda "return id(volume_level).state / 100.0f;"
+        - output.turn_on: max98357_sd
+        - delay: 50ms
+        - lambda: |-
+            // Son de démarrage : deux notes montantes (C5 → G5, 125 ms chacune)
+            const int SR = 16000;
+            const int N  = SR / 8;           // 125 ms par note
+            std::vector<uint8_t> buf(N * 4); // 2 notes × N samples × 2 octets
+            for (int n = 0; n < 2; n++) {
+              float freq = (n == 0) ? 523.25f : 783.99f;
+              for (int i = 0; i < N; i++) {
+                float env = (i < 400) ? i / 400.0f : (i > N - 400) ? (N - i) / 400.0f : 1.0f;
+                int16_t s = (int16_t)(20000.0f * env * sinf(2.0f * 3.14159f * freq * i / SR));
+                buf[(n * N + i) * 2    ] = s & 0xFF;
+                buf[(n * N + i) * 2 + 1] = (s >> 8) & 0xFF;
+              }
+            }
+            id(spk_max98357).play(buf.data(), buf.size());
+        - delay: 400ms
+        - output.turn_off: max98357_sd
+        - light.turn_on:
+            id: led_ring
+            effect: "Veille"
+        - micro_wake_word.start:
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    version: recommended
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: DEBUG
+  hardware_uart: UART0
+
+# ── I2S ──────────────────────────────────────────────────
+i2s_audio:
+  - id: i2s_mic
+    i2s_lrclk_pin: GPIO2
+    i2s_bclk_pin: GPIO1
+
+  - id: i2s_spk
+    i2s_lrclk_pin: GPIO6
+    i2s_bclk_pin: GPIO5
+
+microphone:
+  - platform: i2s_audio
+    id: mic_inmp441
+    i2s_audio_id: i2s_mic
+    i2s_din_pin: GPIO4
+    adc_type: external
+    pdm: false
+    bits_per_sample: 32bit
+    channel: left
+
+speaker:
+  - platform: i2s_audio
+    id: spk_max98357
+    i2s_audio_id: i2s_spk
+    i2s_dout_pin: GPIO7
+    dac_type: external
+    i2s_mode: primary
+    channel: mono
+    sample_rate: 16000
+    bits_per_sample: 16bit
+    buffer_duration: 500ms
+    timeout: 500ms
+
+output:
+  - platform: gpio
+    id: max98357_sd
+    pin: GPIO8
+
+globals:
+  - id: va_state
+    type: int
+    initial_value: '0'
+
+# ── Micro Wake Word ───────────────────────────────────────
+micro_wake_word:
+  microphone: mic_inmp441
+  models:
+    - model: okay_nabu
+  on_wake_word_detected:
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+
+# ── Sensors ───────────────────────────────────────────────
+sensor:
+  - platform: wifi_signal
+    id: wifi_signal_db
+    update_interval: 30s
+
+# ── Volume ────────────────────────────────────────────────
+number:
+  - platform: template
+    name: "Volume"
+    id: volume_level
+    icon: mdi:volume-high
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    initial_value: 75
+    step: 5
+    mode: slider
+    optimistic: true
+    restore_value: true
+    on_value:
+      - speaker.volume_set:
+          id: spk_max98357
+          volume: !lambda "return x / 100.0f;"
+
+# ── Voice Assistant ───────────────────────────────────────
+voice_assistant:
+  id: va
+  microphone: mic_inmp441
+  speaker: spk_max98357
+  noise_suppression_level: 4
+  auto_gain: 31dBFS
+  use_wake_word: false
+
+  on_listening:
+    - globals.set:
+        id: va_state
+        value: '1'
+    - light.turn_on:
+        id: led_ring
+        effect: "Ecoute"
+
+  on_stt_vad_end:
+    - globals.set:
+        id: va_state
+        value: '2'
+    - light.turn_on:
+        id: led_ring
+        effect: "Traitement"
+
+  on_tts_start:
+    - output.turn_on: max98357_sd
+    - globals.set:
+        id: va_state
+        value: '3'
+    - light.turn_on:
+        id: led_ring
+        effect: "Parle"
+
+  on_end:
+    - wait_until:
+        not:
+          voice_assistant.is_running:
+    - delay: 500ms
+    - output.turn_off: max98357_sd
+    - globals.set:
+        id: va_state
+        value: '0'
+    - light.turn_on:
+        id: led_ring
+        effect: "Veille"
+    - micro_wake_word.start:
+
+  on_error:
+    - voice_assistant.stop:
+    - output.turn_off: max98357_sd
+    - globals.set:
+        id: va_state
+        value: '4'
+    - light.turn_on:
+        id: led_ring
+        effect: "Erreur"
+    - delay: 3s
+    - globals.set:
+        id: va_state
+        value: '0'
+    - light.turn_on:
+        id: led_ring
+        effect: "Veille"
+    - micro_wake_word.start:
+
+# ── WS2812B Ring — GPIO15 ─────────────────────────────────
+light:
+  - platform: esp32_rmt_led_strip
+    id: led_ring
+    chipset: WS2812
+    rgb_order: GRB
+    pin: GPIO15
+    num_leds: 12
+    name: "LED Ring"
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+    effects:
+      - addressable_lambda:
+          name: "Veille"
+          update_interval: 1000ms
+          lambda: |-
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = Color(0, 0, 30);
+            }
+
+      - addressable_lambda:
+          name: "Ecoute"
+          update_interval: 30ms
+          lambda: |-
+            static int step = 0;
+            int lit = (step / 3) % it.size();
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = (i == lit) ? Color(0, 80, 255) : Color(0, 10, 40);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Traitement"
+          update_interval: 40ms
+          lambda: |-
+            static int step = 0;
+            for (int i = 0; i < it.size(); i++) {
+              float phase = (i * 6.28 / it.size()) + step * 0.15;
+              uint8_t b = (uint8_t)((sin(phase) + 1.0) / 2.0 * 180);
+              it[i] = Color(b, 0, b);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Parle"
+          update_interval: 30ms
+          lambda: |-
+            static int step = 0;
+            for (int i = 0; i < it.size(); i++) {
+              float phase = (i * 6.28 / it.size()) + step * 0.2;
+              uint8_t g = (uint8_t)((sin(phase) + 1.0) / 2.0 * 200);
+              it[i] = Color(0, g, 20);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Erreur"
+          update_interval: 200ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = on ? Color(255, 0, 0) : Color(0, 0, 0);
+            }
+
+# ── Écran GC9A01 — SPI2 ──────────────────────────────────
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+
+display:
+  - platform: ili9xxx
+    model: GC9A01A
+    id: round_display
+    cs_pin: GPIO10
+    dc_pin: GPIO13
+    reset_pin: GPIO14
+    invert_colors: true
+    rotation: 0
+    update_interval: 100ms
+    lambda: |-
+      static int step = 0;
+      it.fill(Color(0, 0, 0));
+      auto t = id(time_ha).now();
+      if (!t.is_valid()) { step++; return; }
+
+      const float PI = 3.14159265f;
+      const int cx = 120, cy = 120;
+      int state = id(va_state);
+
+      // ── Precompute sin/cos lookup (360 entries) ──────────
+      static float lut_sin[360];
+      static float lut_cos[360];
+      static bool lut_ready = false;
+      if (!lut_ready) {
+        for (int i = 0; i < 360; i++) {
+          float a = i * PI / 180.0f;
+          lut_sin[i] = sinf(a);
+          lut_cos[i] = cosf(a);
+        }
+        lut_ready = true;
+      }
+
+      float off1 = fmodf(step * 0.6f, 360.0f);
+      float off2 = fmodf(360.0f - fmodf(step * 0.8f, 360.0f), 360.0f);
+      float off3 = fmodf(step * 0.4f, 360.0f);
+      float pulse = (sinf(step * 0.1f) + 1.0f) / 2.0f;  // ~6s period
+
+      // ── State-dependent accent color ─────────────────────
+      Color accent;
+      switch (state) {
+        case 1:  accent = Color(0, 100, 255); break;   // écoute — bleu vif
+        case 2:  accent = Color(160, 0, 220); break;   // traitement — violet
+        case 3:  accent = Color(0, 200, 60);  break;   // parle — vert
+        case 4:  accent = Color(255, 40, 0);  break;   // erreur — rouge
+        default: accent = Color(0, 40, 80);   break;   // veille — bleu sombre
+      }
+
+      // ── Second indicator on outer ring ───────────────────
+      static uint32_t last_sec_ms = 0;
+      static int last_sec = -1;
+      if (t.second != last_sec) { last_sec_ms = millis(); last_sec = t.second; }
+      float frac = (millis() - last_sec_ms) / 1000.0f;
+      if (frac > 1.0f) frac = 1.0f;
+      float smooth_s = fmodf(t.second + frac, 60.0f);
+      float s_a = (smooth_s * 6.0f - 90.0f) * PI / 180.0f;
+      float cs = cosf(s_a), ss = sinf(s_a);
+      for (int r = 112; r <= 118; r++)
+        it.draw_pixel_at(cx + (int)(r * cs), cy + (int)(r * ss), Color(255, 255, 255));
+      float cs1 = cosf(s_a - 0.04f), ss1 = sinf(s_a - 0.04f);
+      float cs2 = cosf(s_a + 0.04f), ss2 = sinf(s_a + 0.04f);
+      for (int r = 112; r <= 118; r++) {
+        it.draw_pixel_at(cx + (int)(r * cs1), cy + (int)(r * ss1), Color(180, 180, 180));
+        it.draw_pixel_at(cx + (int)(r * cs2), cy + (int)(r * ss2), Color(180, 180, 180));
+      }
+
+      // ── Pulsing state ring (outermost) ───────────────────
+      uint8_t pr = (uint8_t)(accent.r * (0.6f + 0.4f * pulse));
+      uint8_t pg = (uint8_t)(accent.g * (0.6f + 0.4f * pulse));
+      uint8_t pb = (uint8_t)(accent.b * (0.6f + 0.4f * pulse));
+      Color ring_col = Color(pr, pg, pb);
+      for (int r = 114; r <= 116; r++)
+        it.circle(cx, cy, r, ring_col);
+
+      // ── Rotating arc ring 1 — r=104..108, 6 segments ─────
+      Color c1 = (state == 0) ? Color(0, 180, 220) : accent;
+      for (int s = 0; s < 6; s++) {
+        float base = s * 60.0f + off1;
+        for (int d = 3; d < 52; d++) {
+          int idx = ((int)(base + d)) % 360;
+          if (idx < 0) idx += 360;
+          for (int r = 104; r <= 108; r++)
+            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c1);
+        }
+      }
+
+      // ── Rotating arc ring 2 — r=89..92, 4 segments ───────
+      Color c2 = (state == 0) ? Color(0, 100, 160) : Color(accent.r / 2, accent.g / 2, accent.b / 2);
+      for (int s = 0; s < 4; s++) {
+        float base = s * 90.0f + off2;
+        for (int d = 5; d < 75; d++) {
+          int idx = ((int)(base + d)) % 360;
+          if (idx < 0) idx += 360;
+          for (int r = 89; r <= 92; r++)
+            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c2);
+        }
+      }
+
+      // ── Concentric decorative circles ────────────────────
+      it.circle(cx, cy, 80, Color(10, 30, 50));
+      it.circle(cx, cy, 79, Color(10, 30, 50));
+      it.circle(cx, cy, 55, Color(8, 20, 35));
+
+      // ── Rotating arc ring 3 — r=70..72, 8 segments ───────
+      Color c3 = (state == 0) ? Color(0, 60, 100) : Color(accent.r / 3, accent.g / 3, accent.b / 3);
+      for (int s = 0; s < 8; s++) {
+        float base = s * 45.0f + off3;
+        for (int d = 3; d < 37; d++) {
+          int idx = ((int)(base + d)) % 360;
+          if (idx < 0) idx += 360;
+          for (int r = 70; r <= 72; r++)
+            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c3);
+        }
+      }
+
+      // ── Digital time ─────────────────────────────────────
+      Color time_col = (state > 0) ? accent : Color(180, 230, 255);
+      it.printf(cx, cy - 22, id(font_large), time_col,
+                TextAlign::CENTER, "%02d:%02d", t.hour, t.minute);
+
+      // ── Seconds ──────────────────────────────────────────
+      it.printf(cx, cy + 12, id(font_small), Color(60, 120, 160),
+                TextAlign::CENTER, ":%02d", t.second);
+
+      // ── VA state text ────────────────────────────────────
+      const char* state_txt = nullptr;
+      switch (state) {
+        case 1: state_txt = "Ecoute...";     break;
+        case 2: state_txt = "Traitement..."; break;
+        case 3: state_txt = "Parle...";      break;
+        case 4: state_txt = "Erreur";        break;
+      }
+      if (state_txt) {
+        it.printf(cx, cy + 34, id(font_small), accent,
+                  TextAlign::CENTER, "%s", state_txt);
+      } else {
+        // ── Date (veille only) ─────────────────────────────
+        const char* jours[] = {"dim", "lun", "mar", "mer", "jeu", "ven", "sam"};
+        const char* mois[]  = {"jan", "fev", "mar", "avr", "mai", "jun",
+                                "jul", "aou", "sep", "oct", "nov", "dec"};
+        char date_buf[20];
+        snprintf(date_buf, sizeof(date_buf), "%s %02d %s",
+                 jours[t.day_of_week - 1], t.day_of_month, mois[t.month - 1]);
+        it.printf(cx, cy + 34, id(font_small), Color(40, 80, 100),
+                  TextAlign::CENTER, "%s", date_buf);
+      }
+
+      // ── Volume bars (top) ────────────────────────────────
+      int vol_pct = (int)(id(volume_level).state);
+      int vol_bars = 0;
+      if      (vol_pct > 80) vol_bars = 4;
+      else if (vol_pct > 55) vol_bars = 3;
+      else if (vol_pct > 30) vol_bars = 2;
+      else if (vol_pct >  5) vol_bars = 1;
+      // Icône speaker (géométrique)
+      int spk_x = cx - 22, spk_y = cy - 58;
+      it.filled_rectangle(spk_x,     spk_y + 2, 4, 6, Color(60, 100, 140));
+      it.line(spk_x + 4, spk_y + 2, spk_x + 7, spk_y,     Color(60, 100, 140));
+      it.line(spk_x + 4, spk_y + 7, spk_x + 7, spk_y + 9, Color(60, 100, 140));
+      it.line(spk_x + 7, spk_y,     spk_x + 7, spk_y + 9, Color(60, 100, 140));
+      // Barres
+      for (int b = 0; b < 4; b++) {
+        int bx = cx - 9 + b * 5;
+        int by = cy - 58;
+        int h  = 3 + b * 3;
+        Color bc = (b < vol_bars) ? Color(0, 60 + b * 30, 180) : Color(20, 20, 30);
+        it.filled_rectangle(bx, by + (12 - h), 3, h, bc);
+      }
+
+      // ── WiFi signal indicator (arcs concentriques) ───────
+      float dbm = id(wifi_signal_db).state;
+      int wifi_arcs = 0;
+      if      (dbm > -55) wifi_arcs = 3;
+      else if (dbm > -67) wifi_arcs = 2;
+      else if (dbm > -80) wifi_arcs = 1;
+      int wfi_x = cx, wfi_y = cy + 64;
+      // Point central
+      Color dot_col = (wifi_arcs > 0) ? Color(0, 80, 200) : Color(30, 30, 40);
+      it.filled_rectangle(wfi_x - 1, wfi_y - 1, 3, 3, dot_col);
+      // 3 arcs de rayon croissant
+      int wfi_radii[3] = {4, 8, 12};
+      for (int ai = 0; ai < 3; ai++) {
+        int r = wfi_radii[ai];
+        Color arc_col = (ai < wifi_arcs) ? Color(0, 60 + ai * 40, 180) : Color(20, 20, 30);
+        for (int angle = 35; angle <= 145; angle += 2) {
+          float rad = angle * PI / 180.0f;
+          int px = wfi_x + (int)roundf(r * cosf(rad));
+          int py = wfi_y - (int)roundf(r * sinf(rad));
+          it.draw_pixel_at(px, py, arc_col);
+        }
+      }
+
+      step++;
+
+font:
+  - file: "gfonts://Roboto Mono"
+    id: font_large
+    size: 38
+  - file: "gfonts://Roboto Mono"
+    id: font_small
+    size: 17
+
+time:
+  - platform: homeassistant
+    id: time_ha

@@ -1,0 +1,317 @@
+substitutions:
+  name: esp-satellite
+  friendly_name: "ESP Satellite"
+
+packages:
+  core: !include common/core.yaml
+  wifi: !include common/wifi.yaml
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: "2024.11.0"
+  on_boot:
+    priority: 600
+    then:
+      - output.turn_off: max98357_sd
+  on_boot:
+    priority: -100
+    then:
+      - delay: 2s
+      - light.turn_on:
+          id: led_ring
+          effect: "Veille"
+      - micro_wake_word.start:
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    version: recommended
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: DEBUG
+
+# ── I2S ──────────────────────────────────────────────────
+i2s_audio:
+  - id: i2s_mic
+    i2s_lrclk_pin: GPIO2
+    i2s_bclk_pin: GPIO1
+
+  - id: i2s_spk
+    i2s_lrclk_pin: GPIO6
+    i2s_bclk_pin: GPIO5
+
+microphone:
+  - platform: i2s_audio
+    id: mic_inmp441
+    i2s_audio_id: i2s_mic
+    i2s_din_pin: GPIO4
+    adc_type: external
+    pdm: false
+    bits_per_sample: 32bit
+    channel: left
+
+speaker:
+  - platform: i2s_audio
+    id: spk_max98357
+    i2s_audio_id: i2s_spk
+    i2s_dout_pin: GPIO7
+    dac_type: external
+    i2s_mode: primary
+    channel: mono
+    sample_rate: 16000
+    bits_per_sample: 16bit
+
+output:
+  - platform: gpio
+    id: max98357_sd
+    pin: GPIO8
+
+globals:
+  - id: is_listening
+    type: bool
+    initial_value: 'false'
+
+# ── Micro Wake Word ───────────────────────────────────────
+micro_wake_word:
+  microphone: mic_inmp441
+  models:
+    - model: okay_nabu
+  on_wake_word_detected:
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+
+# ── Voice Assistant ───────────────────────────────────────
+voice_assistant:
+  id: va
+  microphone: mic_inmp441
+  speaker: spk_max98357
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 1
+  use_wake_word: false
+
+  on_listening:
+    - globals.set:
+        id: is_listening
+        value: 'true'
+    - light.turn_on:
+        id: led_ring
+        effect: "Ecoute"
+
+  on_stt_vad_end:
+    - globals.set:
+        id: is_listening
+        value: 'false'
+    - light.turn_on:
+        id: led_ring
+        effect: "Traitement"
+
+  on_tts_start:
+    - output.turn_on: max98357_sd
+    - light.turn_on:
+        id: led_ring
+        effect: "Parle"
+
+  on_end:
+    - delay: 3s
+    - output.turn_off: max98357_sd
+    - light.turn_on:
+        id: led_ring
+        effect: "Veille"
+    # Redémarrage de l'écoute wake word après chaque interaction
+    - micro_wake_word.start:
+
+  on_error:
+    - output.turn_off: max98357_sd
+    - light.turn_on:
+        id: led_ring
+        effect: "Erreur"
+    - delay: 3s
+    - light.turn_on:
+        id: led_ring
+        effect: "Veille"
+    # Redémarrage même après erreur
+    - micro_wake_word.start:
+
+# ── WS2812B Ring — GPIO15 ─────────────────────────────────
+light:
+  - platform: esp32_rmt_led_strip
+    id: led_ring
+    chipset: WS2812
+    rgb_order: GRB
+    pin: GPIO15
+    num_leds: 12
+    name: "LED Ring"
+    # ALWAYS_OFF : le on_boot gère l'allumage proprement
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+    effects:
+      - addressable_lambda:
+          name: "Veille"
+          update_interval: 10ms
+          lambda: |-
+            static int step = 0;
+            float b = (sin(step * 0.05) + 1.0) / 2.0 * 0.10 + 0.15;
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = Color(0, 0, (uint8_t)(b * 255));
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Ecoute"
+          update_interval: 30ms
+          lambda: |-
+            static int step = 0;
+            int lit = (step / 3) % it.size();
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = (i == lit) ? Color(0, 80, 255) : Color(0, 10, 40);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Traitement"
+          update_interval: 40ms
+          lambda: |-
+            static int step = 0;
+            for (int i = 0; i < it.size(); i++) {
+              float phase = (i * 6.28 / it.size()) + step * 0.15;
+              uint8_t b = (uint8_t)((sin(phase) + 1.0) / 2.0 * 180);
+              it[i] = Color(b, 0, b);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Parle"
+          update_interval: 30ms
+          lambda: |-
+            static int step = 0;
+            for (int i = 0; i < it.size(); i++) {
+              float phase = (i * 6.28 / it.size()) + step * 0.2;
+              uint8_t g = (uint8_t)((sin(phase) + 1.0) / 2.0 * 200);
+              it[i] = Color(0, g, 20);
+            }
+            step++;
+
+      - addressable_lambda:
+          name: "Erreur"
+          update_interval: 200ms
+          lambda: |-
+            static bool on = false;
+            on = !on;
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = on ? Color(255, 0, 0) : Color(0, 0, 0);
+            }
+
+# ── Écran GC9A01 — SPI2 ──────────────────────────────────
+spi:
+  clk_pin: GPIO12
+  mosi_pin: GPIO11
+
+display:
+  - platform: ili9xxx
+    model: GC9A01A
+    id: round_display
+    cs_pin: GPIO10
+    dc_pin: GPIO13
+    reset_pin: GPIO14
+    invert_colors: false
+    rotation: 0
+    update_interval: 1s
+    lambda: |-
+      it.fill(Color(0, 0, 0));
+      auto t = id(time_ha).now();
+      if (!t.is_valid()) return;
+
+      const float PI = 3.14159265f;
+      // Clock centered at (120,100) — leaves bottom strip for date
+      const int cx = 120, cy = 100;
+
+      // ── State ring ───────────────────────────────────────
+      Color ring_col = id(is_listening) ? Color(0, 100, 255) : Color(12, 12, 35);
+      it.circle(cx, cy, 116, ring_col);
+      it.circle(cx, cy, 115, ring_col);
+
+      // ── Tick marks ───────────────────────────────────────
+      for (int i = 0; i < 60; i++) {
+        float a = (i * 6.0f - 90.0f) * PI / 180.0f;
+        bool hour_tick = (i % 5 == 0);
+        int r_out = 112, r_in = hour_tick ? 96 : 106;
+        Color tc = hour_tick ? Color(220, 220, 220) : Color(60, 60, 60);
+        // Hour ticks drawn 2px wide
+        it.line(cx+(int)(r_in*cosf(a)),   cy+(int)(r_in*sinf(a)),
+                cx+(int)(r_out*cosf(a)),  cy+(int)(r_out*sinf(a)), tc);
+        if (hour_tick) {
+          float pa = a + PI/2;
+          it.line(cx+(int)(r_in*cosf(a)+(int)cosf(pa)),  cy+(int)(r_in*sinf(a)+(int)sinf(pa)),
+                  cx+(int)(r_out*cosf(a)+(int)cosf(pa)), cy+(int)(r_out*sinf(a)+(int)sinf(pa)), tc);
+        }
+      }
+
+      // ── Second arc ───────────────────────────────────────
+      for (int i = 0; i <= t.second; i++) {
+        float a = (i * 6.0f - 90.0f) * PI / 180.0f;
+        it.draw_pixel_at(cx+(int)(107.0f*cosf(a)), cy+(int)(107.0f*sinf(a)), Color(0, 140, 255));
+        it.draw_pixel_at(cx+(int)(108.0f*cosf(a)), cy+(int)(108.0f*sinf(a)), Color(0, 80, 160));
+      }
+
+      // ── Hour hand (thick) ────────────────────────────────
+      float h_a = ((t.hour % 12) * 30.0f + t.minute * 0.5f - 90.0f) * PI / 180.0f;
+      for (int w = -3; w <= 3; w++) {
+        float px = w * cosf(h_a + PI/2), py = w * sinf(h_a + PI/2);
+        it.line(cx+(int)px, cy+(int)py,
+                cx+(int)(65.0f*cosf(h_a)+px), cy+(int)(65.0f*sinf(h_a)+py),
+                Color(255, 255, 255));
+      }
+
+      // ── Minute hand ──────────────────────────────────────
+      float m_a = (t.minute * 6.0f + t.second * 0.1f - 90.0f) * PI / 180.0f;
+      for (int w = -2; w <= 2; w++) {
+        float px = w * cosf(m_a + PI/2), py = w * sinf(m_a + PI/2);
+        it.line(cx+(int)px, cy+(int)py,
+                cx+(int)(90.0f*cosf(m_a)+px), cy+(int)(90.0f*sinf(m_a)+py),
+                Color(220, 220, 220));
+      }
+
+      // ── Second hand ──────────────────────────────────────
+      float s_a = (t.second * 6.0f - 90.0f) * PI / 180.0f;
+      it.line(cx, cy, cx+(int)(95.0f*cosf(s_a)), cy+(int)(95.0f*sinf(s_a)), Color(255, 45, 45));
+      it.line(cx, cy, cx+(int)(22.0f*cosf(s_a+PI)), cy+(int)(22.0f*sinf(s_a+PI)), Color(180, 0, 0));
+
+      // ── Center cap ───────────────────────────────────────
+      it.filled_circle(cx, cy, 6, Color(230, 230, 230));
+      it.filled_circle(cx, cy, 4, Color(255, 45, 45));
+
+      // ── Date (below clock, clear of tick marks) ───────────
+      const char* jours[] = {"dim", "lun", "mar", "mer", "jeu", "ven", "sam"};
+      const char* mois[]  = {"jan", "fev", "mar", "avr", "mai", "jun",
+                              "jul", "aou", "sep", "oct", "nov", "dec"};
+      char date_buf[20];
+      snprintf(date_buf, sizeof(date_buf), "%s %02d %s",
+               jours[t.day_of_week - 1], t.day_of_month, mois[t.month - 1]);
+      it.printf(120, 222, id(font_small), Color(90, 90, 90),
+                TextAlign::CENTER, "%s", date_buf);
+
+      // ── Listening indicator ───────────────────────────────
+      if (id(is_listening)) {
+        it.printf(120, 48, id(font_small), Color(0, 180, 255),
+                  TextAlign::CENTER, "Ecoute...");
+      }
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_medium
+    size: 24
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 16
+
+time:
+  - platform: homeassistant
+    id: time_ha
