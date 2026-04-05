@@ -117,6 +117,15 @@ views:
                     tap_action:
                       action: toggle
                   - type: template
+                    entity: input_boolean.piscine_mode_manuel
+                    icon: mdi:hand-back-right
+                    icon_color: >-
+                      {% if is_state('input_boolean.piscine_mode_manuel', 'on') %}orange{% else %}grey{% endif %}
+                    content: >-
+                      {% if is_state('input_boolean.piscine_mode_manuel', 'on') %}Manuel{% else %}Auto{% endif %}
+                    tap_action:
+                      action: toggle
+                  - type: template
                     entity: sensor.current_power_production
                     icon: mdi:solar-power
                     icon_color: >-
@@ -135,6 +144,14 @@ views:
                       padding: 0 4px 4px 4px !important;
                     }
 
+          # --- Pump run history ---
+          - type: history-graph
+            title: Pompe 24h
+            hours_to_show: 24
+            entities:
+              - entity: switch.piscine_relais
+                name: Pompe
+
           # --- Filtration progress ---
           - type: custom:stack-in-card
             mode: vertical
@@ -145,7 +162,9 @@ views:
                 secondary: >-
                   {% set temp = states('sensor.temperature_piscine') | float(0) %}
                   {% set target = temp / 3 %}
-                  {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
+                  {% set done = (hier + auj) if now().hour < 6 else auj %}
                   {% set remaining = [target - done, 0] | max %}
                   {% macro hm(v) %}{{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}{% endmacro %}
                   {{ hm(done) }} / {{ hm(target) }} cible
@@ -154,7 +173,9 @@ views:
                 icon_color: >-
                   {% set temp = states('sensor.temperature_piscine') | float(0) %}
                   {% set target = temp / 3 %}
-                  {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
+                  {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
+                  {% set done = (hier + auj) if now().hour < 6 else auj %}
                   {% if done >= target %}green
                   {% elif done >= target * 0.5 %}orange
                   {% else %}red{% endif %}
@@ -218,51 +239,61 @@ views:
                 alignment: center
                 chips:
                   - type: template
-                    entity: automation.piscine_demarrage_journalier_lever_3h
-                    icon: mdi:weather-sunset-up
+                    entity: automation.piscine_1_demarrer_pompe_sur_surplus_solaire
+                    icon: mdi:solar-power
                     icon_color: >-
-                      {% if is_state('automation.piscine_demarrage_journalier_lever_3h', 'on') %}green{% else %}grey{% endif %}
-                    content: Démarrage
+                      {% if is_state('automation.piscine_1_demarrer_pompe_sur_surplus_solaire', 'on') %}green{% else %}grey{% endif %}
+                    content: Solaire
                     tap_action:
                       action: toggle
                     hold_action:
                       action: more-info
                   - type: template
-                    entity: automation.piscine_arreter_pompe_quand_surplus_insuffisant
+                    entity: automation.piscine_2_arreter_pompe_quand_surplus_insuffisant
                     icon: mdi:cloud
                     icon_color: >-
-                      {% if is_state('automation.piscine_arreter_pompe_quand_surplus_insuffisant', 'on') %}green{% else %}grey{% endif %}
+                      {% if is_state('automation.piscine_2_arreter_pompe_quand_surplus_insuffisant', 'on') %}green{% else %}grey{% endif %}
                     content: Nuage
                     tap_action:
                       action: toggle
                     hold_action:
                       action: more-info
                   - type: template
-                    entity: automation.piscine_redemarrer_pompe_quand_soleil_revient
-                    icon: mdi:white-balance-sunny
-                    icon_color: >-
-                      {% if is_state('automation.piscine_redemarrer_pompe_quand_soleil_revient', 'on') %}green{% else %}grey{% endif %}
-                    content: Soleil
-                    tap_action:
-                      action: toggle
-                    hold_action:
-                      action: more-info
-                  - type: template
-                    entity: automation.piscine_completer_filtration_avant_coucher_du_soleil
+                    entity: automation.piscine_3_completer_filtration_en_heure_creuse
                     icon: mdi:timer-check
                     icon_color: >-
-                      {% if is_state('automation.piscine_completer_filtration_avant_coucher_du_soleil', 'on') %}green{% else %}grey{% endif %}
-                    content: Compléter
+                      {% if is_state('automation.piscine_3_completer_filtration_en_heure_creuse', 'on') %}green{% else %}grey{% endif %}
+                    content: HC
                     tap_action:
                       action: toggle
                     hold_action:
                       action: more-info
                   - type: template
-                    entity: automation.piscine_arreter_pompe_au_coucher_du_soleil
+                    entity: automation.piscine_4_arreter_pompe_au_coucher_du_soleil
                     icon: mdi:weather-sunset-down
                     icon_color: >-
-                      {% if is_state('automation.piscine_arreter_pompe_au_coucher_du_soleil', 'on') %}green{% else %}grey{% endif %}
+                      {% if is_state('automation.piscine_4_arreter_pompe_au_coucher_du_soleil', 'on') %}green{% else %}grey{% endif %}
                     content: Coucher
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_5_arreter_pompe_fin_heure_creuse
+                    icon: mdi:clock-end
+                    icon_color: >-
+                      {% if is_state('automation.piscine_5_arreter_pompe_fin_heure_creuse', 'on') %}green{% else %}grey{% endif %}
+                    content: Fin HC
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: more-info
+                  - type: template
+                    entity: automation.piscine_6_arreter_pompe_quand_objectif_de_filtration_atteint
+                    icon: mdi:check-circle
+                    icon_color: >-
+                      {% if is_state('automation.piscine_6_arreter_pompe_quand_objectif_de_filtration_atteint', 'on') %}green{% else %}grey{% endif %}
+                    content: Objectif
                     tap_action:
                       action: toggle
                     hold_action:

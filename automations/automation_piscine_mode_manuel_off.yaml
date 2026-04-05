@@ -1,0 +1,20 @@
+alias: "Piscine — Désactiver mode manuel"
+description: "Arrête la pompe et réactive toutes les automations piscine."
+trigger:
+  - platform: state
+    entity_id: input_boolean.piscine_mode_manuel
+    to: "off"
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: switch.piscine_relais
+  - service: automation.turn_on
+    target:
+      entity_id:
+        - automation.piscine_1_demarrer_pompe_sur_surplus_solaire
+        - automation.piscine_2_arreter_pompe_quand_surplus_insuffisant
+        - automation.piscine_3_completer_filtration_en_heure_creuse
+        - automation.piscine_4_arreter_pompe_au_coucher_du_soleil
+        - automation.piscine_5_arreter_pompe_fin_heure_creuse
+        - automation.piscine_6_arreter_pompe_quand_objectif_de_filtration_atteint
+mode: single

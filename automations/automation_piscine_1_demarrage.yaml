@@ -5,14 +5,23 @@ trigger:
     entity_id: sensor.current_power_production
     above: 1000
     for: "00:03:00"
+  - platform: state
+    entity_id: switch.piscine_relais
+    to: "off"
+    for: "00:03:00"
 condition:
+  - condition: numeric_state
+    entity_id: sensor.current_power_production
+    above: 1000
   - condition: numeric_state
     entity_id: sensor.msunpv_powreso
     below: 100
   - condition: template
     value_template: >
       {% set temp = states('sensor.temperature_piscine') | float(0) %}
-      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
+      {% set done = (hier + auj) if now().hour < 6 else auj %}
       {{ temp > 10 and done < (temp / 3) }}
   - condition: sun
     before: sunset

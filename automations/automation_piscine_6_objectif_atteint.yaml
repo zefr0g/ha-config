@@ -3,6 +3,8 @@ description: "Coupe la pompe dès que le temps de filtration cible (T°/3) est a
 trigger:
   - platform: state
     entity_id: sensor.piscine_filtration_auj
+  - platform: state
+    entity_id: sensor.piscine_filtration_hier
 condition:
   - condition: state
     entity_id: switch.piscine_relais
@@ -10,7 +12,9 @@ condition:
   - condition: template
     value_template: >
       {% set temp = states('sensor.temperature_piscine') | float(0) %}
-      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
+      {% set done = (hier + auj) if now().hour < 6 else auj %}
       {{ temp > 10 and done >= (temp / 3) }}
 action:
   - service: switch.turn_off

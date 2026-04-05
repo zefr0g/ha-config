@@ -76,6 +76,7 @@ views:
                     ha-card {
                       border: none !important;
                       box-shadow: none !important;
+                      margin-bottom: -12px;
                     }
               - type: weather-forecast
                 entity: weather.forecast_maison
@@ -86,30 +87,125 @@ views:
                     ha-card {
                       border: none !important;
                       box-shadow: none !important;
+                      margin-bottom: -12px;
                     }
               - type: custom:mini-graph-card
-                name: Extérieur
-                height: 80
+                hours_to_show: 24
+                height: 110
                 line_width: 2
+                show:
+                  name: false
+                  icon: false
                 entities:
-                  - entity: sensor.lacrosse_tx141thbv2_0_175_temperature
-                    name: Temp. Ext.
-                    color: '#3aaa00'
-                    show_legend: false
-                  - entity: sensor.lacrosse_tx141thbv2_0_175_humidity
-                    name: Humidité
-                    color: '#482ee4'
+                  - entity: sensor.station_meteo_temperature_exterieure
+                    name: Temp.
+                    color: '#e45e33'
                     y_axis: secondary
                     show_state: true
+                    show_fill: true
+                  - entity: sensor.station_meteo_humidite_exterieure
+                    name: Humidité
+                    color: '#42a5f5'
+                    y_axis: secondary
+                    show_state: true
+                    show_fill: false
+                  - entity: sensor.garage_pressure
+                    name: Pression
+                    color: '#7e69f9'
+                    show_state: true
+                    show_fill: false
+                    show_points: false
                 card_mod:
                   style: |
                     ha-card {
                       border: none !important;
                       box-shadow: none !important;
                     }
-                    .states.flex::after {
-                      content: "{{ relative_time(states['sensor.lacrosse_tx141thbv2_0_175_temperature'].last_changed) }}";
-                      white-space: pre;
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-template-card
+                    primary: >-
+                      {{ states('sensor.station_meteo_vitesse_vent') | float | round(1) }} km/h
+                    secondary: >-
+                      {% set d = states('sensor.station_meteo_direction_vent') | float %}
+                      {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
+                      {{ dirs[((d + 22.5) / 45) | int % 8] }} ({{ d | round(0) | int }}°)
+                    icon: mdi:weather-windy
+                    icon_color: >-
+                      {% set v = states('sensor.station_meteo_vitesse_vent') | float %}
+                      {% if v < 20 %} teal
+                      {% elif v < 40 %} green
+                      {% elif v < 60 %} orange
+                      {% else %} red
+                      {% endif %}
+                    entity: sensor.station_meteo_vitesse_vent
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+                  - type: custom:mushroom-template-card
+                    primary: >-
+                      {{ states('sensor.station_meteo_rafale_vent') | float | round(1) }} km/h
+                    secondary: >-
+                      {% set g = states('sensor.station_meteo_rafale_vent') | float %}
+                      {% if g < 20 %} Calme
+                      {% elif g < 40 %} Brise
+                      {% elif g < 60 %} Vent fort
+                      {% elif g < 90 %} Mistral
+                      {% else %} Mistral violent
+                      {% endif %}
+                    icon: mdi:windsock
+                    icon_color: >-
+                      {% set g = states('sensor.station_meteo_rafale_vent') | float %}
+                      {% if g < 20 %} teal
+                      {% elif g < 40 %} green
+                      {% elif g < 60 %} orange
+                      {% elif g < 90 %} deep-orange
+                      {% else %} red
+                      {% endif %}
+                    entity: sensor.station_meteo_rafale_vent
+                    tap_action:
+                      action: more-info
+                    card_mod:
+                      style: |
+                        ha-card {
+                          border: none !important;
+                          box-shadow: none !important;
+                        }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.station_meteo_indice_uv
+                    icon: mdi:sun-wireless
+                    icon_color: orange
+                    content: "UV {{ states('sensor.station_meteo_indice_uv') }}"
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.station_meteo_pluie_journee
+                    icon: mdi:weather-rainy
+                    icon_color: blue
+                    content: "{{ states('sensor.station_meteo_pluie_journee') }} mm"
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.station_meteo_rayonnement_solaire
+                    icon: mdi:brightness-5
+                    icon_color: yellow
+                    content: "{{ states('sensor.station_meteo_rayonnement_solaire') }} W/m²"
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: |
+                    ha-card {
+                      border: none !important;
+                      box-shadow: none !important;
+                      --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
                     }
           - type: horizontal-stack
             cards:
@@ -118,8 +214,9 @@ views:
                 cards:
                   - type: custom:mini-graph-card
                     points_per_hour: 2
+                    hours_to_show: 48
                     name: T° ECS
-                    height: 80
+                    height: 60
                     line_width: 2
                     entities:
                       - sensor.ballon_temperature
@@ -167,7 +264,8 @@ views:
                 cards:
                   - type: custom:mini-graph-card
                     name: T° Piscine
-                    height: 80
+                    hours_to_show: 48
+                    height: 60
                     line_width: 2
                     entities:
                       - sensor.temperature_piscine
@@ -210,80 +308,37 @@ views:
                           --chip-spacing: 0;
                           padding: 0 4px 4px 4px !important;
                         }
-          - type: horizontal-stack
-            cards:
-              - type: custom:mini-graph-card
-                points_per_hour: 2
-                hours_to_show: 12
-                height: 80
-                bar_spacing: 2
-                entities:
-                  - entity: sensor.garage_pressure
-                    name: Baromètre
-                show:
-                  graph: bar
-                font_size: 80
-                line_color: '#7e69f9'
-                card_mod:
-                  style: |
-                    .states.flex::after {
-                      content: "{{ relative_time(states['sensor.garage_pressure'].last_changed) }}";
-                      white-space: pre;
-                      background-color: rgba(50,50,50,0.1);
-                      border-radius: 5px;
-                    }
-              - type: custom:mini-graph-card
-                color_thresholds:
-                  - color: '#00FF00'
-                    value: 0
-                  - color: '#FF9900'
-                    value: 20
-                  - color: '#EA9999'
-                    value: 30
-                  - color: '#CC0000'
-                    value: 100
-                color_thresholds_transition: hard
-                line_width: 2
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: sensor.particulate_matter_2_5mm_concentration
                 icon: mdi:blur
-                show:
-                  fill: true
-                  icon: true
-                  labels: false
-                  name: true
-                  state: true
-                hour24: true
-                points_per_hour: 4
-                hours_to_show: 24
-                height: 80
-                group: false
-                entities:
-                  - entity: sensor.particulate_matter_2_5mm_concentration
-                    name: µg/m3
-                name: PM2.5
-                card_mod:
-                  style: |
-                    .states.flex::after {
-                      {% set pm = states('sensor.particulate_matter_2_5mm_concentration') | float(0) %}
-                      {% if pm < 10 %}
-                        content: " Bon";
-                        color: #00FF00;
-                      {% elif pm < 20 %}
-                        content: " Correct";
-                        color: #99CC00;
-                      {% elif pm < 30 %}
-                        content: " Modéré";
-                        color: #FF9900;
-                      {% elif pm < 50 %}
-                        content: " Dégradé";
-                        color: #EA9999;
-                      {% else %}
-                        content: " Mauvais";
-                        color: #CC0000;
-                      {% endif %}
-                      white-space: pre;
-                      font-weight: bold;
-                      font-size: 0.85em;
-                    }
+                icon_color: >-
+                  {% set pm = states('sensor.particulate_matter_2_5mm_concentration') | float(0) %}
+                  {% if pm < 10 %} green
+                  {% elif pm < 20 %} light-green
+                  {% elif pm < 30 %} orange
+                  {% elif pm < 50 %} deep-orange
+                  {% else %} red
+                  {% endif %}
+                content: >-
+                  PM2.5 {{ states('sensor.particulate_matter_2_5mm_concentration') | float(0) | round(1) }} µg/m³ —
+                  {% set pm = states('sensor.particulate_matter_2_5mm_concentration') | float(0) %}
+                  {% if pm < 10 %} Bon
+                  {% elif pm < 20 %} Correct
+                  {% elif pm < 30 %} Modéré
+                  {% elif pm < 50 %} Dégradé
+                  {% else %} Mauvais
+                  {% endif %}
+                tap_action:
+                  action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                  padding: 0 4px 4px 4px !important;
+                }
       - type: vertical-stack
         cards:
           - type: custom:mushroom-chips-card

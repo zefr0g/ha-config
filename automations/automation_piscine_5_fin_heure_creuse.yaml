@@ -1,5 +1,5 @@
 alias: "Piscine 5 — Arrêter pompe fin heure creuse"
-description: "Coupe la pompe quand les heures creuses se terminent la nuit."
+description: "Coupe la pompe quand les heures creuses se terminent."
 trigger:
   - platform: state
     entity_id: binary_sensor.heure_creuse

@@ -1,16 +1,18 @@
 alias: "Piscine 3 — Compléter filtration en heure creuse"
-description: "Toutes les 30 min, démarre la pompe si heure creuse et filtration incomplète."
+description: "Démarre la pompe au début des heures creuses après le coucher du soleil si l'objectif de filtration n'est pas atteint."
 trigger:
-  - platform: time_pattern
-    minutes: "/30"
-condition:
-  - condition: state
+  - platform: state
     entity_id: binary_sensor.heure_creuse
-    state: "on"
+    to: "on"
+condition:
+  - condition: sun
+    after: sunset
   - condition: template
     value_template: >
       {% set temp = states('sensor.temperature_piscine') | float(0) %}
-      {% set done = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
+      {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
+      {% set done = (hier + auj) if now().hour < 6 else auj %}
       {{ temp > 10 and done < (temp / 3) }}
   - condition: state
     entity_id: switch.piscine_relais

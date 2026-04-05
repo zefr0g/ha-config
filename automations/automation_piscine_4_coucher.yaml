@@ -1,5 +1,5 @@
 alias: "Piscine 4 — Arrêter pompe au coucher du soleil"
-description: "Coupe la pompe au coucher du soleil."
+description: "Coupe la pompe au coucher du soleil, sauf si les heures creuses sont en cours (la complétion prend le relais)."
 trigger:
   - platform: sun
     event: sunset
@@ -7,6 +7,9 @@ condition:
   - condition: state
     entity_id: switch.piscine_relais
     state: "on"
+  - condition: state
+    entity_id: binary_sensor.heure_creuse
+    state: "off"
 action:
   - service: switch.turn_off
     target:
