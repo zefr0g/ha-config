@@ -75,6 +75,13 @@ views:
                 cameras:
                   - camera_entity: camera.doorbell
                     live_provider: go2rtc
+                    go2rtc:
+                      url: http://dd-frigate:1984
+                      modes:
+                        - webrtc
+                        - mse
+                        - mp4
+                        - mjpeg
                     frigate:
                       camera_name: doorbell
                 view:
@@ -85,6 +92,13 @@ views:
                 cameras:
                   - camera_entity: camera.entree
                     live_provider: go2rtc
+                    go2rtc:
+                      url: http://dd-frigate:1984
+                      modes:
+                        - webrtc
+                        - mse
+                        - mp4
+                        - mjpeg
                     frigate:
                       camera_name: entree
                 view:
@@ -95,6 +109,13 @@ views:
                 cameras:
                   - camera_entity: camera.back
                     live_provider: go2rtc
+                    go2rtc:
+                      url: http://dd-frigate:1984
+                      modes:
+                        - webrtc
+                        - mse
+                        - mp4
+                        - mjpeg
                     frigate:
                       camera_name: back
                 view:
@@ -105,6 +126,13 @@ views:
                 cameras:
                   - camera_entity: camera.garage
                     live_provider: go2rtc
+                    go2rtc:
+                      url: http://dd-frigate:1984
+                      modes:
+                        - webrtc
+                        - mse
+                        - mp4
+                        - mjpeg
                     frigate:
                       camera_name: garage
                 view:

@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" font-family="'JetBrains Mono','Fira Code',monospace">
+  <defs>
+    <radialGradient id="screen-bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#050a12"/>
+      <stop offset="90%" stop-color="#020508"/>
+      <stop offset="100%" stop-color="#000"/>
+    </radialGradient>
+    <radialGradient id="screen-bg-listen" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#040812"/>
+      <stop offset="90%" stop-color="#020408"/>
+      <stop offset="100%" stop-color="#000"/>
+    </radialGradient>
+    <filter id="glow-blue">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-green">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-red">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip-idle"><circle cx="170" cy="220" r="115"/></clipPath>
+    <clipPath id="clip-listen"><circle cx="410" cy="220" r="115"/></clipPath>
+    <clipPath id="clip-speak"><circle cx="650" cy="220" r="115"/></clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="440" rx="12" fill="#0a0e17"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" fill="#e2e8f0" font-size="18" font-weight="bold">Interface ecran — Etats de l'assistant vocal</text>
+
+  <!-- ═══ STATE 0: VEILLE ═══ -->
+  <g>
+    <!-- Bezel -->
+    <circle cx="170" cy="220" r="120" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="2"/>
+    <!-- Screen -->
+    <circle cx="170" cy="220" r="115" fill="url(#screen-bg)"/>
+
+    <g clip-path="url(#clip-idle)">
+      <!-- Pulsing state ring -->
+      <circle cx="170" cy="220" r="112" fill="none" stroke="#00284d" stroke-width="3" opacity="0.7"/>
+
+      <!-- Rotating arc ring 1 -->
+      <g opacity="0.6">
+        <path d="M170,112 A108,108 0 0,1 270,178" fill="none" stroke="#00b4dc" stroke-width="5" stroke-linecap="round"/>
+        <path d="M270,262 A108,108 0 0,1 170,328" fill="none" stroke="#00b4dc" stroke-width="5" stroke-linecap="round"/>
+        <path d="M70,178 A108,108 0 0,1 70,262" fill="none" stroke="#00b4dc" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+      </g>
+
+      <!-- Rotating arc ring 2 -->
+      <g opacity="0.4">
+        <path d="M170,128 A92,92 0 0,1 250,185" fill="none" stroke="#0064a0" stroke-width="4" stroke-linecap="round"/>
+        <path d="M90,255 A92,92 0 0,1 170,312" fill="none" stroke="#0064a0" stroke-width="4" stroke-linecap="round"/>
+      </g>
+
+      <!-- Decorative circles -->
+      <circle cx="170" cy="220" r="80" fill="none" stroke="#0a1e32" stroke-width="1.5"/>
+      <circle cx="170" cy="220" r="55" fill="none" stroke="#081423" stroke-width="1"/>
+
+      <!-- Rotating arc ring 3 -->
+      <g opacity="0.3">
+        <path d="M170,150 A70,70 0 0,1 220,175" fill="none" stroke="#003c64" stroke-width="3" stroke-linecap="round"/>
+        <path d="M120,265 A70,70 0 0,1 170,290" fill="none" stroke="#003c64" stroke-width="3" stroke-linecap="round"/>
+        <path d="M225,240 A70,70 0 0,1 200,275" fill="none" stroke="#003c64" stroke-width="3" stroke-linecap="round"/>
+      </g>
+
+      <!-- Second indicator dot on outer ring -->
+      <circle cx="260" cy="180" r="4" fill="#fff" filter="url(#glow-blue)"/>
+
+      <!-- Volume bars (top) -->
+      <g transform="translate(148, 162)">
+        <!-- Speaker icon -->
+        <rect x="0" y="3" width="4" height="5" fill="#3c6490"/>
+        <polygon points="4,3 8,0 8,11 4,8" fill="#3c6490"/>
+        <!-- Bars -->
+        <rect x="12" y="7" width="3" height="5" fill="#003cb4"/>
+        <rect x="17" y="4" width="3" height="8" fill="#005ce0"/>
+        <rect x="22" y="1" width="3" height="11" fill="#0078ff"/>
+        <rect x="27" y="0" width="3" height="12" fill="#141414" opacity="0.5"/>
+      </g>
+
+      <!-- Time -->
+      <text x="170" y="215" text-anchor="middle" fill="#b4e6ff" font-size="36" font-weight="bold" filter="url(#glow-blue)">14:32</text>
+
+      <!-- Seconds -->
+      <text x="170" y="238" text-anchor="middle" fill="#3c7898" font-size="16">:47</text>
+
+      <!-- Date -->
+      <text x="170" y="260" text-anchor="middle" fill="#285064" font-size="13">sam 05 avr</text>
+
+      <!-- WiFi arcs (bottom) -->
+      <g transform="translate(170,290)">
+        <rect x="-1" y="-1" width="3" height="3" fill="#0050c8" rx="1"/>
+        <path d="M-5,-5 A7,7 0 0,1 5,-5" fill="none" stroke="#0050c8" stroke-width="1.5"/>
+        <path d="M-9,-9 A13,13 0 0,1 9,-9" fill="none" stroke="#003c8c" stroke-width="1.5"/>
+        <path d="M-13,-13 A19,19 0 0,1 13,-13" fill="none" stroke="#002850" stroke-width="1.5"/>
+      </g>
+    </g>
+
+    <!-- Label -->
+    <text x="170" y="365" text-anchor="middle" fill="#64748b" font-size="14" font-weight="bold">Veille</text>
+    <text x="170" y="382" text-anchor="middle" fill="#475569" font-size="10">Horloge + date + arcs rotatifs</text>
+  </g>
+
+  <!-- ═══ STATE 1: ECOUTE ═══ -->
+  <g>
+    <circle cx="410" cy="220" r="120" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="2"/>
+    <circle cx="410" cy="220" r="115" fill="url(#screen-bg-listen)"/>
+
+    <g clip-path="url(#clip-listen)">
+      <!-- Blue pulsing ring -->
+      <circle cx="410" cy="220" r="112" fill="none" stroke="#0064ff" stroke-width="3" opacity="0.8" filter="url(#glow-blue)"/>
+
+      <!-- Rotating arcs - blue accent -->
+      <g opacity="0.7">
+        <path d="M410,112 A108,108 0 0,1 510,178" fill="none" stroke="#0064ff" stroke-width="5" stroke-linecap="round"/>
+        <path d="M510,262 A108,108 0 0,1 410,328" fill="none" stroke="#0064ff" stroke-width="5" stroke-linecap="round"/>
+        <path d="M310,178 A108,108 0 0,1 310,262" fill="none" stroke="#0064ff" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
+      </g>
+
+      <g opacity="0.5">
+        <path d="M410,128 A92,92 0 0,1 490,185" fill="none" stroke="#003280" stroke-width="4" stroke-linecap="round"/>
+        <path d="M330,255 A92,92 0 0,1 410,312" fill="none" stroke="#003280" stroke-width="4" stroke-linecap="round"/>
+      </g>
+
+      <circle cx="410" cy="220" r="80" fill="none" stroke="#0a1e32" stroke-width="1.5"/>
+      <circle cx="410" cy="220" r="55" fill="none" stroke="#081423" stroke-width="1"/>
+
+      <!-- Time - blue tinted -->
+      <text x="410" y="215" text-anchor="middle" fill="#0064ff" font-size="36" font-weight="bold" filter="url(#glow-blue)">14:32</text>
+      <text x="410" y="238" text-anchor="middle" fill="#003280" font-size="16">:47</text>
+
+      <!-- State text -->
+      <text x="410" y="260" text-anchor="middle" fill="#0064ff" font-size="13" font-weight="bold">Ecoute...</text>
+    </g>
+
+    <text x="410" y="365" text-anchor="middle" fill="#3b82f6" font-size="14" font-weight="bold">Ecoute</text>
+    <text x="410" y="382" text-anchor="middle" fill="#475569" font-size="10">Arcs bleu vif + texte d'etat</text>
+  </g>
+
+  <!-- ═══ STATE 3: PARLE ═══ -->
+  <g>
+    <circle cx="650" cy="220" r="120" fill="#1a1a2e" stroke="#2a2a3e" stroke-width="2"/>
+    <circle cx="650" cy="220" r="115" fill="url(#screen-bg)"/>
+
+    <g clip-path="url(#clip-speak)">
+      <!-- Green pulsing ring -->
+      <circle cx="650" cy="220" r="112" fill="none" stroke="#00c83c" stroke-width="3" opacity="0.8" filter="url(#glow-green)"/>
+
+      <!-- Rotating arcs - green accent -->
+      <g opacity="0.7">
+        <path d="M650,112 A108,108 0 0,1 750,178" fill="none" stroke="#00c83c" stroke-width="5" stroke-linecap="round"/>
+        <path d="M750,262 A108,108 0 0,1 650,328" fill="none" stroke="#00c83c" stroke-width="5" stroke-linecap="round"/>
+        <path d="M550,178 A108,108 0 0,1 550,262" fill="none" stroke="#00c83c" stroke-width="5" stroke-linecap="round" opacity="0.5"/>
+      </g>
+
+      <g opacity="0.5">
+        <path d="M650,128 A92,92 0 0,1 730,185" fill="none" stroke="#00641e" stroke-width="4" stroke-linecap="round"/>
+        <path d="M570,255 A92,92 0 0,1 650,312" fill="none" stroke="#00641e" stroke-width="4" stroke-linecap="round"/>
+      </g>
+
+      <circle cx="650" cy="220" r="80" fill="none" stroke="#0a1e32" stroke-width="1.5"/>
+      <circle cx="650" cy="220" r="55" fill="none" stroke="#081423" stroke-width="1"/>
+
+      <!-- Time - green tinted -->
+      <text x="650" y="215" text-anchor="middle" fill="#00c83c" font-size="36" font-weight="bold" filter="url(#glow-green)">14:32</text>
+      <text x="650" y="238" text-anchor="middle" fill="#00641e" font-size="16">:47</text>
+
+      <!-- State text -->
+      <text x="650" y="260" text-anchor="middle" fill="#00c83c" font-size="13" font-weight="bold">Parle...</text>
+    </g>
+
+    <text x="650" y="365" text-anchor="middle" fill="#4ade80" font-size="14" font-weight="bold">Parle</text>
+    <text x="650" y="382" text-anchor="middle" fill="#475569" font-size="10">Arcs verts + reponse TTS</text>
+  </g>
+
+  <!-- State flow arrows -->
+  <g fill="none" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)">
+    <path d="M295,220 L305,220"/>
+    <path d="M525,220 L535,220"/>
+  </g>
+  <text x="300" y="210" text-anchor="middle" fill="#475569" font-size="8">wake word</text>
+  <text x="530" y="210" text-anchor="middle" fill="#475569" font-size="8">TTS</text>
+
+  <!-- Bottom legend for missing states -->
+  <g transform="translate(170, 410)">
+    <circle cx="0" cy="0" r="6" fill="none" stroke="#a000dc" stroke-width="2"/>
+    <text x="12" y="4" fill="#94a3b8" font-size="10">Traitement (violet)</text>
+    <circle cx="180" cy="0" r="6" fill="none" stroke="#ff2800" stroke-width="2"/>
+    <text x="192" y="4" fill="#94a3b8" font-size="10">Erreur (rouge clignotant)</text>
+  </g>
+</svg>

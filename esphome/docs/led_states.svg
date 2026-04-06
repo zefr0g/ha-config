@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" font-family="'JetBrains Mono','Fira Code',monospace">
+  <defs>
+    <filter id="led-glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="led-glow-strong">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="900" height="200" rx="12" fill="#0a0e17"/>
+  <text x="450" y="28" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="bold">Effets anneau LED — 12x WS2812B</text>
+
+  <!-- VEILLE -->
+  <g transform="translate(100, 105)">
+    <g>
+      <!-- 12 LEDs in a circle, all dim blue -->
+      <circle cx="0" cy="-40" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="20" cy="-35" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="35" cy="-20" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="40" cy="0" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="35" cy="20" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="20" cy="35" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="0" cy="40" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="-20" cy="35" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="-35" cy="20" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="-40" cy="0" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="-35" cy="-20" r="4" fill="#00001e" filter="url(#led-glow)"/>
+      <circle cx="-20" cy="-35" r="4" fill="#00001e" filter="url(#led-glow)"/>
+    </g>
+    <text x="0" y="68" text-anchor="middle" fill="#64748b" font-size="12" font-weight="bold">Veille</text>
+    <text x="0" y="82" text-anchor="middle" fill="#475569" font-size="9">Bleu tamisee</text>
+  </g>
+
+  <!-- ECOUTE -->
+  <g transform="translate(280, 105)">
+    <g>
+      <!-- All dim except one bright blue dot -->
+      <circle cx="0" cy="-40" r="4" fill="#000a28" />
+      <circle cx="20" cy="-35" r="4" fill="#000a28" />
+      <circle cx="35" cy="-20" r="6" fill="#0050ff" filter="url(#led-glow-strong)"/>
+      <circle cx="40" cy="0" r="4" fill="#000a28" />
+      <circle cx="35" cy="20" r="4" fill="#000a28" />
+      <circle cx="20" cy="35" r="4" fill="#000a28" />
+      <circle cx="0" cy="40" r="4" fill="#000a28" />
+      <circle cx="-20" cy="35" r="4" fill="#000a28" />
+      <circle cx="-35" cy="20" r="4" fill="#000a28" />
+      <circle cx="-40" cy="0" r="4" fill="#000a28" />
+      <circle cx="-35" cy="-20" r="4" fill="#000a28" />
+      <circle cx="-20" cy="-35" r="4" fill="#000a28" />
+    </g>
+    <!-- Rotation arrow -->
+    <path d="M28,-42 A50,50 0 0,1 48,-8" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrow)"/>
+    <text x="0" y="68" text-anchor="middle" fill="#3b82f6" font-size="12" font-weight="bold">Ecoute</text>
+    <text x="0" y="82" text-anchor="middle" fill="#475569" font-size="9">Point tournant</text>
+  </g>
+
+  <!-- TRAITEMENT -->
+  <g transform="translate(460, 105)">
+    <g>
+      <!-- Sine wave purple intensity -->
+      <circle cx="0" cy="-40" r="5" fill="#b400b4" filter="url(#led-glow)"/>
+      <circle cx="20" cy="-35" r="4.5" fill="#8c008c"/>
+      <circle cx="35" cy="-20" r="4" fill="#500050"/>
+      <circle cx="40" cy="0" r="3.5" fill="#280028"/>
+      <circle cx="35" cy="20" r="4" fill="#500050"/>
+      <circle cx="20" cy="35" r="4.5" fill="#8c008c"/>
+      <circle cx="0" cy="40" r="5" fill="#b400b4" filter="url(#led-glow)"/>
+      <circle cx="-20" cy="35" r="4.5" fill="#8c008c"/>
+      <circle cx="-35" cy="20" r="4" fill="#500050"/>
+      <circle cx="-40" cy="0" r="3.5" fill="#280028"/>
+      <circle cx="-35" cy="-20" r="4" fill="#500050"/>
+      <circle cx="-20" cy="-35" r="4.5" fill="#8c008c"/>
+    </g>
+    <text x="0" y="68" text-anchor="middle" fill="#a855f7" font-size="12" font-weight="bold">Traitement</text>
+    <text x="0" y="82" text-anchor="middle" fill="#475569" font-size="9">Onde violette</text>
+  </g>
+
+  <!-- PARLE -->
+  <g transform="translate(640, 105)">
+    <g>
+      <!-- Sine wave green intensity -->
+      <circle cx="0" cy="-40" r="5" fill="#00c814" filter="url(#led-glow)"/>
+      <circle cx="20" cy="-35" r="4.5" fill="#009c10"/>
+      <circle cx="35" cy="-20" r="4" fill="#005a0a"/>
+      <circle cx="40" cy="0" r="3.5" fill="#002804"/>
+      <circle cx="35" cy="20" r="4" fill="#005a0a"/>
+      <circle cx="20" cy="35" r="4.5" fill="#009c10"/>
+      <circle cx="0" cy="40" r="5" fill="#00c814" filter="url(#led-glow)"/>
+      <circle cx="-20" cy="35" r="4.5" fill="#009c10"/>
+      <circle cx="-35" cy="20" r="4" fill="#005a0a"/>
+      <circle cx="-40" cy="0" r="3.5" fill="#002804"/>
+      <circle cx="-35" cy="-20" r="4" fill="#005a0a"/>
+      <circle cx="-20" cy="-35" r="4.5" fill="#009c10"/>
+    </g>
+    <text x="0" y="68" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="bold">Parle</text>
+    <text x="0" y="82" text-anchor="middle" fill="#475569" font-size="9">Onde verte</text>
+  </g>
+
+  <!-- ERREUR -->
+  <g transform="translate(820, 105)">
+    <g>
+      <!-- All bright red -->
+      <circle cx="0" cy="-40" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="20" cy="-35" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="35" cy="-20" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="40" cy="0" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="35" cy="20" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="20" cy="35" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="0" cy="40" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="-20" cy="35" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="-35" cy="20" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="-40" cy="0" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="-35" cy="-20" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+      <circle cx="-20" cy="-35" r="5" fill="#ff0000" filter="url(#led-glow-strong)"/>
+    </g>
+    <text x="0" y="68" text-anchor="middle" fill="#ef4444" font-size="12" font-weight="bold">Erreur</text>
+    <text x="0" y="82" text-anchor="middle" fill="#475569" font-size="9">Rouge clignotant</text>
+  </g>
+</svg>

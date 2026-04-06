@@ -2,6 +2,22 @@
 
 Un satellite vocal Home Assistant entierement local, construit autour d'un ESP32-S3 avec ecran LCD rond, anneau LED et un boitier imprime en 3D incline — le tout configure sous ESPHome.
 
+<p align="center">
+  <img src="docs/render_assembly.png" width="600" alt="Vue 3D du satellite assemble"/>
+</p>
+
+---
+
+## Architecture
+
+<p align="center">
+  <img src="docs/architecture.svg" width="100%" alt="Architecture du pipeline vocal"/>
+</p>
+
+Le micro ecoute en permanence le mot de reveil ("okay nabu") **localement** sur la PSRAM de l'ESP32-S3. Une fois detecte, l'audio est transmis via WiFi a Home Assistant qui gere la reconnaissance vocale (Whisper), le traitement d'intentions et la synthese vocale (Piper). La reponse audio est renvoyee au satellite et jouee par le haut-parleur.
+
+---
+
 ## Materiel
 
 ### Liste des composants
@@ -18,6 +34,13 @@ Un satellite vocal Home Assistant entierement local, construit autour d'un ESP32
 | Cable | USB-C | — | Alimentation et premier flash |
 
 ### Cablage
+
+<p align="center">
+  <img src="docs/wiring.svg" width="100%" alt="Schema de cablage"/>
+</p>
+
+<details>
+<summary>Brochage en texte</summary>
 
 ```
 Brochage GPIO ESP32-S3
@@ -51,39 +74,42 @@ Alimentation
   GND ──── tous les GND
 ```
 
+</details>
+
+---
+
 ## Logiciel
 
 Le firmware est un unique fichier YAML ESPHome : [`satellite.yaml`](satellite.yaml).
 
 ### Fonctionnalites
 
-- **Wake word local** — utilise Micro Wake Word (`okay_nabu`) directement sur la PSRAM de l'ESP32-S3. Aucun flux audio ne quitte l'appareil tant que le mot de reveil n'est pas detecte.
-- **Pipeline vocal** — transmet l'audio a Home Assistant pour la reconnaissance vocale (STT), le traitement d'intentions et la synthese vocale (TTS). Les reponses sont jouees via le MAX98357A.
-- **Ecran rond anime** — rendu lambda personnalise a 10 fps :
-  - Horloge numerique (heures, minutes, secondes) synchronisee avec Home Assistant
-  - Affichage de la date (en francais) au repos
-  - Trois anneaux d'arcs rotatifs concentriques a vitesses independantes
-  - Indicateur de secondes fluide sur l'anneau exterieur
-  - Anneau d'etat pulsant qui change de couleur selon l'etat de l'assistant vocal
-  - Indicateur de volume avec icone haut-parleur
-  - Indicateur de signal WiFi en arcs
-  - Couleurs par etat : bleu (ecoute), violet (traitement), vert (parle), rouge (erreur)
-- **Effets anneau LED** — 12 LEDs adressables avec animations distinctes :
-  - *Veille* — lueur bleue tamisee
-  - *Ecoute* — point bleu tournant
-  - *Traitement* — onde violette sinusoidale
-  - *Parle* — onde verte sinusoidale
-  - *Erreur* — clignotement rouge
-- **Son de demarrage** — deux notes ascendantes generees proceduralement (Do5 vers Sol5)
-- **Controle du volume** — slider 0-100% expose dans Home Assistant, persistant entre les redemarrages
-- **Traitement audio** — suppression de bruit niveau 4, gain automatique 31 dBFS
+- **Wake word local** — Micro Wake Word (`okay_nabu`) sur la PSRAM. Aucun flux audio ne quitte l'appareil tant que le mot de reveil n'est pas detecte.
+- **Pipeline vocal** — transmet l'audio a Home Assistant pour STT, traitement d'intentions et TTS.
+- **Ecran rond anime** — rendu lambda a 10 fps avec horloge, arcs rotatifs, indicateurs volume/WiFi.
+- **Anneau LED** — 12 LEDs adressables avec animations par etat.
+- **Son de demarrage** — deux notes ascendantes generees proceduralement (Do5 → Sol5).
+- **Volume** — slider 0-100% expose dans HA, persistant entre redemarrages.
+- **Audio** — suppression de bruit niveau 4, gain auto 31 dBFS.
 
-### Framework ESPHome
+### Interface ecran
 
-- ESP-IDF (version recommandee)
-- PSRAM : mode octal, 80 MHz
-- Version ESPHome minimale : 2024.11.0
-- Packages partages : [`common/core.yaml`](common/core.yaml) (API, OTA, portail captif), [`common/wifi.yaml`](common/wifi.yaml) (WiFi WPA2 + AP de secours)
+<p align="center">
+  <img src="docs/display_ui.svg" width="100%" alt="Etats de l'ecran"/>
+</p>
+
+L'ecran rond GC9A01A (240x240) affiche une interface de type "cadran spatial" avec :
+- **Horloge** numerique synchronisee Home Assistant + date en francais
+- **Trois anneaux** d'arcs rotatifs concentriques a vitesses independantes
+- **Indicateur de secondes** fluide sur l'anneau exterieur
+- **Anneau d'etat** pulsant dont la couleur change selon l'etat VA
+- **Volume** (barres + icone haut-parleur) et **WiFi** (arcs) aux extremites
+
+### Effets anneau LED
+
+<p align="center">
+  <img src="docs/led_states.svg" width="100%" alt="Etats de l'anneau LED"/>
+</p>
 
 ### Etats de l'assistant vocal
 
@@ -95,17 +121,42 @@ Le firmware est un unique fichier YAML ESPHome : [`satellite.yaml`](satellite.ya
 | Parle | 3 | "Parle..." (vert) | Onde verte | Lecture de la reponse TTS |
 | Erreur | 4 | "Erreur" (rouge) | Clignotement rouge | Erreur pipeline (3s puis reset) |
 
+### Framework ESPHome
+
+- ESP-IDF (version recommandee)
+- PSRAM : mode octal, 80 MHz
+- Version ESPHome minimale : 2024.11.0
+- Packages partages : [`common/core.yaml`](common/core.yaml) (API, OTA, portail captif), [`common/wifi.yaml`](common/wifi.yaml) (WiFi WPA2 + AP de secours)
+
+---
+
 ## Boitier
 
-Le boitier est un design parametrique OpenSCAD ([`enclosure/satellite.scad`](../enclosure/satellite.scad)) compose de deux pieces imprimees.
+Le boitier est un design parametrique OpenSCAD ([`../enclosure/satellite.scad`](../enclosure/satellite.scad)) compose de deux pieces imprimees.
+
+<p align="center">
+  <img src="docs/render_assembly.png" width="45%" alt="Vue assemblage"/>
+  <img src="docs/render_assembly_top.png" width="45%" alt="Vue dessus"/>
+</p>
 
 ### Conception
 
 - **Format** — puck cylindrique de 90 mm de diametre, incline a 15 degres pour orienter l'ecran et le micro vers l'utilisateur
 - **Epaisseur de paroi** — 2 mm
-- **Deux pieces :**
-  - **Corps** — coque cylindrique avec grille haut-parleur en nid d'abeille sur le dessous, embases pour inserts M3 a chaud, collet press-fit pour le haut-parleur, et passage cable USB-C a l'arriere
-  - **Face** — capot superieur affleurant avec fenetre ecran (34 mm), logement pour l'anneau LED (cavite 50 mm), port micro, et trous fraises M3
+
+**Corps** — coque cylindrique avec grille nid d'abeille, embases inserts M3, collet press-fit haut-parleur, passage USB-C arriere.
+
+**Face** — capot affleurant avec fenetre ecran (34 mm), logement anneau LED (50 mm), port micro, trous fraises M3.
+
+<p align="center">
+  <img src="docs/render_body.png" width="30%" alt="Corps"/>
+  <img src="docs/render_face.png" width="30%" alt="Face (arriere)"/>
+  <img src="docs/render_bottom.png" width="30%" alt="Dessous (grille)"/>
+</p>
+
+<p align="center">
+  <em>Corps (interieur) — Face (arriere, logement LED/ecran) — Dessous (grille nid d'abeille)</em>
+</p>
 
 ### Montage
 
@@ -119,7 +170,7 @@ Le boitier est un design parametrique OpenSCAD ([`enclosure/satellite.scad`](../
 ### Impression
 
 - STL pre-exportes dans [`enclosure/`](../enclosure/) : `body.stl`, `face.stl`, `spk_ring.stl`
-- Pour personnaliser, ouvrir `satellite.scad` dans OpenSCAD et changer la variable `part` en `body`, `face` ou `assembly` (previsualisation)
+- Pour personnaliser, ouvrir `satellite.scad` dans OpenSCAD et changer la variable `part` en `body`, `face` ou `assembly`
 - Recommande : PLA ou PETG, hauteur de couche 0.2 mm, remplissage 20%
 - Imprimer la face en blanc ou translucide pour diffuser la lumiere de l'anneau LED
 
@@ -135,6 +186,8 @@ Le boitier est un design parametrique OpenSCAD ([`enclosure/satellite.scad`](../
 | Anneau LED exterieur | 50 mm |
 | Fente cable | 14 x 8 mm |
 | Fixation | 3x M3 sur PCD 78 mm |
+
+---
 
 ## Flash du firmware
 
