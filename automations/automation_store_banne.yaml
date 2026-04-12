@@ -1,0 +1,38 @@
+alias: "Store banne — Fermer (vent fort ou coucher du soleil)"
+description: "Ferme le store banne automatiquement si les rafales dépassent 40 km/h ou au coucher du soleil."
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.station_meteo_rafale_vent
+    above: 40
+    for: "00:02:00"
+    id: vent_fort
+  - platform: sun
+    event: sunset
+    id: coucher_soleil
+condition:
+  - condition: state
+    entity_id: cover.awning_0001
+    state: "open"
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: vent_fort
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: cover.awning_0001
+          - service: notify.mobile_app_pixel_7a
+            data:
+              title: "Store banne"
+              message: >-
+                Fermé automatiquement — rafales à
+                {{ states('sensor.station_meteo_rafale_vent') | round(0) }} km/h
+      - conditions:
+          - condition: trigger
+            id: coucher_soleil
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: cover.awning_0001
+mode: single

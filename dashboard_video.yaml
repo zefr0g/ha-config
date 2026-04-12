@@ -76,7 +76,7 @@ views:
                   - camera_entity: camera.doorbell
                     live_provider: go2rtc
                     go2rtc:
-                      url: http://dd-frigate:1984
+                      stream: doorbell
                       modes:
                         - webrtc
                         - mse
@@ -93,7 +93,7 @@ views:
                   - camera_entity: camera.entree
                     live_provider: go2rtc
                     go2rtc:
-                      url: http://dd-frigate:1984
+                      stream: entree
                       modes:
                         - webrtc
                         - mse
@@ -110,7 +110,7 @@ views:
                   - camera_entity: camera.back
                     live_provider: go2rtc
                     go2rtc:
-                      url: http://dd-frigate:1984
+                      stream: back
                       modes:
                         - webrtc
                         - mse
@@ -127,7 +127,7 @@ views:
                   - camera_entity: camera.garage
                     live_provider: go2rtc
                     go2rtc:
-                      url: http://dd-frigate:1984
+                      stream: garage
                       modes:
                         - webrtc
                         - mse

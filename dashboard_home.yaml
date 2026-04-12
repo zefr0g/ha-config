@@ -93,52 +93,60 @@ views:
                 hours_to_show: 24
                 height: 110
                 line_width: 2
+                lower_bound: -5
+                upper_bound: 45
+                lower_bound_secondary: 0
+                upper_bound_secondary: 100
                 show:
                   name: false
                   icon: false
                 entities:
-                  - entity: sensor.station_meteo_temperature_exterieure
+                  - entity: sensor.vevor_7in1_0_2569_temperature_2
                     name: Temp.
                     color: '#e45e33'
-                    y_axis: secondary
                     show_state: true
                     show_fill: true
-                  - entity: sensor.station_meteo_humidite_exterieure
+                  - entity: sensor.vevor_7in1_0_2569_humidity_2
                     name: Humidité
                     color: '#42a5f5'
                     y_axis: secondary
                     show_state: true
                     show_fill: false
-                  - entity: sensor.garage_pressure
-                    name: Pression
-                    color: '#7e69f9'
-                    show_state: true
-                    show_fill: false
-                    show_points: false
                 card_mod:
                   style: |
                     ha-card {
                       border: none !important;
                       box-shadow: none !important;
                     }
+                    .states.flex {
+                      flex-wrap: wrap;
+                    }
+                    .states.flex::after {
+                      content: "{{ relative_time(states['sensor.vevor_7in1_0_2569_temperature_2'].last_changed) }}";
+                      flex-basis: 100%;
+                      font-size: 0.8em;
+                      opacity: 0.7;
+                      text-align: center;
+                      margin-top: 2px;
+                    }
               - type: horizontal-stack
                 cards:
                   - type: custom:mushroom-template-card
                     primary: >-
-                      {{ states('sensor.station_meteo_vitesse_vent') | float | round(1) }} km/h
+                      {{ states('sensor.vevor_7in1_0_2569_wind_average') | float | round(1) }} km/h
                     secondary: >-
-                      {% set d = states('sensor.station_meteo_direction_vent') | float %}
+                      {% set d = states('sensor.vevor_7in1_0_2569_wind_direction_2') | float %}
                       {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
                       {{ dirs[((d + 22.5) / 45) | int % 8] }} ({{ d | round(0) | int }}°)
                     icon: mdi:weather-windy
                     icon_color: >-
-                      {% set v = states('sensor.station_meteo_vitesse_vent') | float %}
+                      {% set v = states('sensor.vevor_7in1_0_2569_wind_average') | float %}
                       {% if v < 20 %} teal
                       {% elif v < 40 %} green
                       {% elif v < 60 %} orange
                       {% else %} red
                       {% endif %}
-                    entity: sensor.station_meteo_vitesse_vent
+                    entity: sensor.vevor_7in1_0_2569_wind_average
                     tap_action:
                       action: more-info
                     card_mod:
@@ -149,9 +157,9 @@ views:
                         }
                   - type: custom:mushroom-template-card
                     primary: >-
-                      {{ states('sensor.station_meteo_rafale_vent') | float | round(1) }} km/h
+                      {{ states('sensor.vevor_7in1_0_2569_wind_max') | float | round(1) }} km/h
                     secondary: >-
-                      {% set g = states('sensor.station_meteo_rafale_vent') | float %}
+                      {% set g = states('sensor.vevor_7in1_0_2569_wind_max') | float %}
                       {% if g < 20 %} Calme
                       {% elif g < 40 %} Brise
                       {% elif g < 60 %} Vent fort
@@ -160,14 +168,14 @@ views:
                       {% endif %}
                     icon: mdi:windsock
                     icon_color: >-
-                      {% set g = states('sensor.station_meteo_rafale_vent') | float %}
+                      {% set g = states('sensor.vevor_7in1_0_2569_wind_max') | float %}
                       {% if g < 20 %} teal
                       {% elif g < 40 %} green
                       {% elif g < 60 %} orange
                       {% elif g < 90 %} deep-orange
                       {% else %} red
                       {% endif %}
-                    entity: sensor.station_meteo_rafale_vent
+                    entity: sensor.vevor_7in1_0_2569_wind_max
                     tap_action:
                       action: more-info
                     card_mod:
@@ -180,24 +188,24 @@ views:
                 alignment: center
                 chips:
                   - type: template
-                    entity: sensor.station_meteo_indice_uv
+                    entity: sensor.vevor_7in1_0_2569_uv_index
                     icon: mdi:sun-wireless
                     icon_color: orange
-                    content: "UV {{ states('sensor.station_meteo_indice_uv') }}"
+                    content: "UV {{ states('sensor.vevor_7in1_0_2569_uv_index') }}"
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.station_meteo_pluie_journee
+                    entity: sensor.vevor_7in1_0_2569_rain
                     icon: mdi:weather-rainy
                     icon_color: blue
-                    content: "{{ states('sensor.station_meteo_pluie_journee') }} mm"
+                    content: "{{ states('sensor.vevor_7in1_0_2569_rain') }} mm"
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.station_meteo_rayonnement_solaire
+                    entity: sensor.vevor_7in1_0_2569_illuminance
                     icon: mdi:brightness-5
                     icon_color: yellow
-                    content: "{{ states('sensor.station_meteo_rayonnement_solaire') }} W/m²"
+                    content: "{{ states('sensor.vevor_7in1_0_2569_illuminance') }} lx"
                     tap_action:
                       action: more-info
                 card_mod:
@@ -218,6 +226,7 @@ views:
                     name: T° ECS
                     height: 60
                     line_width: 2
+                    font_size: 70
                     entities:
                       - sensor.ballon_temperature
                     show:
@@ -267,6 +276,7 @@ views:
                     hours_to_show: 48
                     height: 60
                     line_width: 2
+                    font_size: 70
                     entities:
                       - sensor.temperature_piscine
                     color_thresholds:
@@ -280,6 +290,13 @@ views:
                         color: '#f5b514'
                       - value: 32
                         color: '#d75024'
+                    card_mod:
+                      style: |
+                        .states.flex::after {
+                          content: "{{ relative_time(states['sensor.temperature_piscine'].last_changed) }}";
+                          font-size: 0.75em;
+                          opacity: 0.7;
+                        }
                   - type: custom:mushroom-chips-card
                     alignment: center
                     chips:
@@ -302,6 +319,60 @@ views:
                           %}ON{% else %}OFF{% endif %}
                         tap_action:
                           action: toggle
+                    card_mod:
+                      style: |
+                        ha-card {
+                          --chip-spacing: 0;
+                          padding: 0 4px 4px 4px !important;
+                        }
+              - type: custom:stack-in-card
+                mode: vertical
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Baromètre
+                    hours_to_show: 24
+                    height: 60
+                    bar_spacing: 3
+                    line_width: 2
+                    points_per_hour: 1
+                    font_size: 70
+                    line_color: '#7e69f9'
+                    entities:
+                      - entity: sensor.garage_pressure
+                        name: Baromètre
+                        show_state: true
+                    show:
+                      graph: bar
+                      labels: false
+                    card_mod:
+                      style: |
+                        .graph { margin-top: 0 !important; padding-top: 0 !important; }
+                        .graph__container { margin-top: 0 !important; }
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        entity: sensor.garage_pressure
+                        icon: >-
+                          {% set p = states('sensor.garage_pressure') | float(0) %}
+                          {% if p > 1020 %} mdi:weather-sunny
+                          {% elif p > 1009 %} mdi:weather-partly-cloudy
+                          {% else %} mdi:weather-rainy
+                          {% endif %}
+                        icon_color: >-
+                          {% set p = states('sensor.garage_pressure') | float(0) %}
+                          {% if p > 1020 %} amber
+                          {% elif p > 1009 %} orange
+                          {% else %} blue
+                          {% endif %}
+                        content: >-
+                          {% set p = states('sensor.garage_pressure') | float(0) %}
+                          {% if p > 1020 %} Soleil
+                          {% elif p > 1009 %} Variable
+                          {% else %} Pluie
+                          {% endif %}
+                        tap_action:
+                          action: more-info
                     card_mod:
                       style: |
                         ha-card {
@@ -345,13 +416,13 @@ views:
             alignment: center
             chips:
               - type: template
-                entity: binary_sensor.qemu_dd_frigate_104_status
+                entity: binary_sensor.lxc_dd_frigate_106_status
                 icon: mdi:cctv
                 icon_color: >-
-                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
                   'on') %}green {% else %}red{% endif %}
                 content: >-
-                  {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
+                  {{ states('sensor.lxc_dd_frigate_106_cpu_used') | float |
                   round(0) }}%
                 tap_action:
                   action: more-info
@@ -565,6 +636,19 @@ views:
                 icon_color: >-
                   {% if is_state('light.wled_outside', 'on') %}yellow{% else
                   %}grey{% endif %}
+                tap_action:
+                  action: toggle
+                hold_action:
+                  action: more-info
+              - type: custom:mushroom-template-card
+                entity: valve.valve_controller_valve
+                primary: Arrosage
+                secondary: >-
+                  {% if is_state('valve.valve_controller_valve', 'open') %}Ouvert{% else %}Fermé{% endif %}
+                icon: >-
+                  {% if is_state('valve.valve_controller_valve', 'open') %}mdi:water{% else %}mdi:water-off{% endif %}
+                icon_color: >-
+                  {% if is_state('valve.valve_controller_valve', 'open') %}blue{% else %}grey{% endif %}
                 tap_action:
                   action: toggle
                 hold_action:
@@ -987,10 +1071,10 @@ views:
                         }
           - type: custom:scheduler-card
             include:
-              - switch.valve_controller_switch
               - climate.mitsusalon_mitsusalon
               - climate.mitsucouloir_mitsucouloir
               - switch.piscine_relais
               - light.wled_outside
               - switch.manubal
               - cover.awning_0001
+              - valve.valve_controller_valve

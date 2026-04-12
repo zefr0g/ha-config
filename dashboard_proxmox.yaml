@@ -327,62 +327,51 @@ views:
             mode: vertical
             cards:
               - type: custom:mushroom-title-card
-                title: dd-frigate (104)
+                title: dd-frigate (106)
                 subtitle: >-
-                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
                   'on') %}
-                    Since {{ as_timestamp(states('sensor.qemu_dd_frigate_104_last_boot'))
+                    Since {{ as_timestamp(states('sensor.lxc_dd_frigate_106_last_boot'))
                     | timestamp_custom('%d/%m %H:%M') }}
-                    ({{ relative_time(states('sensor.qemu_dd_frigate_104_last_boot') | as_datetime) }})
+                    ({{ relative_time(states('sensor.lxc_dd_frigate_106_last_boot') | as_datetime) }})
                   {% else %}Stopped{% endif %}
               - type: custom:mushroom-chips-card
                 alignment: center
                 chips:
                   - type: template
-                    entity: binary_sensor.qemu_dd_frigate_104_status
+                    entity: binary_sensor.lxc_dd_frigate_106_status
                     icon: mdi:cctv
                     icon_color: >-
-                      {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                      {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
                       'on') %}green {% else %}red{% endif %}
                     content: >-
-                      {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                      {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
                       'on') %}Running {% else %}Stopped{% endif %}
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: binary_sensor.qemu_dd_frigate_104_health
-                    icon: mdi:heart-pulse
-                    icon_color: >-
-                      {% if is_state('binary_sensor.qemu_dd_frigate_104_health',
-                      'off') %}green {% else %}red{% endif %}
-                    content: >-
-                      {% if is_state('binary_sensor.qemu_dd_frigate_104_health',
-                      'off') %}Healthy {% else %}Problem{% endif %}
-                    tap_action:
-                      action: more-info
-                  - type: template
-                    entity: sensor.qemu_dd_frigate_104_cpu_used
+                    entity: sensor.lxc_dd_frigate_106_cpu_used
                     icon: mdi:cpu-64-bit
                     icon_color: >-
-                      {% set v = states('sensor.qemu_dd_frigate_104_cpu_used') |
+                      {% set v = states('sensor.lxc_dd_frigate_106_cpu_used') |
                       float(0) %} {% if v < 50 %}green{% elif v < 80 %}orange{%
                       else %}red{% endif %}
                     content: >-
-                      CPU {{ states('sensor.qemu_dd_frigate_104_cpu_used') |
+                      CPU {{ states('sensor.lxc_dd_frigate_106_cpu_used') |
                       float | round(1) }}%
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.qemu_dd_frigate_104_memory_used_percentage
+                    entity: sensor.lxc_dd_frigate_106_memory_used_percentage
                     icon: mdi:memory
                     icon_color: >-
                       {% set v =
-                      states('sensor.qemu_dd_frigate_104_memory_used_percentage')
+                      states('sensor.lxc_dd_frigate_106_memory_used_percentage')
                       | float(0) %} {% if v < 60 %}green{% elif v < 85
                       %}orange{% else %}red{% endif %}
                     content: >-
                       RAM {{
-                      states('sensor.qemu_dd_frigate_104_memory_used_percentage')
+                      states('sensor.lxc_dd_frigate_106_memory_used_percentage')
                       | float | round(1) }}%
                     tap_action:
                       action: more-info
@@ -401,7 +390,7 @@ views:
                     hours_to_show: 24
                     points_per_hour: 4
                     entities:
-                      - entity: sensor.qemu_dd_frigate_104_cpu_used
+                      - entity: sensor.lxc_dd_frigate_106_cpu_used
                         name: CPU %
                     color_thresholds:
                       - value: 0
@@ -424,7 +413,7 @@ views:
                     hours_to_show: 24
                     points_per_hour: 4
                     entities:
-                      - entity: sensor.qemu_dd_frigate_104_memory_used_percentage
+                      - entity: sensor.lxc_dd_frigate_106_memory_used_percentage
                         name: RAM %
                     color_thresholds:
                       - value: 0
@@ -473,12 +462,13 @@ views:
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.qemu_dd_frigate_104_network_in
-                    icon: mdi:swap-vertical
-                    icon_color: cyan
+                    entity: sensor.lxc_dd_frigate_106_disk_used_percentage
+                    icon: mdi:harddisk
+                    icon_color: >-
+                      {% set p = states('sensor.lxc_dd_frigate_106_disk_used_percentage') | float(0) %}
+                      {% if p >= 85 %}red{% elif p >= 60 %}orange{% else %}green{% endif %}
                     content: >-
-                      ↓{{ states('sensor.qemu_dd_frigate_104_network_in') | float | round(0) }}
-                      ↑{{ states('sensor.qemu_dd_frigate_104_network_out') | float | round(0) }} MB
+                      Disk {{ states('sensor.lxc_dd_frigate_106_disk_used_percentage') | float | round(0) }}%
                     tap_action:
                       action: more-info
                 card_mod:
@@ -787,23 +777,21 @@ views:
               - type: custom:mushroom-title-card
                 title: VMs Overview
               - type: custom:mushroom-template-card
-                entity: binary_sensor.qemu_dd_frigate_104_status
+                entity: binary_sensor.lxc_dd_frigate_106_status
                 icon: mdi:cctv
                 primary: dd-frigate
                 secondary: >-
-                  CPU {{ states('sensor.qemu_dd_frigate_104_cpu_used') | float |
+                  CPU {{ states('sensor.lxc_dd_frigate_106_cpu_used') | float |
                   round(1) }}% • RAM {{
-                  states('sensor.qemu_dd_frigate_104_memory_used') | float |
+                  states('sensor.lxc_dd_frigate_106_memory_used') | float |
                   round(2) }}GB / {{
-                  (states('sensor.qemu_dd_frigate_104_memory_used') | float +
-                  states('sensor.qemu_dd_frigate_104_memory_free') | float) |
-                  round(1) }}GB • Net ↓{{
-                  states('sensor.qemu_dd_frigate_104_network_in') | float |
-                  round(0) }} ↑{{
-                  states('sensor.qemu_dd_frigate_104_network_out') | float |
-                  round(0) }}MB
+                  (states('sensor.lxc_dd_frigate_106_memory_used') | float +
+                  states('sensor.lxc_dd_frigate_106_memory_free') | float) |
+                  round(1) }}GB • Disk {{
+                  states('sensor.lxc_dd_frigate_106_disk_used_percentage') | float |
+                  round(0) }}%
                 icon_color: >-
-                  {% if is_state('binary_sensor.qemu_dd_frigate_104_status',
+                  {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
                   'on') %}green {% else %}red{% endif %}
                 tap_action:
                   action: more-info

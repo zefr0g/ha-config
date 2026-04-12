@@ -42,6 +42,11 @@ sensor:
     unit_of_measurement: "VA"
     device_class: apparent_power
     state_class: measurement
+    filters:
+      - lambda: |-
+          // Abonnement 9 kVA — rejeter tout ce qui dépasse 10 kVA
+          if (x < 0 || x > 10000) return {};
+          return x;
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -50,6 +55,11 @@ sensor:
     unit_of_measurement: "A"
     device_class: current
     state_class: measurement
+    filters:
+      - lambda: |-
+          // 9 kVA / 230 V ≈ 39 A max — rejeter au-delà de 50 A
+          if (x < 0 || x > 50) return {};
+          return x;
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -58,6 +68,11 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     state_class: measurement
+    filters:
+      - lambda: |-
+          // Réseau français 230 V ±15 % — rejeter hors plage 180–270 V
+          if (x < 180 || x > 270) return {};
+          return x;
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -67,6 +82,18 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            // Première lecture : exiger ≥ 100 kWh pour rejeter les 0 au redémarrage
+            if (x >= 100000 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          // Rejeter les sauts > 500 kWh ou les baisses (compteur croissant)
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -76,6 +103,16 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 100000 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -85,6 +122,16 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 100000 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   # --- Injection (production photovoltaïque) ---
   - platform: teleinfo
@@ -95,6 +142,16 @@ sensor:
     device_class: energy
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 100000 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -103,6 +160,10 @@ sensor:
     unit_of_measurement: "VA"
     device_class: apparent_power
     state_class: measurement
+    filters:
+      - lambda: |-
+          if (x < 0 || x > 10000) return {};
+          return x;
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -111,6 +172,16 @@ sensor:
     unit_of_measurement: "VArh"
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 0 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -119,6 +190,16 @@ sensor:
     unit_of_measurement: "VArh"
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 0 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -127,6 +208,16 @@ sensor:
     unit_of_measurement: "VArh"
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 0 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
@@ -135,6 +226,16 @@ sensor:
     unit_of_measurement: "VArh"
     state_class: total_increasing
     accuracy_decimals: 0
+    filters:
+      - lambda: |-
+          static float last = -1;
+          if (last < 0) {
+            if (x >= 0 && x < 300000000) { last = x; return x; }
+            return {};
+          }
+          float delta = x - last;
+          if (delta >= 0 && delta <= 500000) { last = x; return x; }
+          return {};
 
   - platform: teleinfo
     teleinfo_id: tic
