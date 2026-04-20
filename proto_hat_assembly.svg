@@ -1,0 +1,662 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1400" font-family="monospace" font-size="11">
+  <!-- ============================================================
+       Proto HAT assembly diagram — Voice Assistant
+       Board: landscape RPi Proto HAT w/EEP
+         - Top: 40-pin header (2×20) + single row of labeled breakouts
+         - Left (upper): +3V3 + GND horizontal rails
+         - Center: main proto grid (rows of connected holes)
+         - Left (lower): +5V + GND horizontal rails
+         - Bottom-right: EEPROM
+       Components placed OUTSIDE the board.
+       Wires terminate at specific labeled solder holes.
+       ============================================================ -->
+
+  <defs>
+    <radialGradient id="pad" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#222"/>
+      <stop offset="60%" stop-color="#222"/>
+      <stop offset="70%" stop-color="#e8b040"/>
+      <stop offset="100%" stop-color="#b0801c"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1700" height="1400" fill="#f6f6f6"/>
+
+  <text x="850" y="28" text-anchor="middle" font-size="18" font-weight="bold">Proto HAT w/EEP — Voice Assistant Assembly</text>
+  <text x="850" y="46" text-anchor="middle" font-size="11" fill="#555">Components outside the board. Wires land on specific solder holes (highlighted yellow). 2.54 mm pitch.</text>
+
+  <!-- ==========================================================
+       BOARD (landscape)
+       translate(200, 250)
+       board size: 1300 wide × 800 tall
+       grid pitch: 22 px
+       ========================================================== -->
+  <g id="board" transform="translate(200,250)">
+    <rect x="0" y="0" width="1300" height="800" rx="14" fill="#b82020" stroke="#700" stroke-width="2"/>
+
+    <!-- mounting holes -->
+    <circle cx="30"    cy="30"  r="9" fill="#f6f6f6" stroke="#555"/>
+    <circle cx="1270"  cy="30"  r="9" fill="#f6f6f6" stroke="#555"/>
+    <circle cx="30"    cy="770" r="9" fill="#f6f6f6" stroke="#555"/>
+    <circle cx="1270"  cy="770" r="9" fill="#f6f6f6" stroke="#555"/>
+
+    <!-- ================== 40-PIN RPI HEADER (top) ================== -->
+    <!-- 2 rows × 20 pins, square pads -->
+    <rect x="130" y="40" width="1040" height="50" fill="#a01515" stroke="#500"/>
+    <g fill="url(#pad)">
+      <!-- 20 pins × 2 rows, pitch 50, y=55 and y=75 -->
+      <rect x="145" y="50" width="10" height="10"/><rect x="145" y="70" width="10" height="10"/>
+      <rect x="195" y="50" width="10" height="10"/><rect x="195" y="70" width="10" height="10"/>
+      <rect x="245" y="50" width="10" height="10"/><rect x="245" y="70" width="10" height="10"/>
+      <rect x="295" y="50" width="10" height="10"/><rect x="295" y="70" width="10" height="10"/>
+      <rect x="345" y="50" width="10" height="10"/><rect x="345" y="70" width="10" height="10"/>
+      <rect x="395" y="50" width="10" height="10"/><rect x="395" y="70" width="10" height="10"/>
+      <rect x="445" y="50" width="10" height="10"/><rect x="445" y="70" width="10" height="10"/>
+      <rect x="495" y="50" width="10" height="10"/><rect x="495" y="70" width="10" height="10"/>
+      <rect x="545" y="50" width="10" height="10"/><rect x="545" y="70" width="10" height="10"/>
+      <rect x="595" y="50" width="10" height="10"/><rect x="595" y="70" width="10" height="10"/>
+      <rect x="645" y="50" width="10" height="10"/><rect x="645" y="70" width="10" height="10"/>
+      <rect x="695" y="50" width="10" height="10"/><rect x="695" y="70" width="10" height="10"/>
+      <rect x="745" y="50" width="10" height="10"/><rect x="745" y="70" width="10" height="10"/>
+      <rect x="795" y="50" width="10" height="10"/><rect x="795" y="70" width="10" height="10"/>
+      <rect x="845" y="50" width="10" height="10"/><rect x="845" y="70" width="10" height="10"/>
+      <rect x="895" y="50" width="10" height="10"/><rect x="895" y="70" width="10" height="10"/>
+      <rect x="945" y="50" width="10" height="10"/><rect x="945" y="70" width="10" height="10"/>
+      <rect x="995" y="50" width="10" height="10"/><rect x="995" y="70" width="10" height="10"/>
+      <rect x="1045" y="50" width="10" height="10"/><rect x="1045" y="70" width="10" height="10"/>
+      <rect x="1095" y="50" width="10" height="10"/><rect x="1095" y="70" width="10" height="10"/>
+    </g>
+    <text x="650" y="35" text-anchor="middle" font-size="10" fill="#fff" opacity="0.7">40-pin RPi header</text>
+
+    <!-- ================== GPIO BREAKOUT ROW (single row, labeled) ================== -->
+    <!-- 25 breakout pads, horizontal, just below header -->
+    <!-- We lay them out across the same x span but labels stop at pin 25 -->
+    <!-- pad spacing: 40 px, starting at x=145 → 25 pads end at x=1105 -->
+    <rect x="135" y="105" width="1020" height="40" fill="#921010" stroke="#500"/>
+    <g id="breakouts">
+      <g fill="url(#pad)">
+        <circle cx="155" cy="128" r="5"/>
+        <circle cx="195" cy="128" r="5"/>
+        <circle cx="235" cy="128" r="5"/>
+        <circle cx="275" cy="128" r="5"/>
+        <circle cx="315" cy="128" r="5"/>
+        <circle cx="355" cy="128" r="5"/>
+        <circle cx="395" cy="128" r="5"/>
+        <circle cx="435" cy="128" r="5"/>
+        <circle cx="475" cy="128" r="5"/>
+        <circle cx="515" cy="128" r="5"/>
+        <circle cx="555" cy="128" r="5"/>
+        <circle cx="595" cy="128" r="5"/>
+        <circle cx="635" cy="128" r="5"/>
+        <circle cx="675" cy="128" r="5"/>
+        <circle cx="715" cy="128" r="5"/>
+        <circle cx="755" cy="128" r="5"/>
+        <circle cx="795" cy="128" r="5"/>
+        <circle cx="835" cy="128" r="5"/>
+        <circle cx="875" cy="128" r="5"/>
+        <circle cx="915" cy="128" r="5"/>
+        <circle cx="955" cy="128" r="5"/>
+        <circle cx="995" cy="128" r="5"/>
+        <circle cx="1035" cy="128" r="5"/>
+        <circle cx="1075" cy="128" r="5"/>
+        <circle cx="1115" cy="128" r="5"/>
+      </g>
+      <!-- Labels (silkscreen), small font, rotated slightly to fit -->
+      <g font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">
+        <text x="155"  y="143">SDA</text>
+        <text x="195"  y="143">SCL</text>
+        <text x="235"  y="143">TXD</text>
+        <text x="275"  y="143">RXD</text>
+        <text x="315"  y="143">#4</text>
+        <text x="355"  y="143">#17</text>
+        <text x="395"  y="143">#18</text>
+        <text x="435"  y="143">#27</text>
+        <text x="475"  y="143">#22</text>
+        <text x="515"  y="143">#23</text>
+        <text x="555"  y="143">#24</text>
+        <text x="595"  y="143">#25</text>
+        <text x="635"  y="143">MOSI</text>
+        <text x="675"  y="143">MISO</text>
+        <text x="715"  y="143">CLK</text>
+        <text x="755"  y="143">CE0</text>
+        <text x="795"  y="143">CE1</text>
+        <text x="835"  y="143">#5</text>
+        <text x="875"  y="143">#6</text>
+        <text x="915"  y="143">#12</text>
+        <text x="955"  y="143">#13</text>
+        <text x="995"  y="143">#16</text>
+        <text x="1035" y="143">#19</text>
+        <text x="1075" y="143">#20</text>
+        <text x="1115" y="143">#21</text>
+      </g>
+    </g>
+
+    <!-- ================== +3V3 / GND UPPER RAILS ================== -->
+    <!-- Left-side labels "+3V3" and "GND", rails run horizontally below breakout row -->
+    <text x="90" y="172" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">+3V3</text>
+    <text x="90" y="200" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">GND</text>
+
+    <!-- +3V3 rail (orange tint) -->
+    <rect x="130" y="162" width="1030" height="16" fill="#ff8800" opacity="0.35"/>
+    <g fill="url(#pad)">
+      <!-- one hole every 40 px from 155..1115 -->
+      <circle cx="155" cy="170" r="4"/><circle cx="195" cy="170" r="4"/><circle cx="235" cy="170" r="4"/>
+      <circle cx="275" cy="170" r="4"/><circle cx="315" cy="170" r="4"/><circle cx="355" cy="170" r="4"/>
+      <circle cx="395" cy="170" r="4"/><circle cx="435" cy="170" r="4"/><circle cx="475" cy="170" r="4"/>
+      <circle cx="515" cy="170" r="4"/><circle cx="555" cy="170" r="4"/><circle cx="595" cy="170" r="4"/>
+      <circle cx="635" cy="170" r="4"/><circle cx="675" cy="170" r="4"/><circle cx="715" cy="170" r="4"/>
+      <circle cx="755" cy="170" r="4"/><circle cx="795" cy="170" r="4"/><circle cx="835" cy="170" r="4"/>
+      <circle cx="875" cy="170" r="4"/><circle cx="915" cy="170" r="4"/><circle cx="955" cy="170" r="4"/>
+      <circle cx="995" cy="170" r="4"/><circle cx="1035" cy="170" r="4"/><circle cx="1075" cy="170" r="4"/>
+      <circle cx="1115" cy="170" r="4"/>
+    </g>
+    <!-- GND rail (upper) -->
+    <rect x="130" y="190" width="1030" height="16" fill="#000000" opacity="0.30"/>
+    <g fill="url(#pad)">
+      <circle cx="155" cy="198" r="4"/><circle cx="195" cy="198" r="4"/><circle cx="235" cy="198" r="4"/>
+      <circle cx="275" cy="198" r="4"/><circle cx="315" cy="198" r="4"/><circle cx="355" cy="198" r="4"/>
+      <circle cx="395" cy="198" r="4"/><circle cx="435" cy="198" r="4"/><circle cx="475" cy="198" r="4"/>
+      <circle cx="515" cy="198" r="4"/><circle cx="555" cy="198" r="4"/><circle cx="595" cy="198" r="4"/>
+      <circle cx="635" cy="198" r="4"/><circle cx="675" cy="198" r="4"/><circle cx="715" cy="198" r="4"/>
+      <circle cx="755" cy="198" r="4"/><circle cx="795" cy="198" r="4"/><circle cx="835" cy="198" r="4"/>
+      <circle cx="875" cy="198" r="4"/><circle cx="915" cy="198" r="4"/><circle cx="955" cy="198" r="4"/>
+      <circle cx="995" cy="198" r="4"/><circle cx="1035" cy="198" r="4"/><circle cx="1075" cy="198" r="4"/>
+      <circle cx="1115" cy="198" r="4"/>
+    </g>
+
+    <!-- ================== MAIN PROTO GRID ================== -->
+    <!-- 18 rows of horizontal 5-hole groups, each row split left/right with a center gap -->
+    <!-- y from 230 to 610, pitch 22 -->
+    <!-- Each row: two horizontal traces, 10 holes left (5+5) and 10 holes right (5+5) —
+         but for clarity we draw ALL proto rows as 5+5+gap+5+5 = 20 holes -->
+    <!-- column x: 155..1115, pitch 40. left group: 155..355 (col 1-5), then 395..595 (col 6-10), gap, then 675..875 (col 11-15), 915..1115 (col 16-20)
+         Actually looking at real board: the rows are split into groups of 5 by column.
+         Simplify to just "5+5 | gap | 5+5" style groups -->
+
+    <g id="proto-rows">
+      <!-- Row backgrounds (traces) for visual connectivity - rows of 5 grouped -->
+      <g fill="#d46060" opacity="0.45">
+        <!-- Generate rows at y=230, 252, 274, ..., 604 (18 rows) -->
+        <!-- For each row: 4 trace strips, each spanning 5 holes -->
+        <!-- strip 1 cols 1-5 (x=155..315), strip 2 cols 6-10 (x=355..515), gap, strip 3 cols 11-15 (x=595..755), strip 4 cols 16-20 (x=795..955), strip 5 cols 21-25 (x=995..1115) -->
+        <!-- Using per-row loops manually -->
+
+        <!-- y=230 -->
+        <rect x="150" y="226" width="170" height="8" rx="3"/>
+        <rect x="350" y="226" width="170" height="8" rx="3"/>
+        <rect x="590" y="226" width="170" height="8" rx="3"/>
+        <rect x="790" y="226" width="170" height="8" rx="3"/>
+        <rect x="990" y="226" width="130" height="8" rx="3"/>
+        <!-- y=252 -->
+        <rect x="150" y="248" width="170" height="8" rx="3"/>
+        <rect x="350" y="248" width="170" height="8" rx="3"/>
+        <rect x="590" y="248" width="170" height="8" rx="3"/>
+        <rect x="790" y="248" width="170" height="8" rx="3"/>
+        <rect x="990" y="248" width="130" height="8" rx="3"/>
+        <!-- y=274 -->
+        <rect x="150" y="270" width="170" height="8" rx="3"/>
+        <rect x="350" y="270" width="170" height="8" rx="3"/>
+        <rect x="590" y="270" width="170" height="8" rx="3"/>
+        <rect x="790" y="270" width="170" height="8" rx="3"/>
+        <rect x="990" y="270" width="130" height="8" rx="3"/>
+        <!-- y=296 -->
+        <rect x="150" y="292" width="170" height="8" rx="3"/>
+        <rect x="350" y="292" width="170" height="8" rx="3"/>
+        <rect x="590" y="292" width="170" height="8" rx="3"/>
+        <rect x="790" y="292" width="170" height="8" rx="3"/>
+        <rect x="990" y="292" width="130" height="8" rx="3"/>
+        <!-- y=318 -->
+        <rect x="150" y="314" width="170" height="8" rx="3"/>
+        <rect x="350" y="314" width="170" height="8" rx="3"/>
+        <rect x="590" y="314" width="170" height="8" rx="3"/>
+        <rect x="790" y="314" width="170" height="8" rx="3"/>
+        <rect x="990" y="314" width="130" height="8" rx="3"/>
+        <!-- y=340 -->
+        <rect x="150" y="336" width="170" height="8" rx="3"/>
+        <rect x="350" y="336" width="170" height="8" rx="3"/>
+        <rect x="590" y="336" width="170" height="8" rx="3"/>
+        <rect x="790" y="336" width="170" height="8" rx="3"/>
+        <rect x="990" y="336" width="130" height="8" rx="3"/>
+        <!-- y=362 -->
+        <rect x="150" y="358" width="170" height="8" rx="3"/>
+        <rect x="350" y="358" width="170" height="8" rx="3"/>
+        <rect x="590" y="358" width="170" height="8" rx="3"/>
+        <rect x="790" y="358" width="170" height="8" rx="3"/>
+        <rect x="990" y="358" width="130" height="8" rx="3"/>
+        <!-- y=384 -->
+        <rect x="150" y="380" width="170" height="8" rx="3"/>
+        <rect x="350" y="380" width="170" height="8" rx="3"/>
+        <rect x="590" y="380" width="170" height="8" rx="3"/>
+        <rect x="790" y="380" width="170" height="8" rx="3"/>
+        <rect x="990" y="380" width="130" height="8" rx="3"/>
+        <!-- y=406 -->
+        <rect x="150" y="402" width="170" height="8" rx="3"/>
+        <rect x="350" y="402" width="170" height="8" rx="3"/>
+        <rect x="590" y="402" width="170" height="8" rx="3"/>
+        <rect x="790" y="402" width="170" height="8" rx="3"/>
+        <rect x="990" y="402" width="130" height="8" rx="3"/>
+        <!-- y=428 -->
+        <rect x="150" y="424" width="170" height="8" rx="3"/>
+        <rect x="350" y="424" width="170" height="8" rx="3"/>
+        <rect x="590" y="424" width="170" height="8" rx="3"/>
+        <rect x="790" y="424" width="170" height="8" rx="3"/>
+        <rect x="990" y="424" width="130" height="8" rx="3"/>
+        <!-- y=450 -->
+        <rect x="150" y="446" width="170" height="8" rx="3"/>
+        <rect x="350" y="446" width="170" height="8" rx="3"/>
+        <rect x="590" y="446" width="170" height="8" rx="3"/>
+        <rect x="790" y="446" width="170" height="8" rx="3"/>
+        <rect x="990" y="446" width="130" height="8" rx="3"/>
+        <!-- y=472 -->
+        <rect x="150" y="468" width="170" height="8" rx="3"/>
+        <rect x="350" y="468" width="170" height="8" rx="3"/>
+        <rect x="590" y="468" width="170" height="8" rx="3"/>
+        <rect x="790" y="468" width="170" height="8" rx="3"/>
+        <rect x="990" y="468" width="130" height="8" rx="3"/>
+        <!-- y=494 -->
+        <rect x="150" y="490" width="170" height="8" rx="3"/>
+        <rect x="350" y="490" width="170" height="8" rx="3"/>
+        <rect x="590" y="490" width="170" height="8" rx="3"/>
+        <rect x="790" y="490" width="170" height="8" rx="3"/>
+        <rect x="990" y="490" width="130" height="8" rx="3"/>
+        <!-- y=516 -->
+        <rect x="150" y="512" width="170" height="8" rx="3"/>
+        <rect x="350" y="512" width="170" height="8" rx="3"/>
+        <rect x="590" y="512" width="170" height="8" rx="3"/>
+        <rect x="790" y="512" width="170" height="8" rx="3"/>
+        <rect x="990" y="512" width="130" height="8" rx="3"/>
+        <!-- y=538 -->
+        <rect x="150" y="534" width="170" height="8" rx="3"/>
+        <rect x="350" y="534" width="170" height="8" rx="3"/>
+        <rect x="590" y="534" width="170" height="8" rx="3"/>
+        <rect x="790" y="534" width="170" height="8" rx="3"/>
+        <rect x="990" y="534" width="130" height="8" rx="3"/>
+        <!-- y=560 -->
+        <rect x="150" y="556" width="170" height="8" rx="3"/>
+        <rect x="350" y="556" width="170" height="8" rx="3"/>
+        <rect x="590" y="556" width="170" height="8" rx="3"/>
+        <rect x="790" y="556" width="170" height="8" rx="3"/>
+        <rect x="990" y="556" width="130" height="8" rx="3"/>
+        <!-- y=582 -->
+        <rect x="150" y="578" width="170" height="8" rx="3"/>
+        <rect x="350" y="578" width="170" height="8" rx="3"/>
+        <rect x="590" y="578" width="170" height="8" rx="3"/>
+        <rect x="790" y="578" width="170" height="8" rx="3"/>
+        <rect x="990" y="578" width="130" height="8" rx="3"/>
+        <!-- y=604 -->
+        <rect x="150" y="600" width="170" height="8" rx="3"/>
+        <rect x="350" y="600" width="170" height="8" rx="3"/>
+        <rect x="590" y="600" width="170" height="8" rx="3"/>
+        <rect x="790" y="600" width="170" height="8" rx="3"/>
+        <rect x="990" y="600" width="130" height="8" rx="3"/>
+      </g>
+
+      <!-- Proto holes - 18 rows × 25 cols (x=155..1115 step 40), but we skip col 11 for visual gap centered -->
+      <!-- Easier: just draw at all 25 columns since traces show connectivity groups -->
+      <g fill="url(#pad)" id="proto-holes">
+        <!-- We build 18 rows of 25 holes -->
+        <g id="rowY">
+          <!-- placeholder; we'll render via explicit circles below -->
+        </g>
+        <!-- Explicit rendering below -->
+      </g>
+    </g>
+
+    <!-- Render proto holes (18 rows × 25 columns) -->
+    <g fill="url(#pad)">
+      <!-- Define a reusable row of 25 holes via use is complex, so just loop inline -->
+      <!-- Row 1 y=230 -->
+      <circle cx="155" cy="230" r="3"/><circle cx="195" cy="230" r="3"/><circle cx="235" cy="230" r="3"/><circle cx="275" cy="230" r="3"/><circle cx="315" cy="230" r="3"/><circle cx="355" cy="230" r="3"/><circle cx="395" cy="230" r="3"/><circle cx="435" cy="230" r="3"/><circle cx="475" cy="230" r="3"/><circle cx="515" cy="230" r="3"/><circle cx="595" cy="230" r="3"/><circle cx="635" cy="230" r="3"/><circle cx="675" cy="230" r="3"/><circle cx="715" cy="230" r="3"/><circle cx="755" cy="230" r="3"/><circle cx="795" cy="230" r="3"/><circle cx="835" cy="230" r="3"/><circle cx="875" cy="230" r="3"/><circle cx="915" cy="230" r="3"/><circle cx="955" cy="230" r="3"/><circle cx="995" cy="230" r="3"/><circle cx="1035" cy="230" r="3"/><circle cx="1075" cy="230" r="3"/><circle cx="1115" cy="230" r="3"/>
+      <!-- Row 2 y=252 -->
+      <circle cx="155" cy="252" r="3"/><circle cx="195" cy="252" r="3"/><circle cx="235" cy="252" r="3"/><circle cx="275" cy="252" r="3"/><circle cx="315" cy="252" r="3"/><circle cx="355" cy="252" r="3"/><circle cx="395" cy="252" r="3"/><circle cx="435" cy="252" r="3"/><circle cx="475" cy="252" r="3"/><circle cx="515" cy="252" r="3"/><circle cx="595" cy="252" r="3"/><circle cx="635" cy="252" r="3"/><circle cx="675" cy="252" r="3"/><circle cx="715" cy="252" r="3"/><circle cx="755" cy="252" r="3"/><circle cx="795" cy="252" r="3"/><circle cx="835" cy="252" r="3"/><circle cx="875" cy="252" r="3"/><circle cx="915" cy="252" r="3"/><circle cx="955" cy="252" r="3"/><circle cx="995" cy="252" r="3"/><circle cx="1035" cy="252" r="3"/><circle cx="1075" cy="252" r="3"/><circle cx="1115" cy="252" r="3"/>
+      <!-- Row 3 y=274 -->
+      <circle cx="155" cy="274" r="3"/><circle cx="195" cy="274" r="3"/><circle cx="235" cy="274" r="3"/><circle cx="275" cy="274" r="3"/><circle cx="315" cy="274" r="3"/><circle cx="355" cy="274" r="3"/><circle cx="395" cy="274" r="3"/><circle cx="435" cy="274" r="3"/><circle cx="475" cy="274" r="3"/><circle cx="515" cy="274" r="3"/><circle cx="595" cy="274" r="3"/><circle cx="635" cy="274" r="3"/><circle cx="675" cy="274" r="3"/><circle cx="715" cy="274" r="3"/><circle cx="755" cy="274" r="3"/><circle cx="795" cy="274" r="3"/><circle cx="835" cy="274" r="3"/><circle cx="875" cy="274" r="3"/><circle cx="915" cy="274" r="3"/><circle cx="955" cy="274" r="3"/><circle cx="995" cy="274" r="3"/><circle cx="1035" cy="274" r="3"/><circle cx="1075" cy="274" r="3"/><circle cx="1115" cy="274" r="3"/>
+      <!-- Row 4 y=296 -->
+      <circle cx="155" cy="296" r="3"/><circle cx="195" cy="296" r="3"/><circle cx="235" cy="296" r="3"/><circle cx="275" cy="296" r="3"/><circle cx="315" cy="296" r="3"/><circle cx="355" cy="296" r="3"/><circle cx="395" cy="296" r="3"/><circle cx="435" cy="296" r="3"/><circle cx="475" cy="296" r="3"/><circle cx="515" cy="296" r="3"/><circle cx="595" cy="296" r="3"/><circle cx="635" cy="296" r="3"/><circle cx="675" cy="296" r="3"/><circle cx="715" cy="296" r="3"/><circle cx="755" cy="296" r="3"/><circle cx="795" cy="296" r="3"/><circle cx="835" cy="296" r="3"/><circle cx="875" cy="296" r="3"/><circle cx="915" cy="296" r="3"/><circle cx="955" cy="296" r="3"/><circle cx="995" cy="296" r="3"/><circle cx="1035" cy="296" r="3"/><circle cx="1075" cy="296" r="3"/><circle cx="1115" cy="296" r="3"/>
+      <!-- Row 5 y=318 -->
+      <circle cx="155" cy="318" r="3"/><circle cx="195" cy="318" r="3"/><circle cx="235" cy="318" r="3"/><circle cx="275" cy="318" r="3"/><circle cx="315" cy="318" r="3"/><circle cx="355" cy="318" r="3"/><circle cx="395" cy="318" r="3"/><circle cx="435" cy="318" r="3"/><circle cx="475" cy="318" r="3"/><circle cx="515" cy="318" r="3"/><circle cx="595" cy="318" r="3"/><circle cx="635" cy="318" r="3"/><circle cx="675" cy="318" r="3"/><circle cx="715" cy="318" r="3"/><circle cx="755" cy="318" r="3"/><circle cx="795" cy="318" r="3"/><circle cx="835" cy="318" r="3"/><circle cx="875" cy="318" r="3"/><circle cx="915" cy="318" r="3"/><circle cx="955" cy="318" r="3"/><circle cx="995" cy="318" r="3"/><circle cx="1035" cy="318" r="3"/><circle cx="1075" cy="318" r="3"/><circle cx="1115" cy="318" r="3"/>
+      <!-- Row 6 y=340 -->
+      <circle cx="155" cy="340" r="3"/><circle cx="195" cy="340" r="3"/><circle cx="235" cy="340" r="3"/><circle cx="275" cy="340" r="3"/><circle cx="315" cy="340" r="3"/><circle cx="355" cy="340" r="3"/><circle cx="395" cy="340" r="3"/><circle cx="435" cy="340" r="3"/><circle cx="475" cy="340" r="3"/><circle cx="515" cy="340" r="3"/><circle cx="595" cy="340" r="3"/><circle cx="635" cy="340" r="3"/><circle cx="675" cy="340" r="3"/><circle cx="715" cy="340" r="3"/><circle cx="755" cy="340" r="3"/><circle cx="795" cy="340" r="3"/><circle cx="835" cy="340" r="3"/><circle cx="875" cy="340" r="3"/><circle cx="915" cy="340" r="3"/><circle cx="955" cy="340" r="3"/><circle cx="995" cy="340" r="3"/><circle cx="1035" cy="340" r="3"/><circle cx="1075" cy="340" r="3"/><circle cx="1115" cy="340" r="3"/>
+      <!-- Row 7 y=362 -->
+      <circle cx="155" cy="362" r="3"/><circle cx="195" cy="362" r="3"/><circle cx="235" cy="362" r="3"/><circle cx="275" cy="362" r="3"/><circle cx="315" cy="362" r="3"/><circle cx="355" cy="362" r="3"/><circle cx="395" cy="362" r="3"/><circle cx="435" cy="362" r="3"/><circle cx="475" cy="362" r="3"/><circle cx="515" cy="362" r="3"/><circle cx="595" cy="362" r="3"/><circle cx="635" cy="362" r="3"/><circle cx="675" cy="362" r="3"/><circle cx="715" cy="362" r="3"/><circle cx="755" cy="362" r="3"/><circle cx="795" cy="362" r="3"/><circle cx="835" cy="362" r="3"/><circle cx="875" cy="362" r="3"/><circle cx="915" cy="362" r="3"/><circle cx="955" cy="362" r="3"/><circle cx="995" cy="362" r="3"/><circle cx="1035" cy="362" r="3"/><circle cx="1075" cy="362" r="3"/><circle cx="1115" cy="362" r="3"/>
+      <!-- Row 8 y=384 -->
+      <circle cx="155" cy="384" r="3"/><circle cx="195" cy="384" r="3"/><circle cx="235" cy="384" r="3"/><circle cx="275" cy="384" r="3"/><circle cx="315" cy="384" r="3"/><circle cx="355" cy="384" r="3"/><circle cx="395" cy="384" r="3"/><circle cx="435" cy="384" r="3"/><circle cx="475" cy="384" r="3"/><circle cx="515" cy="384" r="3"/><circle cx="595" cy="384" r="3"/><circle cx="635" cy="384" r="3"/><circle cx="675" cy="384" r="3"/><circle cx="715" cy="384" r="3"/><circle cx="755" cy="384" r="3"/><circle cx="795" cy="384" r="3"/><circle cx="835" cy="384" r="3"/><circle cx="875" cy="384" r="3"/><circle cx="915" cy="384" r="3"/><circle cx="955" cy="384" r="3"/><circle cx="995" cy="384" r="3"/><circle cx="1035" cy="384" r="3"/><circle cx="1075" cy="384" r="3"/><circle cx="1115" cy="384" r="3"/>
+      <!-- Row 9 y=406 -->
+      <circle cx="155" cy="406" r="3"/><circle cx="195" cy="406" r="3"/><circle cx="235" cy="406" r="3"/><circle cx="275" cy="406" r="3"/><circle cx="315" cy="406" r="3"/><circle cx="355" cy="406" r="3"/><circle cx="395" cy="406" r="3"/><circle cx="435" cy="406" r="3"/><circle cx="475" cy="406" r="3"/><circle cx="515" cy="406" r="3"/><circle cx="595" cy="406" r="3"/><circle cx="635" cy="406" r="3"/><circle cx="675" cy="406" r="3"/><circle cx="715" cy="406" r="3"/><circle cx="755" cy="406" r="3"/><circle cx="795" cy="406" r="3"/><circle cx="835" cy="406" r="3"/><circle cx="875" cy="406" r="3"/><circle cx="915" cy="406" r="3"/><circle cx="955" cy="406" r="3"/><circle cx="995" cy="406" r="3"/><circle cx="1035" cy="406" r="3"/><circle cx="1075" cy="406" r="3"/><circle cx="1115" cy="406" r="3"/>
+      <!-- Row 10 y=428 -->
+      <circle cx="155" cy="428" r="3"/><circle cx="195" cy="428" r="3"/><circle cx="235" cy="428" r="3"/><circle cx="275" cy="428" r="3"/><circle cx="315" cy="428" r="3"/><circle cx="355" cy="428" r="3"/><circle cx="395" cy="428" r="3"/><circle cx="435" cy="428" r="3"/><circle cx="475" cy="428" r="3"/><circle cx="515" cy="428" r="3"/><circle cx="595" cy="428" r="3"/><circle cx="635" cy="428" r="3"/><circle cx="675" cy="428" r="3"/><circle cx="715" cy="428" r="3"/><circle cx="755" cy="428" r="3"/><circle cx="795" cy="428" r="3"/><circle cx="835" cy="428" r="3"/><circle cx="875" cy="428" r="3"/><circle cx="915" cy="428" r="3"/><circle cx="955" cy="428" r="3"/><circle cx="995" cy="428" r="3"/><circle cx="1035" cy="428" r="3"/><circle cx="1075" cy="428" r="3"/><circle cx="1115" cy="428" r="3"/>
+      <!-- Row 11 y=450 -->
+      <circle cx="155" cy="450" r="3"/><circle cx="195" cy="450" r="3"/><circle cx="235" cy="450" r="3"/><circle cx="275" cy="450" r="3"/><circle cx="315" cy="450" r="3"/><circle cx="355" cy="450" r="3"/><circle cx="395" cy="450" r="3"/><circle cx="435" cy="450" r="3"/><circle cx="475" cy="450" r="3"/><circle cx="515" cy="450" r="3"/><circle cx="595" cy="450" r="3"/><circle cx="635" cy="450" r="3"/><circle cx="675" cy="450" r="3"/><circle cx="715" cy="450" r="3"/><circle cx="755" cy="450" r="3"/><circle cx="795" cy="450" r="3"/><circle cx="835" cy="450" r="3"/><circle cx="875" cy="450" r="3"/><circle cx="915" cy="450" r="3"/><circle cx="955" cy="450" r="3"/><circle cx="995" cy="450" r="3"/><circle cx="1035" cy="450" r="3"/><circle cx="1075" cy="450" r="3"/><circle cx="1115" cy="450" r="3"/>
+      <!-- Row 12 y=472 -->
+      <circle cx="155" cy="472" r="3"/><circle cx="195" cy="472" r="3"/><circle cx="235" cy="472" r="3"/><circle cx="275" cy="472" r="3"/><circle cx="315" cy="472" r="3"/><circle cx="355" cy="472" r="3"/><circle cx="395" cy="472" r="3"/><circle cx="435" cy="472" r="3"/><circle cx="475" cy="472" r="3"/><circle cx="515" cy="472" r="3"/><circle cx="595" cy="472" r="3"/><circle cx="635" cy="472" r="3"/><circle cx="675" cy="472" r="3"/><circle cx="715" cy="472" r="3"/><circle cx="755" cy="472" r="3"/><circle cx="795" cy="472" r="3"/><circle cx="835" cy="472" r="3"/><circle cx="875" cy="472" r="3"/><circle cx="915" cy="472" r="3"/><circle cx="955" cy="472" r="3"/><circle cx="995" cy="472" r="3"/><circle cx="1035" cy="472" r="3"/><circle cx="1075" cy="472" r="3"/><circle cx="1115" cy="472" r="3"/>
+      <!-- Row 13 y=494 -->
+      <circle cx="155" cy="494" r="3"/><circle cx="195" cy="494" r="3"/><circle cx="235" cy="494" r="3"/><circle cx="275" cy="494" r="3"/><circle cx="315" cy="494" r="3"/><circle cx="355" cy="494" r="3"/><circle cx="395" cy="494" r="3"/><circle cx="435" cy="494" r="3"/><circle cx="475" cy="494" r="3"/><circle cx="515" cy="494" r="3"/><circle cx="595" cy="494" r="3"/><circle cx="635" cy="494" r="3"/><circle cx="675" cy="494" r="3"/><circle cx="715" cy="494" r="3"/><circle cx="755" cy="494" r="3"/><circle cx="795" cy="494" r="3"/><circle cx="835" cy="494" r="3"/><circle cx="875" cy="494" r="3"/><circle cx="915" cy="494" r="3"/><circle cx="955" cy="494" r="3"/><circle cx="995" cy="494" r="3"/><circle cx="1035" cy="494" r="3"/><circle cx="1075" cy="494" r="3"/><circle cx="1115" cy="494" r="3"/>
+      <!-- Row 14 y=516 -->
+      <circle cx="155" cy="516" r="3"/><circle cx="195" cy="516" r="3"/><circle cx="235" cy="516" r="3"/><circle cx="275" cy="516" r="3"/><circle cx="315" cy="516" r="3"/><circle cx="355" cy="516" r="3"/><circle cx="395" cy="516" r="3"/><circle cx="435" cy="516" r="3"/><circle cx="475" cy="516" r="3"/><circle cx="515" cy="516" r="3"/><circle cx="595" cy="516" r="3"/><circle cx="635" cy="516" r="3"/><circle cx="675" cy="516" r="3"/><circle cx="715" cy="516" r="3"/><circle cx="755" cy="516" r="3"/><circle cx="795" cy="516" r="3"/><circle cx="835" cy="516" r="3"/><circle cx="875" cy="516" r="3"/><circle cx="915" cy="516" r="3"/><circle cx="955" cy="516" r="3"/><circle cx="995" cy="516" r="3"/><circle cx="1035" cy="516" r="3"/><circle cx="1075" cy="516" r="3"/><circle cx="1115" cy="516" r="3"/>
+      <!-- Row 15 y=538 -->
+      <circle cx="155" cy="538" r="3"/><circle cx="195" cy="538" r="3"/><circle cx="235" cy="538" r="3"/><circle cx="275" cy="538" r="3"/><circle cx="315" cy="538" r="3"/><circle cx="355" cy="538" r="3"/><circle cx="395" cy="538" r="3"/><circle cx="435" cy="538" r="3"/><circle cx="475" cy="538" r="3"/><circle cx="515" cy="538" r="3"/><circle cx="595" cy="538" r="3"/><circle cx="635" cy="538" r="3"/><circle cx="675" cy="538" r="3"/><circle cx="715" cy="538" r="3"/><circle cx="755" cy="538" r="3"/><circle cx="795" cy="538" r="3"/><circle cx="835" cy="538" r="3"/><circle cx="875" cy="538" r="3"/><circle cx="915" cy="538" r="3"/><circle cx="955" cy="538" r="3"/><circle cx="995" cy="538" r="3"/><circle cx="1035" cy="538" r="3"/><circle cx="1075" cy="538" r="3"/><circle cx="1115" cy="538" r="3"/>
+      <!-- Row 16 y=560 -->
+      <circle cx="155" cy="560" r="3"/><circle cx="195" cy="560" r="3"/><circle cx="235" cy="560" r="3"/><circle cx="275" cy="560" r="3"/><circle cx="315" cy="560" r="3"/><circle cx="355" cy="560" r="3"/><circle cx="395" cy="560" r="3"/><circle cx="435" cy="560" r="3"/><circle cx="475" cy="560" r="3"/><circle cx="515" cy="560" r="3"/><circle cx="595" cy="560" r="3"/><circle cx="635" cy="560" r="3"/><circle cx="675" cy="560" r="3"/><circle cx="715" cy="560" r="3"/><circle cx="755" cy="560" r="3"/><circle cx="795" cy="560" r="3"/><circle cx="835" cy="560" r="3"/><circle cx="875" cy="560" r="3"/><circle cx="915" cy="560" r="3"/><circle cx="955" cy="560" r="3"/><circle cx="995" cy="560" r="3"/><circle cx="1035" cy="560" r="3"/><circle cx="1075" cy="560" r="3"/><circle cx="1115" cy="560" r="3"/>
+      <!-- Row 17 y=582 -->
+      <circle cx="155" cy="582" r="3"/><circle cx="195" cy="582" r="3"/><circle cx="235" cy="582" r="3"/><circle cx="275" cy="582" r="3"/><circle cx="315" cy="582" r="3"/><circle cx="355" cy="582" r="3"/><circle cx="395" cy="582" r="3"/><circle cx="435" cy="582" r="3"/><circle cx="475" cy="582" r="3"/><circle cx="515" cy="582" r="3"/><circle cx="595" cy="582" r="3"/><circle cx="635" cy="582" r="3"/><circle cx="675" cy="582" r="3"/><circle cx="715" cy="582" r="3"/><circle cx="755" cy="582" r="3"/><circle cx="795" cy="582" r="3"/><circle cx="835" cy="582" r="3"/><circle cx="875" cy="582" r="3"/><circle cx="915" cy="582" r="3"/><circle cx="955" cy="582" r="3"/><circle cx="995" cy="582" r="3"/><circle cx="1035" cy="582" r="3"/><circle cx="1075" cy="582" r="3"/><circle cx="1115" cy="582" r="3"/>
+      <!-- Row 18 y=604 -->
+      <circle cx="155" cy="604" r="3"/><circle cx="195" cy="604" r="3"/><circle cx="235" cy="604" r="3"/><circle cx="275" cy="604" r="3"/><circle cx="315" cy="604" r="3"/><circle cx="355" cy="604" r="3"/><circle cx="395" cy="604" r="3"/><circle cx="435" cy="604" r="3"/><circle cx="475" cy="604" r="3"/><circle cx="515" cy="604" r="3"/><circle cx="595" cy="604" r="3"/><circle cx="635" cy="604" r="3"/><circle cx="675" cy="604" r="3"/><circle cx="715" cy="604" r="3"/><circle cx="755" cy="604" r="3"/><circle cx="795" cy="604" r="3"/><circle cx="835" cy="604" r="3"/><circle cx="875" cy="604" r="3"/><circle cx="915" cy="604" r="3"/><circle cx="955" cy="604" r="3"/><circle cx="995" cy="604" r="3"/><circle cx="1035" cy="604" r="3"/><circle cx="1075" cy="604" r="3"/><circle cx="1115" cy="604" r="3"/>
+    </g>
+
+    <!-- Silkscreen text in the middle -->
+    <text x="650" y="420" text-anchor="middle" font-size="14" fill="#fff" opacity="0.35" font-weight="bold">RPi 2/RPi B+/RPi A+ Proto HAT w/EEP</text>
+
+    <!-- ================== +5V / GND LOWER RAILS ================== -->
+    <text x="90" y="640" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">+5V</text>
+    <text x="90" y="666" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">GND</text>
+    <rect x="130" y="630" width="1030" height="16" fill="#ff3030" opacity="0.35"/>
+    <g fill="url(#pad)">
+      <circle cx="155" cy="638" r="4"/><circle cx="195" cy="638" r="4"/><circle cx="235" cy="638" r="4"/>
+      <circle cx="275" cy="638" r="4"/><circle cx="315" cy="638" r="4"/><circle cx="355" cy="638" r="4"/>
+      <circle cx="395" cy="638" r="4"/><circle cx="435" cy="638" r="4"/><circle cx="475" cy="638" r="4"/>
+      <circle cx="515" cy="638" r="4"/><circle cx="555" cy="638" r="4"/><circle cx="595" cy="638" r="4"/>
+      <circle cx="635" cy="638" r="4"/><circle cx="675" cy="638" r="4"/><circle cx="715" cy="638" r="4"/>
+      <circle cx="755" cy="638" r="4"/><circle cx="795" cy="638" r="4"/><circle cx="835" cy="638" r="4"/>
+      <circle cx="875" cy="638" r="4"/><circle cx="915" cy="638" r="4"/><circle cx="955" cy="638" r="4"/>
+      <circle cx="995" cy="638" r="4"/><circle cx="1035" cy="638" r="4"/><circle cx="1075" cy="638" r="4"/>
+      <circle cx="1115" cy="638" r="4"/>
+    </g>
+    <rect x="130" y="656" width="1030" height="16" fill="#000000" opacity="0.30"/>
+    <g fill="url(#pad)">
+      <circle cx="155" cy="664" r="4"/><circle cx="195" cy="664" r="4"/><circle cx="235" cy="664" r="4"/>
+      <circle cx="275" cy="664" r="4"/><circle cx="315" cy="664" r="4"/><circle cx="355" cy="664" r="4"/>
+      <circle cx="395" cy="664" r="4"/><circle cx="435" cy="664" r="4"/><circle cx="475" cy="664" r="4"/>
+      <circle cx="515" cy="664" r="4"/><circle cx="555" cy="664" r="4"/><circle cx="595" cy="664" r="4"/>
+      <circle cx="635" cy="664" r="4"/><circle cx="675" cy="664" r="4"/><circle cx="715" cy="664" r="4"/>
+      <circle cx="755" cy="664" r="4"/><circle cx="795" cy="664" r="4"/><circle cx="835" cy="664" r="4"/>
+      <circle cx="875" cy="664" r="4"/><circle cx="915" cy="664" r="4"/><circle cx="955" cy="664" r="4"/>
+      <circle cx="995" cy="664" r="4"/><circle cx="1035" cy="664" r="4"/><circle cx="1075" cy="664" r="4"/>
+      <circle cx="1115" cy="664" r="4"/>
+    </g>
+
+    <!-- ================== EEPROM + WP (bottom right) ================== -->
+    <rect x="1005" y="710" width="80" height="35" fill="#222"/>
+    <text x="1045" y="732" text-anchor="middle" fill="#fff" font-size="10">EEPROM</text>
+    <rect x="1100" y="720" width="24" height="20" fill="#333"/>
+    <text x="1112" y="735" text-anchor="middle" fill="#fff" font-size="9">WP</text>
+
+    <!-- ==================== USED HOLES (yellow ring) ==================== -->
+    <g fill="#ffff00" stroke="#000" stroke-width="0.7">
+      <!-- +3V3 taps (one for INMP441 VDD, one for MAX98357A SD, one for GC9A01 VCC) -->
+      <circle cx="275"  cy="170" r="6"/> <!-- INMP441 VDD -->
+      <circle cx="515"  cy="170" r="6"/> <!-- MAX98357A SD -->
+      <circle cx="995"  cy="170" r="6"/> <!-- GC9A01 VCC -->
+      <!-- upper GND taps (INMP441 GND, INMP441 L/R, MAX98357A GND, GC9A01 GND) -->
+      <circle cx="315"  cy="198" r="6"/> <!-- INMP441 GND -->
+      <circle cx="355"  cy="198" r="6"/> <!-- INMP441 L/R -->
+      <circle cx="555"  cy="198" r="6"/> <!-- MAX98357A GND -->
+      <circle cx="1035" cy="198" r="6"/> <!-- GC9A01 GND -->
+      <!-- +5V taps (MAX98357A VIN, WS2812B VDD) -->
+      <circle cx="595"  cy="638" r="6"/> <!-- MAX98357A VIN -->
+      <circle cx="755"  cy="638" r="6"/> <!-- WS2812B VDD -->
+      <!-- lower GND taps (WS2812B GND) -->
+      <circle cx="795"  cy="664" r="6"/> <!-- WS2812B GND -->
+      <!-- GPIO breakout pins actually used -->
+      <circle cx="395"  cy="128" r="6"/> <!-- #18 -->
+      <circle cx="515"  cy="128" r="6"/> <!-- #23 (BLK) -->
+      <circle cx="555"  cy="128" r="6"/> <!-- #24 (DC)  -->
+      <circle cx="595"  cy="128" r="6"/> <!-- #25 (RST) -->
+      <circle cx="635"  cy="128" r="6"/> <!-- MOSI -->
+      <circle cx="715"  cy="128" r="6"/> <!-- CLK  -->
+      <circle cx="755"  cy="128" r="6"/> <!-- CE0  -->
+      <circle cx="915"  cy="128" r="6"/> <!-- #12  -->
+      <circle cx="1035" cy="128" r="6"/> <!-- #19  -->
+      <circle cx="1075" cy="128" r="6"/> <!-- #20  -->
+      <circle cx="1115" cy="128" r="6"/> <!-- #21  -->
+    </g>
+
+    <!-- ================= I2S bus rows (proto rows 1 and 2 used as buses) ================= -->
+    <!-- row y=230 for BCLK bus, row y=252 for LRCLK bus -->
+    <rect x="150" y="226" width="970" height="8" fill="#1060ff" opacity="0.4"/>
+    <text x="1125" y="233" font-size="9" fill="#1060ff" font-weight="bold">BCLK bus</text>
+    <rect x="150" y="248" width="970" height="8" fill="#40b0ff" opacity="0.4"/>
+    <text x="1125" y="255" font-size="9" fill="#0080d0" font-weight="bold">LRCLK bus</text>
+
+    <!-- On-board jumpers from #18 and #19 breakouts down into those bus rows -->
+    <path d="M 395 128 L 395 230" stroke="#1060ff" stroke-width="2" stroke-dasharray="4,3" fill="none"/>
+    <path d="M 1035 128 L 1035 252" stroke="#40b0ff" stroke-width="2" stroke-dasharray="4,3" fill="none"/>
+  </g>
+  <!-- end board -->
+
+  <!-- ================================================================
+       COMPONENTS OUTSIDE THE BOARD
+       Board is at translate(200,250).
+       Absolute coords reference the page.
+       Board solder-hole absolute positions (= transform + local):
+         breakout row y=128+250=378, labels row y=143+250=393
+         +3V3 rail: y=170+250=420
+         upper GND: y=198+250=448
+         proto row1: y=230+250=480
+         proto row2: y=252+250=502
+         +5V rail: y=638+250=888
+         lower GND: y=664+250=914
+         X positions for common pins:
+           SDA=355, SCL=395, TXD=435, RXD=475, #4=515, #17=555, #18=595, #27=635, #22=675,
+           #23=715, #24=755, #25=795, MOSI=835, MISO=875, CLK=915, CE0=955, CE1=995, #5=1035,
+           #6=1075, #12=1115, #13=1155, #16=1195, #19=1235, #20=1275, #21=1315
+         (These = local x + 200)
+       ================================================================ -->
+
+  <!-- ===== INMP441 (top-left, above board) ===== -->
+  <g transform="translate(80,60)">
+    <rect x="0" y="0" width="180" height="150" fill="#fff" stroke="#333" stroke-width="1.5" rx="4"/>
+    <text x="90" y="20" text-anchor="middle" font-weight="bold">INMP441 MIC</text>
+    <g font-size="10">
+      <text x="20" y="48">VDD</text>
+      <text x="20" y="68">GND</text>
+      <text x="20" y="88">SCK</text>
+      <text x="20" y="108">WS</text>
+      <text x="20" y="128">SD</text>
+      <text x="140" y="48">L/R</text>
+    </g>
+    <g fill="#e8b040">
+      <circle cx="12" cy="48"  r="3.5"/>
+      <circle cx="12" cy="68"  r="3.5"/>
+      <circle cx="12" cy="88"  r="3.5"/>
+      <circle cx="12" cy="108" r="3.5"/>
+      <circle cx="12" cy="128" r="3.5"/>
+      <circle cx="168" cy="48" r="3.5"/>
+    </g>
+  </g>
+  <!-- Component absolute pad positions:
+       VDD (92,108), GND (92,128), SCK (92,148), WS (92,168), SD (92,188), L/R (248,108) -->
+
+  <!-- ===== MAX98357A (top-center-right, above board) ===== -->
+  <g transform="translate(450,60)">
+    <rect x="0" y="0" width="190" height="170" fill="#fff" stroke="#333" stroke-width="1.5" rx="4"/>
+    <text x="95" y="20" text-anchor="middle" font-weight="bold">MAX98357A AMP</text>
+    <g font-size="10">
+      <text x="20" y="48">VIN</text>
+      <text x="20" y="68">GND</text>
+      <text x="20" y="88">BCLK</text>
+      <text x="20" y="108">LRC</text>
+      <text x="20" y="128">DIN</text>
+      <text x="20" y="148">SD</text>
+      <text x="150" y="48">SPK+</text>
+      <text x="150" y="68">SPK−</text>
+    </g>
+    <g fill="#e8b040">
+      <circle cx="12" cy="48"  r="3.5"/>
+      <circle cx="12" cy="68"  r="3.5"/>
+      <circle cx="12" cy="88"  r="3.5"/>
+      <circle cx="12" cy="108" r="3.5"/>
+      <circle cx="12" cy="128" r="3.5"/>
+      <circle cx="12" cy="148" r="3.5"/>
+      <circle cx="178" cy="48" r="3.5"/>
+      <circle cx="178" cy="68" r="3.5"/>
+    </g>
+    <rect x="200" y="35" width="80" height="45" fill="#eee" stroke="#555" stroke-dasharray="4,2"/>
+    <text x="240" y="55" text-anchor="middle" font-size="10" font-weight="bold">Speaker</text>
+    <text x="240" y="70" text-anchor="middle" font-size="9">3W 4Ω</text>
+    <path d="M 182 48 L 200 48" stroke="#444"/>
+    <path d="M 182 68 L 200 68" stroke="#444"/>
+  </g>
+  <!-- Component absolute pad positions:
+       VIN (462,108), GND (462,128), BCLK (462,148), LRC (462,168), DIN (462,188), SD (462,208),
+       SPK+ (628,108), SPK− (628,128) -->
+
+  <!-- ===== GC9A01 display (top-right, above board) ===== -->
+  <g transform="translate(920,60)">
+    <circle cx="100" cy="90" r="80" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <circle cx="100" cy="90" r="70" fill="#222"/>
+    <text x="100" y="86" text-anchor="middle" font-weight="bold" fill="#fff">GC9A01</text>
+    <text x="100" y="100" text-anchor="middle" font-size="10" fill="#fff">240×240 TFT</text>
+    <rect x="10" y="180" width="180" height="20" fill="#333"/>
+    <g font-size="9" text-anchor="middle" fill="#fff">
+      <text x="25"  y="193">VCC</text>
+      <text x="47"  y="193">GND</text>
+      <text x="69"  y="193">SCL</text>
+      <text x="91"  y="193">SDA</text>
+      <text x="113" y="193">CS</text>
+      <text x="135" y="193">DC</text>
+      <text x="157" y="193">RST</text>
+      <text x="179" y="193">BLK</text>
+    </g>
+    <g fill="#e8b040">
+      <circle cx="25"  cy="202" r="3.5"/>
+      <circle cx="47"  cy="202" r="3.5"/>
+      <circle cx="69"  cy="202" r="3.5"/>
+      <circle cx="91"  cy="202" r="3.5"/>
+      <circle cx="113" cy="202" r="3.5"/>
+      <circle cx="135" cy="202" r="3.5"/>
+      <circle cx="157" cy="202" r="3.5"/>
+      <circle cx="179" cy="202" r="3.5"/>
+    </g>
+  </g>
+  <!-- GC9A01 absolute pad positions:
+       VCC (945,262), GND (967,262), SCL (989,262), SDA (1011,262),
+       CS (1033,262), DC (1055,262), RST (1077,262), BLK (1099,262) -->
+
+  <!-- ===== WS2812B ring (below board, center) ===== -->
+  <g transform="translate(740,1090)">
+    <circle cx="100" cy="100" r="90" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <circle cx="100" cy="100" r="65" fill="#f8f8f8" stroke="#888" stroke-dasharray="2,2"/>
+    <text x="100" y="95" text-anchor="middle" font-weight="bold">WS2812B</text>
+    <text x="100" y="110" text-anchor="middle" font-size="10">12-LED RING</text>
+    <g fill="#ff6060">
+      <circle cx="100" cy="25" r="5"/><circle cx="137" cy="36" r="5"/><circle cx="164" cy="63" r="5"/>
+      <circle cx="175" cy="100" r="5"/><circle cx="164" cy="137" r="5"/><circle cx="137" cy="164" r="5"/>
+      <circle cx="100" cy="175" r="5"/><circle cx="63" cy="164" r="5"/><circle cx="36" cy="137" r="5"/>
+      <circle cx="25" cy="100" r="5"/><circle cx="36" cy="63" r="5"/><circle cx="63" cy="36" r="5"/>
+    </g>
+    <g font-size="10" text-anchor="middle">
+      <text x="60" y="17">VDD</text>
+      <text x="100" y="17">GND</text>
+      <text x="140" y="17">DIN</text>
+    </g>
+    <g fill="#e8b040">
+      <circle cx="60"  cy="5" r="3.5"/>
+      <circle cx="100" cy="5" r="3.5"/>
+      <circle cx="140" cy="5" r="3.5"/>
+    </g>
+    <rect x="155" y="0" width="40" height="10" fill="#e0c080" stroke="#333"/>
+    <text x="175" y="8" text-anchor="middle" font-size="8" font-weight="bold">300Ω</text>
+  </g>
+  <!-- WS2812B absolute pad positions:
+       VDD (800, 1095), GND (840, 1095), DIN pre-res (880, 1095), DIN post-res (935, 1095) -->
+
+  <!-- ================================================================
+       WIRES — from component pads to exact board solder holes
+       ================================================================ -->
+
+  <!-- ===== INMP441 ===== -->
+  <!-- VDD (92,108) -> +3V3 rail at x=475 (on the board), y=420 -->
+  <path d="M 92 108 L 92 390 L 475 390 L 475 420" stroke="#ff8800" stroke-width="2" fill="none"/>
+  <!-- GND (92,128) -> upper GND at x=515, y=448 -->
+  <path d="M 92 128 L 92 400 L 515 400 L 515 448" stroke="#000" stroke-width="2" fill="none"/>
+  <!-- SCK (92,148) -> BCLK bus row (x=515, y=480) -->
+  <path d="M 92 148 L 92 410 L 515 410 L 515 480" stroke="#1060ff" stroke-width="2" fill="none"/>
+  <!-- WS (92,168) -> LRCLK bus row (x=555, y=502) -->
+  <path d="M 92 168 L 92 420 L 555 420 L 555 502" stroke="#40b0ff" stroke-width="2" fill="none"/>
+  <!-- SD (92,188) -> #20 breakout (1475, 378) -->
+  <path d="M 92 188 L 92 230 L 1475 230 L 1475 378" stroke="#20a020" stroke-width="2" fill="none"/>
+  <!-- L/R (248,108) -> upper GND (x=555, y=448) -->
+  <path d="M 248 108 L 248 220 L 555 220 L 555 448" stroke="#000" stroke-width="2" fill="none"/>
+
+  <!-- ===== MAX98357A ===== -->
+  <!-- VIN (462,108) -> +5V rail (x=795, y=888) -->
+  <path d="M 462 108 L 462 215 L 795 215 L 795 888" stroke="#e00000" stroke-width="2" fill="none"/>
+  <!-- GND (462,128) -> upper GND (x=755, y=448) -->
+  <path d="M 462 128 L 462 235 L 755 235 L 755 448" stroke="#000" stroke-width="2" fill="none"/>
+  <!-- BCLK (462,148) -> BCLK bus row (x=755, y=480) -->
+  <path d="M 462 148 L 462 245 L 755 245 L 755 480" stroke="#1060ff" stroke-width="2" fill="none"/>
+  <!-- LRC (462,168) -> LRCLK bus row (x=715, y=502) -->
+  <path d="M 462 168 L 462 255 L 715 255 L 715 502" stroke="#40b0ff" stroke-width="2" fill="none"/>
+  <!-- DIN (462,188) -> #21 breakout (1515, 378) -->
+  <path d="M 462 188 L 462 265 L 1515 265 L 1515 378" stroke="#20a020" stroke-width="2" fill="none"/>
+  <!-- SD (462,208) -> +3V3 rail (x=715, y=420) -->
+  <path d="M 462 208 L 462 275 L 715 275 L 715 420" stroke="#ff8800" stroke-width="2" fill="none"/>
+
+  <!-- ===== GC9A01 ===== -->
+  <!-- VCC (945,262) -> +3V3 rail (x=1195, y=420) -->
+  <path d="M 945 262 L 945 340 L 1195 340 L 1195 420" stroke="#ff8800" stroke-width="2" fill="none"/>
+  <!-- GND (967,262) -> upper GND (x=1235, y=448) -->
+  <path d="M 967 262 L 967 350 L 1235 350 L 1235 448" stroke="#000" stroke-width="2" fill="none"/>
+  <!-- SCL (989,262) -> CLK breakout (1115, 378) -->
+  <path d="M 989 262 L 989 320 L 1115 320 L 1115 378" stroke="#8020c0" stroke-width="2" fill="none"/>
+  <!-- SDA (1011,262) -> MOSI breakout (1035, 378) -->
+  <path d="M 1011 262 L 1011 310 L 1035 310 L 1035 378" stroke="#8020c0" stroke-width="2" fill="none"/>
+  <!-- CS (1033,262) -> CE0 breakout (1155, 378) -->
+  <path d="M 1033 262 L 1033 305 L 1155 305 L 1155 378" stroke="#8020c0" stroke-width="2" fill="none"/>
+  <!-- DC (1055,262) -> #24 breakout (955, 378) -->
+  <path d="M 1055 262 L 1055 295 L 955 295 L 955 378" stroke="#d040a0" stroke-width="2" fill="none"/>
+  <!-- RST (1077,262) -> #25 breakout (995, 378) -->
+  <path d="M 1077 262 L 1077 285 L 995 285 L 995 378" stroke="#d040a0" stroke-width="2" fill="none"/>
+  <!-- BLK (1099,262) -> #23 breakout (915, 378) -->
+  <path d="M 1099 262 L 1099 275 L 915 275 L 915 378" stroke="#d040a0" stroke-width="2" fill="none"/>
+
+  <!-- ===== WS2812B ===== -->
+  <!-- VDD (800, 1095) -> +5V rail (x=955, y=888) -->
+  <path d="M 800 1095 L 800 940 L 955 940 L 955 888" stroke="#e00000" stroke-width="2" fill="none"/>
+  <!-- GND (840, 1095) -> lower GND (x=995, y=914) -->
+  <path d="M 840 1095 L 840 960 L 995 960 L 995 914" stroke="#000" stroke-width="2" fill="none"/>
+  <!-- DIN via 300Ω (935, 1095) -> #12 breakout (1115, 378) -->
+  <path d="M 935 1095 L 935 980 L 1540 980 L 1540 290 L 1115 290 L 1115 378" stroke="#a030e0" stroke-width="2" fill="none"/>
+
+  <!-- ================================================================
+       LEGEND
+       ================================================================ -->
+  <g transform="translate(40, 1080)">
+    <rect x="0" y="0" width="200" height="260" fill="#fff" stroke="#333" rx="4"/>
+    <text x="100" y="18" text-anchor="middle" font-weight="bold" font-size="12">WIRE LEGEND</text>
+    <g font-size="11">
+      <line x1="10" y1="38" x2="40" y2="38" stroke="#e00000" stroke-width="2"/><text x="45" y="42">+5V</text>
+      <line x1="10" y1="58" x2="40" y2="58" stroke="#ff8800" stroke-width="2"/><text x="45" y="62">+3.3V</text>
+      <line x1="10" y1="78" x2="40" y2="78" stroke="#000" stroke-width="2"/><text x="45" y="82">GND</text>
+      <line x1="10" y1="98" x2="40" y2="98" stroke="#1060ff" stroke-width="2"/><text x="45" y="102">I2S BCLK (#18)</text>
+      <line x1="10" y1="118" x2="40" y2="118" stroke="#40b0ff" stroke-width="2"/><text x="45" y="122">I2S LRCLK (#19)</text>
+      <line x1="10" y1="138" x2="40" y2="138" stroke="#20a020" stroke-width="2"/><text x="45" y="142">I2S data (#20/#21)</text>
+      <line x1="10" y1="158" x2="40" y2="158" stroke="#8020c0" stroke-width="2"/><text x="45" y="162">SPI (MOSI/CLK/CE0)</text>
+      <line x1="10" y1="178" x2="40" y2="178" stroke="#d040a0" stroke-width="2"/><text x="45" y="182">Display control</text>
+      <line x1="10" y1="198" x2="40" y2="198" stroke="#a030e0" stroke-width="2"/><text x="45" y="202">WS2812 DIN</text>
+      <circle cx="25" cy="222" r="5" fill="#ffff00" stroke="#000"/><text x="45" y="226">used solder hole</text>
+      <line x1="10" y1="246" x2="40" y2="246" stroke="#1060ff" stroke-width="2" stroke-dasharray="4,3"/><text x="45" y="250">on-board jumper</text>
+    </g>
+  </g>
+
+  <g transform="translate(1460, 1080)">
+    <rect x="0" y="0" width="200" height="260" fill="#fff" stroke="#333" rx="4"/>
+    <text x="100" y="18" text-anchor="middle" font-weight="bold" font-size="12">NOTES</text>
+    <g font-size="10">
+      <text x="10" y="38">• Two top proto rows used as</text>
+      <text x="10" y="52">  BCLK / LRCLK buses.</text>
+      <text x="10" y="76">• Short jumpers (dashed blue)</text>
+      <text x="10" y="90">  connect GPIO #18 &amp; #19 from</text>
+      <text x="10" y="104">  breakout row down into</text>
+      <text x="10" y="118">  those bus rows.</text>
+      <text x="10" y="142">• 300Ω soldered inline with</text>
+      <text x="10" y="156">  WS2812 DIN wire.</text>
+      <text x="10" y="180">• MAX98357A SD tied to +3V3</text>
+      <text x="10" y="194">  (always-enabled).</text>
+      <text x="10" y="218">• Decoupling caps (not shown)</text>
+      <text x="10" y="232">  at each module's VDD/GND.</text>
+    </g>
+  </g>
+
+</svg>
