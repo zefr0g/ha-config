@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh dd@pi-satellite \"docker stop lva && docker rm lva && echo 'container removed'\")",
+      "Bash(ssh dd@pi-satellite \"echo '=== AUDIO DEVICES ===' && aplay -l && echo && echo '=== CAPTURE DEVICES ===' && arecord -l && echo && echo '=== SPI ===' && ls /dev/spi* 2>/dev/null || echo 'no spi devices' && echo && echo '=== I2S / SOUND MODULES ===' && lsmod | grep -E 'snd|i2s|voice'\")",
+      "Bash(ssh dd@pi-satellite \"arecord -D hw:0,0 -f S32_LE -r 16000 -c 2 -d 3 /tmp/test_mic.wav 2>&1 && echo 'capture ok' && ls -lh /tmp/test_mic.wav\")",
+      "Bash(ssh dd@pi-satellite \"sudo loginctl enable-linger dd && echo 'linger ok'\")",
+      "Bash(ssh dd@pi-satellite \"cat ~/.config/linux-voice-assistant/configuration.yaml 2>/dev/null || ls ~/.config/linux-voice-assistant/ 2>/dev/null\")",
+      "Bash(ssh dd@pi-satellite \"docker run --rm ghcr.io/ohf-voice/linux-voice-assistant:latest --help 2>&1 | head -50\")",
+      "Bash(ssh dd@pi-satellite \"docker run --rm -v ~/.config/linux-voice-assistant:/app/configuration ghcr.io/ohf-voice/linux-voice-assistant:latest --help 2>&1\")",
+      "Bash(ssh dd@pi-satellite \"docker logs lva 2>&1 | tail -30\")",
+      "Bash(ssh dd@pi-satellite \"ls /run/user/1000/ 2>/dev/null; id dd; loginctl show-user dd 2>&1 | grep -i runtime\")",
+      "Bash(ssh dd@pi-satellite \"ls /run/user/1000/pulse/ 2>/dev/null; XDG_RUNTIME_DIR=/run/user/1000 pactl info 2>&1 | grep -E 'Server|Default'\")",
+      "Bash(ssh dd@pi-satellite \"PULSE_SERVER=unix:/run/user/1000/pulse/native XDG_RUNTIME_DIR=/run/user/1000 pactl info 2>&1\")",
+      "Bash(ssh dd@pi-satellite \"systemctl --user status pipewire pipewire-pulse 2>&1 | grep -E 'Active|●'\")",
+      "Bash(ssh dd@pi-satellite \"systemctl --user start pipewire-pulse && sleep 2 && PULSE_SERVER=unix:/run/user/1000/pulse/native XDG_RUNTIME_DIR=/run/user/1000 pactl info 2>&1 | grep -E 'Server|Default'\")",
+      "Bash(ssh dd@pi-satellite \"PULSE_SERVER=unix:/run/user/1000/pulse/native XDG_RUNTIME_DIR=/run/user/1000 pactl list sinks short; pactl list sources short 2>&1\")",
+      "Bash(ssh dd@pi-satellite \"systemctl --user enable pipewire-pulse\")",
+      "Bash(ssh dd@pi-satellite *)"
+    ]
+  }
+}
