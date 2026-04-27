@@ -9,6 +9,10 @@ dist/
 build/
 .env
 
+# Secrets and local config
+.ha_token
+.claude/
+
 # Temporary / scratch files
 history
 audio.m4a
