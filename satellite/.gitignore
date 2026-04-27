@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.env
+
+# Secrets and local config
+.ha_token
+.claude/
+
+# Temporary / scratch files
+history
+audio.m4a
+*.m4a
+*.mp3
+*.wav
+
+# Binary build artifacts in src/
+src/display/display.zip
+src/display/*.zip
+
+# Case export binaries (keep .scad source, ignore STL exports)
+case/*.stl

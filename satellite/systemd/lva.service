@@ -1,0 +1,15 @@
+[Unit]
+Description=Linux Voice Assistant
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+WorkingDirectory=/home/dd/lva
+ExecStart=docker compose up
+ExecStop=docker compose down
+Restart=on-failure
+RestartSec=10
+User=dd
+
+[Install]
+WantedBy=multi-user.target

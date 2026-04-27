@@ -1,0 +1,13 @@
+[Unit]
+Description=Voice Assistant Round Display
+After=docker.service lva.service
+Wants=lva.service
+
+[Service]
+ExecStart=/usr/bin/python3 /home/dd/dev/voice-assistant/src/display/daemon.py
+Restart=on-failure
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
