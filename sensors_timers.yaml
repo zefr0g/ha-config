@@ -1,0 +1,26 @@
+# REST sensor for voice assistant timers (set via HassStartTimer)
+# Polls the built-in HA conversation agent for active timers on the satellite device.
+# Add to configuration.yaml under sensor: (platform: rest format):
+#
+#     - platform: rest
+#       ... (see below)
+#
+# Requires secrets.yaml: ha_token: "Bearer eyJ..."
+
+- platform: rest
+  name: "Assistant Timers"
+  unique_id: assistant_timers
+  resource: http://localhost:8123/api/conversation/process
+  method: POST
+  headers:
+    Authorization: !secret ha_token
+    Content-Type: application/json
+  payload: >-
+    {"text": "timer status", "language": "en",
+     "agent_id": "conversation.home_assistant",
+     "device_id": "9d38634ac0aa71eb9f30c64630957c90"}
+  scan_interval: 10
+  value_template: "{{ value_json.response.speech_slots.timers | length }}"
+  json_attributes_path: "$.response.speech_slots"
+  json_attributes:
+    - timers

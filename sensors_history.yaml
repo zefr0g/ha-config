@@ -1,0 +1,54 @@
+# history_stats sensors exposed to Assist so the LLM can answer questions
+# about device on/off history naturally.
+# Add to configuration.yaml:  sensor: !include_dir_merge_list sensors/
+# (or inline under sensor:)
+
+# --- Pompe piscine ---
+- platform: history_stats
+  name: "Pompe piscine activations aujourd'hui"
+  entity_id: switch.piscine_relais
+  state: "on"
+  type: count
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
+
+- platform: history_stats
+  name: "Pompe piscine durée aujourd'hui"
+  entity_id: switch.piscine_relais
+  state: "on"
+  type: time
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
+
+- platform: history_stats
+  name: "Pompe piscine durée hier"
+  entity_id: switch.piscine_relais
+  state: "on"
+  type: time
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1) }}"
+  end: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+
+# --- Vanne arrosage ---
+- platform: history_stats
+  name: "Arrosage activations aujourd'hui"
+  entity_id: valve.valve_controller_valve
+  state: "open"
+  type: count
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
+
+- platform: history_stats
+  name: "Arrosage durée aujourd'hui"
+  entity_id: valve.valve_controller_valve
+  state: "open"
+  type: time
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+  end: "{{ now() }}"
+
+- platform: history_stats
+  name: "Arrosage durée hier"
+  entity_id: valve.valve_controller_valve
+  state: "open"
+  type: time
+  start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1) }}"
+  end: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"

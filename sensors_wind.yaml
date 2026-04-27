@@ -1,0 +1,20 @@
+# Statistics sensors for wind — 10-minute rolling window
+# Add to configuration.yaml:
+#   sensor: !include sensors_wind.yaml
+# (or append to an existing sensor list include)
+
+- platform: statistics
+  name: "Wind Average 10min"
+  unique_id: wind_average_10min
+  entity_id: sensor.vevor_7in1_0_2569_wind_average
+  state_characteristic: mean
+  max_age:
+    minutes: 10
+
+- platform: statistics
+  name: "Wind Max 10min"
+  unique_id: wind_max_10min
+  entity_id: sensor.vevor_7in1_0_2569_wind_max
+  state_characteristic: value_max
+  max_age:
+    minutes: 10

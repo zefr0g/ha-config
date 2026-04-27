@@ -55,6 +55,12 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: /lovelace-video
+              - type: action
+                icon: mdi:timer-cog
+                icon_color: orange
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground/programmations
             card_mod:
               style: |
                 ha-card {
@@ -133,20 +139,20 @@ views:
                 cards:
                   - type: custom:mushroom-template-card
                     primary: >-
-                      {{ states('sensor.vevor_7in1_0_2569_wind_average') | float | round(1) }} km/h
+                      {{ states('sensor.wind_average_10min') | float(0) | round(1) }} km/h
                     secondary: >-
-                      {% set d = states('sensor.vevor_7in1_0_2569_wind_direction_2') | float %}
+                      {% set d = states('sensor.vevor_7in1_0_2569_wind_direction_2') | float(0) %}
                       {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
                       {{ dirs[((d + 22.5) / 45) | int % 8] }} ({{ d | round(0) | int }}°)
                     icon: mdi:weather-windy
                     icon_color: >-
-                      {% set v = states('sensor.vevor_7in1_0_2569_wind_average') | float %}
+                      {% set v = states('sensor.wind_average_10min') | float(0) %}
                       {% if v < 20 %} teal
                       {% elif v < 40 %} green
                       {% elif v < 60 %} orange
                       {% else %} red
                       {% endif %}
-                    entity: sensor.vevor_7in1_0_2569_wind_average
+                    entity: sensor.wind_average_10min
                     tap_action:
                       action: more-info
                     card_mod:
@@ -157,9 +163,9 @@ views:
                         }
                   - type: custom:mushroom-template-card
                     primary: >-
-                      {{ states('sensor.vevor_7in1_0_2569_wind_max') | float | round(1) }} km/h
+                      {{ states('sensor.wind_max_10min') | float(0) | round(1) }} km/h
                     secondary: >-
-                      {% set g = states('sensor.vevor_7in1_0_2569_wind_max') | float %}
+                      {% set g = states('sensor.wind_max_10min') | float(0) %}
                       {% if g < 20 %} Calme
                       {% elif g < 40 %} Brise
                       {% elif g < 60 %} Vent fort
@@ -168,14 +174,14 @@ views:
                       {% endif %}
                     icon: mdi:windsock
                     icon_color: >-
-                      {% set g = states('sensor.vevor_7in1_0_2569_wind_max') | float %}
+                      {% set g = states('sensor.wind_max_10min') | float(0) %}
                       {% if g < 20 %} teal
                       {% elif g < 40 %} green
                       {% elif g < 60 %} orange
                       {% elif g < 90 %} deep-orange
                       {% else %} red
                       {% endif %}
-                    entity: sensor.vevor_7in1_0_2569_wind_max
+                    entity: sensor.wind_max_10min
                     tap_action:
                       action: more-info
                     card_mod:
@@ -206,6 +212,18 @@ views:
                     icon: mdi:brightness-5
                     icon_color: yellow
                     content: "{{ states('sensor.vevor_7in1_0_2569_illuminance') }} lx"
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.84_weather_alert
+                    icon: mdi:weather-lightning-rainy
+                    icon_color: >-
+                      {% set a = states('sensor.84_weather_alert') %}
+                      {% if a == 'Vert' %}green
+                      {% elif a == 'Jaune' %}yellow
+                      {% elif a == 'Orange' %}orange
+                      {% else %}red{% endif %}
+                    content: "{{ states('sensor.84_weather_alert') }}"
                     tap_action:
                       action: more-info
                 card_mod:
@@ -467,8 +485,6 @@ views:
             card_mod:
               style: |
                 ha-card {
-                  border: none !important;
-                  box-shadow: none !important;
                   --mush-spacing: 6px;
                 }
             cards:
@@ -481,14 +497,12 @@ views:
                 entities:
                   - entity: sensor.msunpv_powreso
                     color: '#0867ec'
-                    name: MSunPV
-                  - entity: sensor.teleinfo_puissance_apparente
-                    color: '#17b897'
-                    name: Téléinfo
+                    name: Réseau
+                    show_state: true
                   - entity: sensor.current_power_production
                     show_state: true
                     color: '#f5b514'
-                    name: Production
+                    name: Solaire
                 card_mod:
                   style: |
                     ha-card {
@@ -525,7 +539,7 @@ views:
                     secondary: >-
                       {{
                       states('sensor.envoy_122152048399_today_s_energy_production')
-                      | round(2) }} kWh + {{ states('sensor.prod_apsys') |
+                      | round(2) }} kWh + {{ states('sensor.apsystems_today_production_stable') |
                       round(2) }} kWh
                     entity: sensor.today_power_production
                     tap_action:
@@ -568,11 +582,11 @@ views:
                       (states('sensor.envoy_122152048399_current_power_production')
                       | float) | round(2) }} W
                     secondary: >
-                      AP {{ (states('sensor.solar_total_power') | float) |
+                      AP {{ (states('sensor.apsystems_total_power_stable') | float) |
                       round(2) }} W
                     tap_action:
                       action: more-info
-                      entity: sensor.solar_total_power
+                      entity: sensor.apsystems_total_power_stable
                     card_mod:
                       style: |
                         ha-card {
@@ -580,33 +594,46 @@ views:
                           box-shadow: none !important;
                           --spacing: 6px;
                         }
-              - type: custom:mushroom-template-card
-                entity: sensor.teleinfo_libelle_tarif_en_cours
-                primary: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}Heure Creuse{% else %}Heure Pleine{% endif %}
-                secondary: >-
-                  HC: {{ (states('sensor.teleinfo_index_tarif_1_hc') | float / 1000) | round(0) }} kWh
-                  · HP: {{ (states('sensor.teleinfo_index_tarif_2_hp') | float / 1000) | round(0) }} kWh
-                icon: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
-                    mdi:lightning-bolt-outline
-                  {% else %}
-                    mdi:lightning-bolt
-                  {% endif %}
-                icon_color: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
-                    blue
-                  {% else %}
-                    orange
-                  {% endif %}
-                tap_action:
-                  action: more-info
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.teleinfo_libelle_tarif_en_cours
+                    icon: >-
+                      {% if is_state('binary_sensor.heure_creuse', 'on') %}mdi:lightning-bolt-outline{% else %}mdi:lightning-bolt{% endif %}
+                    icon_color: >-
+                      {% if is_state('binary_sensor.heure_creuse', 'on') %}blue{% else %}orange{% endif %}
+                    content: >-
+                      {% if is_state('binary_sensor.heure_creuse', 'on') %}HC{% else %}HP{% endif %}
+                      · {{ states('sensor.ohm_energie_prix_kwh') }} €/kWh
+                    tap_action:
+                      action: more-info
+                      entity: sensor.teleinfo_libelle_tarif_en_cours
+                  - type: template
+                    entity: sensor.today_power_production
+                    icon: mdi:solar-power
+                    icon_color: yellow
+                    content: >-
+                      {% set solar = states('sensor.today_power_production') | float %}
+                      {% set inj = (states('sensor.msunpv_eninj') | float / 1000) | abs %}
+                      autoconso {{ (((solar - inj) / solar) * 100) | round(0) if solar > 0.1 else 0 }}%
+                    tap_action:
+                      action: more-info
+                      entity: sensor.today_power_production
+                  - type: template
+                    entity: sensor.envoy_122152048399_today_s_energy_consumption
+                    icon: mdi:home-lightning-bolt
+                    icon_color: green
+                    content: >-
+                      {{ states('sensor.envoy_122152048399_today_s_energy_consumption') | float | round(1) }} kWh
+                    tap_action:
+                      action: more-info
+                      entity: sensor.envoy_122152048399_today_s_energy_consumption
                 card_mod:
                   style: |
                     ha-card {
                       border: none !important;
                       box-shadow: none !important;
-                      --spacing: 6px;
                     }
           - type: horizontal-stack
             cards:
@@ -661,45 +688,14 @@ views:
         cards:
           - type: custom:mushroom-chips-card
             alignment: center
-            chips:
-              - type: template
-                entity: sensor.teleinfo_libelle_tarif_en_cours
-                icon: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
-                    mdi:lightning-bolt-outline
-                  {% else %}
-                    mdi:lightning-bolt
-                  {% endif %}
-                icon_color: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}
-                    blue
-                  {% else %}
-                    orange
-                  {% endif %}
-                content: >-
-                  {% if is_state('binary_sensor.heure_creuse', 'on') %}HC{% else %}HP{% endif %}
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: sensor.teleinfo_puissance_apparente
-                icon: mdi:transmission-tower
-                icon_color: blue
-                content: >-
-                  TIC {{ states('sensor.teleinfo_puissance_apparente') | float(0) | round(0) }} VA
-                tap_action:
-                  action: more-info
-              - type: template
-                entity: sensor.msunpv_powreso
-                icon: mdi:solar-power
-                icon_color: yellow
-                content: >-
-                  PV {{ states('sensor.msunpv_powreso') | float(0) | round(0) }} W
-                tap_action:
-                  action: more-info
+            chips: []
             card_mod:
               style: |
                 ha-card {
                   margin-bottom: 4px;
+                  min-height: 36px;
+                  border: none !important;
+                  box-shadow: none !important;
                 }
           - type: custom:stack-in-card
             mode: vertical
@@ -1069,6 +1065,114 @@ views:
                           --chip-spacing: 0;
                           padding: 0 8px 4px 8px !important;
                         }
+          - type: custom:scheduler-card
+            include:
+              - climate.mitsusalon_mitsusalon
+              - climate.mitsucouloir_mitsucouloir
+              - switch.piscine_relais
+              - light.wled_outside
+              - switch.manubal
+              - cover.awning_0001
+              - valve.valve_controller_valve
+          - type: markdown
+            title: Actions programmées
+            content: >
+              {% set raw = states('input_text.scheduled_actions') %}
+              {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
+              {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
+              {% set ns = namespace(any=false) %}
+              {% for a in actions %}
+              {% set ns.any = true %}
+              {% set mins = [((a.t - now().timestamp()) / 60), 0] | max | round(0) | int %}
+              {% set label = '🔴 extinction' if a.op == 0 else '🟢 allumage' %}
+              **{{ a.n }}** — {{ label }} dans {{ mins }} min
+
+              {% endfor %}
+              {% for t in timers %}
+              {% set ns.any = true %}
+              **{{ t.name }}** — {{ (t.total_seconds_left / 60) | round(0) }} min restantes{% if t.is_active == false %} ⏰{% endif %}
+
+              {% endfor %}
+              {% if not ns.any %}
+              Aucune action programmée
+              {% endif %}
+
+  - path: programmations
+    title: Programmations
+    icon: mdi:timer-cog
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:home
+                icon_color: blue
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                  margin-bottom: 4px;
+                }
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Actions LLM
+                secondary: >-
+                  {% set raw = states('input_text.scheduled_actions') %}
+                  {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
+                  {{ actions | length }} en attente
+                icon: mdi:robot
+                icon_color: >-
+                  {% set raw = states('input_text.scheduled_actions') %}
+                  {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
+                  {{ 'orange' if actions | length > 0 else 'grey' }}
+                entity: input_text.scheduled_actions
+                tap_action:
+                  action: none
+              - type: custom:mushroom-template-card
+                primary: Minuteries
+                secondary: >-
+                  {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
+                  {{ timers | length }} active{{ 's' if timers | length > 1 else '' }}
+                icon: mdi:timer-outline
+                icon_color: >-
+                  {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
+                  {{ 'blue' if timers | length > 0 else 'grey' }}
+                entity: sensor.assistant_timers
+                tap_action:
+                  action: none
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: markdown
+                title: En cours
+                content: >
+                  {% set raw = states('input_text.scheduled_actions') %}
+                  {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
+                  {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
+                  {% set ns = namespace(any=false) %}
+                  {% for a in actions %}
+                  {% set ns.any = true %}
+                  {% set mins = [((a.t - now().timestamp()) / 60), 0] | max | round(0) | int %}
+                  {% set label = '🔴 Extinction' if a.op == 0 else '🟢 Allumage' %}
+                  **{{ a.n }}** — {{ label }} dans **{{ mins }} min**
+
+                  {% endfor %}
+                  {% for t in timers %}
+                  {% set ns.any = true %}
+                  {% set mins = (t.total_seconds_left / 60) | round(0) | int %}
+                  **{{ t.name }}** — ⏱️ **{{ mins }} min** restantes{% if not t.is_active %} ⏰{% endif %}
+
+                  {% endfor %}
+                  {% if not ns.any %}
+                  *Aucune action en cours*
+                  {% endif %}
           - type: custom:scheduler-card
             include:
               - climate.mitsusalon_mitsusalon
