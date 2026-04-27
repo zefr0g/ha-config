@@ -1,8 +1,7 @@
 alias: "Arrosage 2 — Arrêter (surplus insuffisant ou durée max)"
 description: >-
-  Ferme la vanne d'arrosage si l'injection chute en dessous de 200W pendant
-  5 min, si la pluie commence, ou après 30 min d'arrosage automatique.
-  Le délai de 30 min ne s'applique pas en cas d'ouverture manuelle.
+  Ferme la vanne en session automatique si le surplus chute ou après 30 min.
+  En session manuelle : arrêt après 2h ou si pluie prévue.
 trigger:
   - platform: numeric_state
     entity_id: sensor.msunpv_powreso
@@ -18,6 +17,11 @@ trigger:
     to: "open"
     for: "00:30:00"
     id: duree_max
+  - platform: state
+    entity_id: valve.valve_controller_valve
+    to: "open"
+    for: "02:00:00"
+    id: duree_max_manuel
 condition:
   - condition: state
     entity_id: valve.valve_controller_valve
@@ -25,7 +29,7 @@ condition:
   - condition: or
     conditions:
       - condition: template
-        value_template: "{{ trigger.id != 'duree_max' }}"
+        value_template: "{{ trigger.id in ['pluie_prevue', 'duree_max_manuel'] }}"
       - condition: state
         entity_id: input_boolean.arrosage_automatique
         state: "on"

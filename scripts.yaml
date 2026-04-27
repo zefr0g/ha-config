@@ -1,0 +1,276 @@
+historique_appareil:
+  alias: "Historique d'un appareil"
+  description: >-
+    Interroge l'historique on/off d'un appareil Home Assistant sur les dernières
+    N heures. Le résultat est écrit dans input_text.historique_resultat.
+  fields:
+    entity_id:
+      description: "Identifiant de l'entité HA (ex: switch.piscine_relais, valve.valve_controller_valve)"
+      required: true
+      selector:
+        entity: {}
+    hours:
+      description: "Nombre d'heures d'historique à consulter (défaut: 24)"
+      default: 24
+      selector:
+        number:
+          min: 1
+          max: 168
+  sequence:
+    - service: shell_command.get_entity_history
+      data:
+        entity_id: "{{ entity_id }}"
+        hours: "{{ hours | default(24) }}"
+    - delay: "00:00:04"
+  mode: single
+
+ptz_up:
+  alias: script.ptz-up
+  sequence:
+  - service: ezviz.ptz
+    data:
+      direction: up
+      speed: 5
+    target:
+      entity_id: camera.ty2_garage
+  mode: single
+  icon: mdi:arrow-up-bold
+ptz_down:
+  alias: script.ptz-down
+  sequence:
+  - service: ezviz.ptz
+    data:
+      direction: down
+      speed: 5
+    target:
+      entity_id: camera.ty2_garage
+  mode: single
+  icon: mdi:arrow-down-bold
+ptz_left:
+  alias: script.ptz-left
+  sequence:
+  - service: ezviz.ptz
+    data:
+      direction: left
+      speed: 5
+    target:
+      entity_id: camera.ty2_garage
+  mode: single
+  icon: mdi:arrow-left-bold
+ptz_right:
+  alias: script.ptz-right
+  sequence:
+  - service: ezviz.ptz
+    data:
+      direction: right
+      speed: 5
+    target:
+      entity_id: camera.ty2_garage
+  mode: single
+  icon: mdi:arrow-right-bold
+armer_alarme:
+  alias: Armer alarme
+  sequence:
+  - service: esphome.espkyogate_arm_area
+    data:
+      area: 1
+      arm_type: 1
+      specific_area: 0
+  mode: single
+  icon: mdi:shield-home-outline
+desarmer_alarme:
+  alias: Désarmer alarme
+  sequence:
+  - service: esphome.espkyogate_disarm_area
+    data:
+      area: 1
+      specific_area: 0
+  mode: single
+  icon: mdi:alarm-off
+radio_france_inter:
+  alias: Radio France Inter
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://icecast.radiofrance.fr/franceinter-hifi.aac
+      media_content_type: music
+radio_france_info:
+  alias: Radio France Info
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://icecast.radiofrance.fr/franceinfo-hifi.aac
+      media_content_type: music
+radio_rtl:
+  alias: Radio RTL
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://streaming.radio.rtl.fr/rtl-1-44-128
+      media_content_type: music
+radio_europe_2:
+  alias: Radio Europe 2
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://icecast.virginradio.fr/virginradio-4.aac
+      media_content_type: music
+radio_rtl2:
+  alias: Radio RTL 2
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://streaming.radio.rtl2.fr/rtl2-1-44-128
+      media_content_type: music
+arreter_radio:
+  alias: Arrêter la radio
+  icon: mdi:stop
+  sequence:
+  - action: media_player.media_stop
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+schedule_entity_action:
+  alias: Programmer action différée
+  description: >-
+    PREFERRED tool for any deferred action on a device (switch, light, valve,
+    fan...). Always use this instead of HassStartTimer when the goal is to
+    turn on or turn off an entity after a delay. Advantage: the scheduled
+    action appears immediately on the dashboard. Accepts either the entity_id
+    or the display name of the entity.
+    To open/turn on NOW and close/turn off after a delay, use op=turn_off,
+    open_now=true. To turn on after a delay use op=turn_on, open_now=false.
+  mode: parallel
+  max: 10
+  icon: mdi:timer-cog
+  fields:
+    entity:
+      name: Entité
+      description: entity_id ou nom d'affichage de l'entité à piloter
+      required: true
+      selector:
+        entity: {}
+    op:
+      name: Opération
+      description: turn_on pour allumer/ouvrir, turn_off pour éteindre/fermer
+      required: true
+      default: turn_off
+      selector:
+        select:
+          options:
+            - turn_on
+            - turn_off
+    minutes:
+      name: Délai (minutes)
+      description: Nombre de minutes à attendre avant l'action
+      required: true
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+    open_now:
+      name: Exécuter l'opération inverse immédiatement
+      description: >-
+        Si true, exécute l'opération inverse (turn_on si op=turn_off, et vice-versa)
+        immédiatement avant de programmer l'action différée. Utile pour
+        "ouvrir maintenant et fermer dans N minutes".
+      required: false
+      default: false
+      selector:
+        boolean: {}
+  sequence:
+    - variables:
+        resolved: >-
+          {%- set e = entity | string -%}
+          {%- if '.' in e and states[e] is not none -%}
+            {{ e }}
+          {%- else -%}
+            {%- set ns = namespace(found='') -%}
+            {%- for s in states -%}
+              {%- if s.name | lower == e | lower -%}{%- set ns.found = s.entity_id -%}{%- endif -%}
+            {%- endfor -%}
+            {{ ns.found if ns.found else e }}
+          {%- endif -%}
+        entry_id: "{{ now().timestamp() | int }}"
+        end_ts: "{{ (now() + timedelta(minutes=minutes | int)).timestamp() | int }}"
+        opposite_op: "{{ 'turn_off' if op == 'turn_on' else 'turn_on' }}"
+    - if:
+        - condition: template
+          value_template: "{{ open_now | default(false) }}"
+      then:
+        - action: >-
+            {%- set d = resolved.split('.')[0] -%}
+            {%- if d == 'valve' -%}
+              {{ 'valve.open_valve' if opposite_op == 'turn_on' else 'valve.close_valve' }}
+            {%- elif d == 'cover' -%}
+              {{ 'cover.open_cover' if opposite_op == 'turn_on' else 'cover.close_cover' }}
+            {%- else -%}
+              homeassistant.{{ opposite_op }}
+            {%- endif -%}
+          continue_on_error: true
+          target:
+            entity_id: '{{ resolved }}'
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.scheduled_actions
+      data:
+        value: >-
+          {%- set raw = states('input_text.scheduled_actions') -%}
+          {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
+          {%- set new = {"i": entry_id, "n": entity[:20], "op": 0 if op == 'turn_off' else 1, "t": end_ts} -%}
+          {{ (lst + [new]) | to_json }}
+    - action: script.turn_on
+      target:
+        entity_id: script.delayed_entity_action
+      data:
+        variables:
+          resolved: '{{ resolved }}'
+          op: '{{ op }}'
+          minutes: '{{ minutes | int }}'
+          entry_id: '{{ entry_id }}'
+delayed_entity_action:
+  alias: Action différée (helper)
+  description: >-
+    Helper interne pour schedule_entity_action. Ne pas appeler directement.
+    Attend le délai, exécute l'action, puis retire l'entrée de input_text.scheduled_actions.
+  mode: parallel
+  max: 20
+  sequence:
+    - delay:
+        minutes: '{{ minutes | int }}'
+    - action: >-
+        {%- set d = resolved.split('.')[0] -%}
+        {%- if d == 'valve' -%}
+          {{ 'valve.open_valve' if op == 'turn_on' else 'valve.close_valve' }}
+        {%- elif d == 'cover' -%}
+          {{ 'cover.open_cover' if op == 'turn_on' else 'cover.close_cover' }}
+        {%- else -%}
+          homeassistant.{{ op }}
+        {%- endif -%}
+      continue_on_error: true
+      target:
+        entity_id: '{{ resolved }}'
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.scheduled_actions
+      data:
+        value: >-
+          {%- set raw = states('input_text.scheduled_actions') -%}
+          {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
+          {{ (lst | rejectattr('i', 'equalto', entry_id) | list) | to_json }}
