@@ -11,6 +11,8 @@ import urllib.error
 _HA_URL = "http://dd-ha:8123"
 _TOKEN_FILE = "/home/dd/dev/voice-assistant/.ha_token"
 _MEDIA_ENTITY = "media_player.enceinte_entree"
+_SATELLITE_ENTITY = "media_player.rpi_satellite_media_player"
+_WATCHFACE_ENTITY = "input_select.rpi_watchface"
 # device_id of the RPi satellite in HA
 _SATELLITE_DEVICE_ID = "9d38634ac0aa71eb9f30c64630957c90"
 
@@ -76,28 +78,82 @@ def _fetch_timers() -> list:
     return result
 
 
+def _fetch_active_radio_station() -> str | None:
+    """
+    Return the friendly_name of the most recently triggered radio script,
+    or None if no radio script has run more recently than arreter_radio.
+    """
+    from datetime import timezone
+
+    states = _get("/api/states") or []
+    radio: list[dict] = []
+    stop_ts = None
+
+    for s in states:
+        eid = s.get("entity_id", "")
+        if eid == "script.arreter_radio":
+            ts = s.get("attributes", {}).get("last_triggered")
+            if ts:
+                stop_ts = ts
+        elif eid.startswith("script.radio_"):
+            ts = s.get("attributes", {}).get("last_triggered")
+            if ts:
+                name = s.get("attributes", {}).get("friendly_name", eid)
+                radio.append({"name": name, "ts": ts})
+
+    if not radio:
+        return None
+
+    radio.sort(key=lambda x: x["ts"], reverse=True)
+    latest = radio[0]
+    if stop_ts and stop_ts >= latest["ts"]:
+        return None  # radio was stopped after the last play
+    return latest["name"]
+
+
 def fetch_ha_context() -> dict:
     """
     Returns:
         {
-          "media": None | {"title": str, "artist": str},
-          "timers": [{"name": str, "remaining_s": int}, ...],
+          "media":      None | {"title": str, "artist": str},
+          "timers":     [{"name": str, "remaining_s": int}, ...],
+          "volume_pct": int (0-100),
         }
     """
-    result: dict = {"media": None, "timers": []}
+    result: dict = {"media": None, "timers": [], "volume_pct": 50}
 
     if not _token():
         return result
 
-    # Media player — single entity fetch
-    state = _get(f"/api/states/{_MEDIA_ENTITY}")
-    if state and state.get("state") == "playing":
-        attrs = state.get("attributes", {})
-        title = attrs.get("media_title") or attrs.get("media_station") or "Radio"
-        artist = attrs.get("media_artist") or ""
-        result["media"] = {"title": title, "artist": artist}
+    # Satellite state + volume (single fetch reused below)
+    sat = _get(f"/api/states/{_SATELLITE_ENTITY}")
+    if sat:
+        vol = sat.get("attributes", {}).get("volume_level")
+        if vol is not None:
+            result["volume_pct"] = round(float(vol) * 100)
+
+        if sat.get("state") == "playing":
+            # Try MASS media entity first for richer metadata
+            mass_state = _get(f"/api/states/{_MEDIA_ENTITY}")
+            title, artist = None, ""
+            if mass_state and mass_state.get("state") == "playing":
+                attrs = mass_state.get("attributes", {})
+                title = attrs.get("media_title") or attrs.get("media_station")
+                artist = attrs.get("media_artist") or ""
+
+            # Fall back to last-triggered radio script name
+            if not title:
+                title = _fetch_active_radio_station()
+
+            if title:
+                result["media"] = {"title": title, "artist": artist}
 
     # Voice timers via built-in conversation agent
     result["timers"] = _fetch_timers()
+
+    # Watchface selection
+    wf = _get(f"/api/states/{_WATCHFACE_ENTITY}")
+    if wf:
+        result["watchface"] = wf.get("state", "").lower()
 
     return result

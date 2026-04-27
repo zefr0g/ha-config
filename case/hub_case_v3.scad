@@ -28,10 +28,10 @@ part = "assembly";
 //   interior depth  needed: RPi 56 + speaker boss 4 + front diffuser gap 8 ≈ 68 → outer 72
 //   rear height     needed: speaker centre 30 + r27 + wall 2 = 59 → set 62
 //   front height    needed: Pi base + some room for front diffuser area → 30
-case_w  = 104;   // width (X)  — +10 mm for component clearance
-case_d  =  96;   // depth (Y)  — +10 mm for component clearance
-front_h =  40;   // body height at front face (Y-)  — +10 mm
-rear_h  =  72;   // body height at rear face  (Y+)  — +10 mm
+case_w  = 114;   // width (X)  — +5 mm clearance per side
+case_d  = 106;   // depth (Y)  — +5 mm clearance per side
+front_h =  45;   // body height at front face (Y-)  — +5 mm headroom
+rear_h  =  77;   // body height at rear face  (Y+)  — +5 mm headroom
 rs      =   7;   // sphere radius — rounds ALL edges and corners
 wall    =   2;   // side / rear wall thickness
 front_t =   1.5; // front LED diffuser skin
@@ -218,10 +218,19 @@ module shell() {
                     cube([case_w*2, case_d*2, 50 + split_z]);
             }
 
-            // ── 4 mounting pillars + ribs
+            // ── 4 mounting pillars + ribs + base skirt
             // Pillars sit ON TOP of the plate's flat top face (z=split_z) and rise
             // into the shell cavity. Their flat bottom faces mate directly with the
             // matching flat pads on top of the plate.
+            //
+            // Anchoring to shell:
+            //   • full-height ribs hull pillar to both adjacent inner walls (X and Y)
+            //   • low base skirt (skirt_h tall) wraps the pillar and merges into
+            //     both adjacent inner walls — turns the pillar into a buttressed
+            //     corner gusset rather than a free-standing post.
+            skirt_h    = 5;
+            rib_thick  = 2;   // rib thickness (into the wall)
+            rib_width  = 7;   // rib width (along the wall)
             intersection() {
                 outer_body();
                 union() {
@@ -232,21 +241,40 @@ module shell() {
                     for (pt = pillar_pts) {
                         sx = sign(pt[0]);
                         sy = sign(pt[1]);
-                        iwall_x = sx * (case_w/2 - wall);
-                        iwall_y = sy > 0
-                                  ? case_d/2 - wall
-                                  : -(case_d/2 - front_t);
+                        // Endpoints intentionally pushed PAST the outer wall.
+                        // The enclosing intersection() with outer_body() clips
+                        // them back to the outer surface, so the hull fully
+                        // fills the wall along its entire curved profile —
+                        // no tangent gaps near the rounded corners.
+                        owall_x = sx * (case_w/2 + 5);
+                        owall_y = sy * (case_d/2 + 5);
+                        // Rib to side wall (extends along Y)
                         hull() {
                             translate([pt[0], pt[1], split_z])
                                 cylinder(h = pillar_h, d = pillar_od);
-                            translate([iwall_x - sx*0.5, pt[1]-1.5, split_z])
-                                cube([1, 3, pillar_h]);
+                            translate([owall_x - sx*rib_thick/2, pt[1]-rib_width/2, split_z])
+                                cube([rib_thick, rib_width, pillar_h]);
                         }
+                        // Rib to front/rear wall (extends along X)
                         hull() {
                             translate([pt[0], pt[1], split_z])
                                 cylinder(h = pillar_h, d = pillar_od);
-                            translate([pt[0]-1.5, iwall_y - sy*0.5, split_z])
-                                cube([3, 1, pillar_h]);
+                            translate([pt[0]-rib_width/2, owall_y - sy*rib_thick/2, split_z])
+                                cube([rib_width, rib_thick, pillar_h]);
+                        }
+                        // Base skirt: low corner gusset filling the floor area
+                        // between the pillar and the two adjacent walls.
+                        // Endpoints reach past the outer body; the intersection
+                        // clips them so the gusset merges flush with the shell.
+                        hull() {
+                            translate([pt[0], pt[1], split_z])
+                                cylinder(h = skirt_h, d = pillar_od);
+                            translate([owall_x - sx*0.5, pt[1]-rib_width/2, split_z])
+                                cube([1, rib_width, skirt_h]);
+                            translate([pt[0]-rib_width/2, owall_y - sy*0.5, split_z])
+                                cube([rib_width, 1, skirt_h]);
+                            translate([owall_x - sx*0.5, owall_y - sy*0.5, split_z])
+                                cube([1, 1, skirt_h]);
                         }
                     }
                 }
@@ -275,21 +303,25 @@ module shell() {
                 rotate([90, 0, 0])
                     cylinder(h = wall + boss_len + 2*eps, d = spk_m3_d);
 
-        // ── USB-C slot on FRONT wall, left of centre.
-        // Front face is at y = −case_d/2, wall thickness = front_t = 1.5 mm.
-        // Slot: 14 mm wide (X) × 9 mm tall (Z).
+        // ── USB-C slot on REAR wall, on the viewer's LEFT of the speaker
+        // when looking AT the back of the case (= +X in case coords).
+        // Rear face is at y = +case_d/2, wall thickness = wall = 2 mm.
+        // Slot: 14 mm wide (X) × 9 mm tall (Z). Aligns with rpi_usb_edge=+1
+        // (Pi's USB-C edge faces rear). Use a right-angle USB-C adapter.
         //
-        // Clearances:
-        //   • front-left pillar at x=−45 — slot right edge at −25+7=−18, clear  ✓
-        //   • LEDs at x=±12, y≈−case_d/2+front_t+2, z=14 — slot at z=15, 1 mm gap ✓
-        usb_x = -25;
+        // Clearances on rear wall (+X side):
+        //   • rear-right pillar at x≈+50 — pillar spans x=+46.5..+53.5
+        //   • east speaker boss at x=+21 — boss spans x=+17..+25
+        //   • honeycomb r=20 at x=±20
+        //   → free zone roughly x = +25 .. +46.5, centre at ~+36
+        usb_x = +36;
         usb_z = 15;
-        translate([usb_x, -case_d/2 + front_t/2, usb_z])
+        translate([usb_x, case_d/2 - wall/2, usb_z])
             rotate([90, 0, 0])
                 hull()
                     for (dx=[-1,1])
                         translate([dx*2.5, 0, 0])
-                            cylinder(h = front_t*2+4, d = 9, center = true);
+                            cylinder(h = wall*2+4, d = 9, center = true);
 
         // ── Left side: airflow vents (scaled to smaller case)
         for (zv = [hat_z+3, hat_z+11, hat_z+19])

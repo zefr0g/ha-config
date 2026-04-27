@@ -13,8 +13,10 @@ Layout (240×240 round, r=119):
 
 import math
 import os
+import re
 import subprocess
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -84,8 +86,12 @@ def _load(path, size):
 
 _FONT_TIME      = _load(_FP_BOLD, 42)
 _FONT_DATE      = _load(_FP_REG,  16)
+_FONT_ROLEX     = _load(_FP_BOLD,  9)
 _FONT_SYM_TIMER = _load(_FP_SYM_TIMER or _FP_REG, 16)  # ⏱ — NotoSansSymbols2
 _FONT_SYM_RADIO = _load(_FP_SYM_RADIO or _FP_REG, 16)  # ♪ — NotoSansSymbols/DejaVu
+
+_CROWN_PATH = Path(__file__).parent / "rolex_crown.png"
+_CROWN_IMG  = Image.open(_CROWN_PATH).convert("RGBA") if _CROWN_PATH.exists() else None
 
 _JOURS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"]
 _MOIS  = ["jan", "fév", "mar", "avr", "mai", "jun",
@@ -191,6 +197,7 @@ def _hand(draw, cx, cy, angle_deg, length, tail, width, color, tip_r=0):
         )
 
 
+
 def _centered(draw, text, cx, y, font, color):
     bb = draw.textbbox((0, 0), text, font=font)
     draw.text((cx - (bb[2] - bb[0]) // 2, y), text, font=font, fill=color)
@@ -214,12 +221,12 @@ def _read_wifi_dbm() -> float:
 def _read_volume_pct() -> int:
     try:
         out = subprocess.check_output(
-            ["pactl", "get-sink-volume", "@DEFAULT_SINK@"],
+            ["amixer", "get", "Master"],
             stderr=subprocess.DEVNULL, text=True,
         )
-        for part in out.split():
-            if part.endswith("%"):
-                return int(part.rstrip("%"))
+        m = re.search(r"\[(\d+)%\]", out)
+        if m:
+            return int(m.group(1))
     except Exception:
         pass
     return 50
@@ -309,6 +316,15 @@ def render_frame(step: int, state: int, now: datetime,
              (int(cx + r_o * math.cos(rad)), int(cy + r_o * math.sin(rad)))],
             fill=col, width=w,
         )
+
+    # ── Rolex crown + wordmark (below WiFi fan, above hour-hand tip) ──
+    _ROLEX_GREEN = (0, 96, 57)
+    if _CROWN_IMG is not None:
+        cw, ch = _CROWN_IMG.size
+        paste_x = cx - cw // 2
+        paste_y = cy - 72       # WiFi fan ends ~cy-74; crown sits just below it
+        img.paste(_CROWN_IMG, (paste_x, paste_y), _CROWN_IMG)
+    _centered(draw, "ROLEX", cx, cy - 40, _FONT_ROLEX, _ROLEX_GREEN)
 
     # ── Clock hands ───────────────────────────────────────────────────
     frac = now.microsecond / 1_000_000
