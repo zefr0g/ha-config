@@ -15,7 +15,7 @@ sys.path.insert(0, "/home/dd/dev/voice-assistant/src")
 
 from config import STATE_INT, STATE_IDLE
 from display.driver import GC9A01
-from display.ui import render_frame, _read_wifi_dbm, _read_volume_pct, media_scroll_text
+from display.display_ui import render_frame, _read_wifi_dbm, media_scroll_text
 from ha_context import fetch_ha_context
 
 STATE_FILE = "/tmp/va_state"
@@ -44,7 +44,6 @@ def main():
     print("[DISPLAY] Render loop starting at 10 FPS (no threads)")
     step          = 0
     wifi_dbm      = _read_wifi_dbm()
-    vol_pct       = _read_volume_pct()
     ha_ctx        = fetch_ha_context()
     ha_fetch_mono = time.monotonic()
     slow_tick     = 0
@@ -58,10 +57,16 @@ def main():
         slow_tick += 1
         if slow_tick >= 50:       # refresh slow sensors every ~5s
             wifi_dbm      = _read_wifi_dbm()
-            vol_pct       = _read_volume_pct()
             ha_ctx        = fetch_ha_context()
             ha_fetch_mono = time.monotonic()
             slow_tick     = 0
+            wf = (ha_ctx or {}).get("watchface", "")
+            if wf:
+                try:
+                    with open("/tmp/va_watchface", "w") as f:
+                        f.write(wf)
+                except OSError:
+                    pass
 
         # Advance radio scroll offset every 8 frames (~0.8s per char)
         media = ha_ctx.get("media") if ha_ctx else None
@@ -90,6 +95,7 @@ def main():
             render_ctx = ha_ctx
 
         current_state = read_state()
+        vol_pct = (ha_ctx or {}).get("volume_pct", 50)
         frame = render_frame(step, current_state, datetime.now(), vol_pct, wifi_dbm, render_ctx, radio_offset)
         driver.blit_frame(frame)
         step += 1

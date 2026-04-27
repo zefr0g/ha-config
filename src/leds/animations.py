@@ -21,57 +21,59 @@ def _idle(stop, ring):
 
 
 def _wake(stop, ring):
-    ring.set_all(*LED_COLORS["wake"])
-    time.sleep(0.3)
-    ring.set_all(*LED_COLORS["idle"])
+    color = LED_COLORS["wake"]
+    steps = 20
+    for i in range(steps):
+        if stop.is_set():
+            return
+        ring.set_all(*_scale(color, i / steps))
+        time.sleep(0.4 / steps)
+    ring.set_all(*color)
     stop.set()
 
 
-def _kitt(stop, ring, color, step_ms=0.08):
-    """K2000 bouncing scanner: bright center pixel, dim neighbours."""
-    # positions: 0→1→2→1→0→...
-    sequence = list(range(LED_COUNT)) + list(range(LED_COUNT - 2, 0, -1))
-    for pos in sequence:
-        if stop.is_set():
-            return
-        colors = [(0, 0, 0)] * LED_COUNT
-        colors[pos] = color
-        if pos > 0:
-            colors[pos - 1] = _scale(color, 0.2)
-        if pos < LED_COUNT - 1:
-            colors[pos + 1] = _scale(color, 0.2)
-        ring.set_pixels(colors)
-        time.sleep(step_ms)
-
-
-def _listening(stop, ring):
-    _kitt(stop, ring, LED_COLORS["listening"], step_ms=0.20)
-
-
-def _processing(stop, ring):
-    _kitt(stop, ring, LED_COLORS["processing"], step_ms=0.13)
-
-
-def _speaking(stop, ring):
-    color = LED_COLORS["speaking"]
-    period = 1.2
-    steps = 30
+def _breathe(stop, ring, color, period=2.5):
+    steps = 40
     for i in range(steps):
         if stop.is_set():
             return
         t = i / steps
-        factor = 0.3 + 0.7 * (math.sin(t * 2 * math.pi - math.pi / 2) + 1) / 2
+        factor = 0.15 + 0.85 * (math.sin(t * 2 * math.pi - math.pi / 2) + 1) / 2
         ring.set_all(*_scale(color, factor))
         time.sleep(period / steps)
+
+
+def _rotate(stop, ring, color, step_s=0.25):
+    """Single bright dot cycling 0→1→2→0, dim trail on previous LED."""
+    for pos in range(LED_COUNT):
+        if stop.is_set():
+            return
+        colors = [(0, 0, 0)] * LED_COUNT
+        colors[pos] = color
+        colors[(pos - 1) % LED_COUNT] = _scale(color, 0.15)
+        ring.set_pixels(colors)
+        time.sleep(step_s)
+
+
+def _listening(stop, ring):
+    _breathe(stop, ring, LED_COLORS["listening"], period=2.5)
+
+
+def _processing(stop, ring):
+    _rotate(stop, ring, LED_COLORS["processing"], step_s=0.22)
+
+
+def _speaking(stop, ring):
+    _breathe(stop, ring, LED_COLORS["speaking"], period=2.0)
 
 
 def _error(stop, ring):
     color = LED_COLORS["error"]
     for _ in range(3):
         ring.set_all(*color)
-        time.sleep(0.2)
+        time.sleep(0.35)
         ring.clear()
-        time.sleep(0.2)
+        time.sleep(0.35)
     stop.set()
 
 

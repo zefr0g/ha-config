@@ -55,8 +55,8 @@ ACCENT_COLORS = {
 # fire before playback completes.
 LOG_STATE_MAP = {
     "Detected wake word":        "wake",
-    "VOICE_ASSISTANT_STT_START": "listening",
-    "VOICE_ASSISTANT_STT_END":   "processing",
+    "VOICE_ASSISTANT_STT_START":   "listening",
+    "VOICE_ASSISTANT_STT_VAD_END": "processing",
     "Playing TTS response":      "speaking",
     "TTS response finished":     "idle",
     "VOICE_ASSISTANT_RUN_END":   "idle",    # fallback (e.g. no TTS)
