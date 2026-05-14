@@ -1,13 +1,10 @@
 """
-Display UI — 480×320 futuristic waveform for ST7796S  (v3)
+Display UI — 480×320 modern voice assistant
+Minimal, typography-first design with animated waveform feedback.
 
-Rendering pipeline:
-  1. Background + radial ambient glow     — numpy, per-state cache
-  2. Waveform gaussian glow field         — numpy, per-pixel, vectorised
-  3. Text overlay                         — PIL, state-adaptive layout
-
-IDLE layout   : large centred clock is the hero; waveform barely visible
-ACTIVE layout : waveform fills the screen; small clock + large state label
+States:
+  IDLE:   Hero clock (HH:MM + :SS), subtle waveform glow, date + status
+  ACTIVE: Full waveform (listening/processing/speaking), top strip, context bar
 """
 
 import math
@@ -28,7 +25,10 @@ from config import (
 # ── Geometry ─────────────────────────────────────────────────────────────
 _CX    = DISPLAY_WIDTH  // 2   # 240
 _CY    = DISPLAY_HEIGHT // 2   # 160
-_MAX_H = 100                   # max waveform half-height (px)
+
+# Waveform height: subtle in idle, bold in active
+_MAX_H_IDLE   = 18
+_MAX_H_ACTIVE = 130
 
 # ── Pre-computed pixel grids ──────────────────────────────────────────────
 _Y_g = np.arange(DISPLAY_HEIGHT, dtype=np.float32)[:, np.newaxis]   # (H, 1)
@@ -51,14 +51,14 @@ _ACCENT = {
     STATE_ERROR:      (255,  60,   0),
 }
 
-# Pre-cache per-state radial glow arrays (expensive multiply done once at import)
-_BG_BASE   = np.array(_BG, dtype=np.float32)                          # (3,)
+# Pre-cache per-state radial glow arrays
+_BG_BASE   = np.array(_BG, dtype=np.float32)
 _BG_RADIAL = {
     s: _RADIAL[:, :, np.newaxis] * np.array(list(c), dtype=np.float32)
     for s, c in _ACCENT.items()
-}                                                                      # {state: (H,W,3)}
+}
 
-# Glow intensity multiplier per state (background ambient)
+# Glow intensity per state
 _GLOW_INT = {
     STATE_IDLE:       0.50,
     STATE_LISTENING:  0.28,
@@ -69,7 +69,7 @@ _GLOW_INT = {
 
 # ── Gaussian glow constants ───────────────────────────────────────────────
 _INV2_SCORE = 1.0 / (2.0 * 2.5 ** 2)   # σ_core = 2.5 px  (tight bright line)
-_INV2_SGLOW = 1.0 / (2.0 * 9.0 ** 2)   # σ_glow = 9.0 px  (wide soft halo)
+_INV2_SGLOW = 1.0 / (2.0 * 12.0 ** 2)  # σ_glow = 12.0 px (wide soft halo)
 
 # ── Labels / date strings ─────────────────────────────────────────────────
 _STATE_LABEL = {
@@ -110,12 +110,14 @@ _F_MONO = _find(
 def _font(path, size):
     return ImageFont.truetype(path, size) if path else ImageFont.load_default()
 
-_FONT_CLOCK = _font(_F_MONO, 72)   # IDLE: large centred clock
-_FONT_TSML  = _font(_F_MONO, 22)   # ACTIVE: small clock top-left
-_FONT_DATE  = _font(_F_REG,  15)   # IDLE: date below clock
-_FONT_STATE = _font(_F_BOLD, 22)   # ACTIVE: state label
-_FONT_MEDIA = _font(_F_REG,  14)   # media / radio scrolling text
-_FONT_DOTS  = _font(_F_REG,  14)   # IDLE: breathing dots
+# Typography: typography-first design
+_FONT_CLOCK = _font(_F_MONO, 96)   # IDLE: hero clock HH:MM
+_FONT_SECS  = _font(_F_MONO, 36)   # IDLE: small seconds :SS
+_FONT_DATE  = _font(_F_REG,  19)   # IDLE: date below clock
+_FONT_TSML  = _font(_F_MONO, 20)   # ACTIVE: small clock top-left
+_FONT_STATE = _font(_F_BOLD, 20)   # ACTIVE: state label top-right
+_FONT_MEDIA = _font(_F_REG,  14)   # media / radio text
+_FONT_STAT  = _font(_F_REG,  12)   # status: wifi + volume (top corners)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -145,6 +147,17 @@ def _read_wifi_dbm() -> int | None:
         return None
 
 
+def _wifi_indicator(dbm) -> str:
+    """Return wifi status as single character: ● (good) / ◐ (weak) / ○ (poor)."""
+    if dbm is None:
+        return "?"
+    if dbm >= -70:
+        return "●"
+    if dbm >= -80:
+        return "◐"
+    return "○"
+
+
 def media_scroll_text(title: str, artist: str) -> str:
     return f"{title} — {artist}" if artist else title
 
@@ -166,11 +179,12 @@ def _wave_y(state: int, step: int) -> np.ndarray:
     t = float(step) * 0.1
 
     if state == STATE_IDLE:
-        # Barely visible single slow sinusoid
-        y = 0.08 * np.sin(x * 1.5 + t * 0.20)
+        y = (0.075
+             + 0.025 * np.sin(x * 1.50 + t * 0.17)
+             + 0.018 * np.sin(x * 2.31 + t * 0.29)
+             + 0.010 * np.sin(x * 3.77 - t * 0.11))
 
     elif state == STATE_LISTENING:
-        # Voice-like: envelope-modulated harmonic stack
         env = 0.5 + 0.5 * abs(math.sin(t * 0.55))
         y = env * (
             0.50 * np.sin(x * 2  + t * 2.40) +
@@ -180,29 +194,27 @@ def _wave_y(state: int, step: int) -> np.ndarray:
         )
 
     elif state == STATE_PROCESSING:
-        # Single sweeping crest — amplitude-modulated sinusoid rolling across
         y = 0.55 * np.sin(x * 3 - t * 2.8) * (0.5 + 0.5 * np.cos(x - t * 0.3))
 
     elif state == STATE_SPEAKING:
-        # High-energy beat interference pattern
         y = (0.55 * np.sin(x * 4  + t * 3.20) +
              0.30 * np.sin(x * 9  - t * 2.50) +
              0.15 * np.sin(x * 15 + t * 5.10))
 
     elif state == STATE_ERROR:
-        # Flat baseline with sparse sharp spikes
         y = np.where(np.abs(np.sin(x * 16 - t * 8)) > 0.90, 0.80, 0.03)
 
     else:
         y = np.zeros(DISPLAY_WIDTH, dtype=np.float32)
 
-    return (np.clip(np.abs(y), 0.0, 1.0) * _MAX_H).astype(np.float32)
+    return np.clip(np.abs(y), 0.0, 1.0)
 
 
-def _render_waveform(arr: np.ndarray, state: int, step: int):
+def _render_waveform(arr: np.ndarray, state: int, step: int, max_h: float):
     """Add gaussian glow waveform to float32 frame array in-place."""
     accent = np.array(list(_ACCENT[state]), dtype=np.float32)
-    yw     = _wave_y(state, step)             # (W,)
+    y_norm = _wave_y(state, step)             # (W,), normalized 0–1
+    yw     = y_norm * max_h                   # (W,), scaled by max_h
 
     wave_up = (_CY - yw)[np.newaxis, :]      # (1, W)  upper line y-coords
     wave_dn = (_CY + yw)[np.newaxis, :]      # (1, W)  lower mirror y-coords
@@ -214,74 +226,62 @@ def _render_waveform(arr: np.ndarray, state: int, step: int):
     glow = (
         1.50 * np.exp(-dist_up ** 2 * _INV2_SCORE) +  # upper core
         0.40 * np.exp(-dist_up ** 2 * _INV2_SGLOW) +  # upper halo
-        0.20 * np.exp(-dist_dn ** 2 * _INV2_SCORE) +  # mirror core (dimmer)
-        0.08 * np.exp(-dist_dn ** 2 * _INV2_SGLOW)    # mirror halo
+        0.12 * np.exp(-dist_dn ** 2 * _INV2_SCORE) +  # mirror core (dimmer)
+        0.05 * np.exp(-dist_dn ** 2 * _INV2_SGLOW)    # mirror halo (subtler)
     )  # (H, W)
 
-    # Subtle fill between upper wave and baseline, even subtler below
+    # Subtle fill between upper wave and baseline
     fill  = ((_Y_g >= wave_up) & (_Y_g <= _CY)).astype(np.float32) * 0.07
-    fill += ((_Y_g >= _CY)     & (_Y_g <= wave_dn)).astype(np.float32) * 0.04
+    fill += ((_Y_g >= _CY)     & (_Y_g <= wave_dn)).astype(np.float32) * 0.03
 
-    arr += (glow + fill)[:, :, np.newaxis] * accent   # (H, W, 3) broadcast
-
-
-# ── Static frame chrome ───────────────────────────────────────────────────
-def _draw_corners(draw: ImageDraw.ImageDraw, state: int, bright: float):
-    c = _tint(_ACCENT[state], bright)
-    L, T, M = 16, 1, 5
-    W, H = DISPLAY_WIDTH - 1, DISPLAY_HEIGHT - 1
-    draw.rectangle([M,     M,     M + L, M + T], fill=c)
-    draw.rectangle([M,     M,     M + T, M + L], fill=c)
-    draw.rectangle([W-M-L, M,     W - M, M + T], fill=c)
-    draw.rectangle([W-M-T, M,     W - M, M + L], fill=c)
-    draw.rectangle([M,     H-M-T, M + L, H - M], fill=c)
-    draw.rectangle([M,     H-M-L, M + T, H - M], fill=c)
-    draw.rectangle([W-M-L, H-M-T, W - M, H - M], fill=c)
-    draw.rectangle([W-M-T, H-M-L, W - M, H - M], fill=c)
-
-
-def _draw_accent_lines(draw: ImageDraw.ImageDraw, state: int):
-    col = _tint(_ACCENT[state], 0.70)
-    draw.rectangle([0, 38,  DISPLAY_WIDTH - 1, 39],  fill=col)
-    draw.rectangle([0, 271, DISPLAY_WIDTH - 1, 272], fill=col)
+    arr += (glow + fill)[:, :, np.newaxis] * accent
 
 
 # ── Text overlays ─────────────────────────────────────────────────────────
 def _draw_idle(draw: ImageDraw.ImageDraw, now: datetime, state: int,
-               ha_ctx, radio_offset: int):
+               ha_ctx, radio_offset: int, vol_pct: int, wifi_dbm):
+    """IDLE: hero clock + date, subtle waveform at bottom, simple status."""
     accent = _ACCENT[state]
-    cx     = _CX
 
-    # Large centred clock — clock + date block centred around y=155
-    _centered(draw, now.strftime("%H:%M:%S"), cx, 55, _FONT_CLOCK, _tint(accent, 1.0))
+    # Top strip: wifi dot (top-left) + volume % (top-right)
+    wifi_char = _wifi_indicator(wifi_dbm)
+    draw.text((18, 8), wifi_char, font=_FONT_STAT, fill=_tint(accent, 0.5))
+    draw.text((DISPLAY_WIDTH - 60, 8), f"{vol_pct}%", font=_FONT_STAT, fill=_tint(accent, 0.5))
 
-    date_str = f"{_DAY_FR[now.weekday()]}  {now.day} {_MON_FR[now.month]} {now.year}"
-    _centered(draw, date_str, cx, 192, _FONT_DATE, _tint(accent, 0.65))
+    # Hero: HH:MM centred, large
+    hm = now.strftime("%H:%M")
+    _centered(draw, hm, _CX, 50, _FONT_CLOCK, accent)
 
-    # Media or breathing dots at bottom
+    # Seconds: :SS below-right of the clock
+    ss = now.strftime(":%S")
+    bb = draw.textbbox((0, 0), hm, font=_FONT_CLOCK)
+    clock_width = bb[2] - bb[0]
+    ss_x = _CX + (clock_width // 2) - 20  # Align near the right edge of HH:MM
+    draw.text((ss_x, 160), ss, font=_FONT_SECS, fill=_tint(accent, 0.65))
+
+    # Date: below clock
+    date_str = f"{_DAY_FR[now.weekday()]} · {now.day} {_MON_FR[now.month]} {now.year}"
+    _centered(draw, date_str, _CX, 245, _FONT_DATE, _tint(accent, 0.65))
+
+    # Media or empty space at bottom
     media = (ha_ctx or {}).get("media")
     if media:
         full   = media_scroll_text(media["title"], media.get("artist", ""))
         offset = radio_offset % max(1, len(full))
-        txt    = "♪  " + (full + "   " + full)[offset:offset + 40]
-        _centered(draw, txt, cx, 284, _FONT_MEDIA, _tint(accent, 0.55))
-    else:
-        _centered(draw, "· · ·", cx, 285, _FONT_DOTS, _tint(accent, 0.50))
-
-    _draw_corners(draw, state, bright=0.22)
+        txt    = "♪  " + (full + "   " + full)[offset:offset + 36]
+        _centered(draw, txt, _CX, 300, _FONT_MEDIA, _tint(accent, 0.55))
 
 
 def _draw_active(draw: ImageDraw.ImageDraw, now: datetime, state: int,
-                 ha_ctx, radio_offset: int):
+                 ha_ctx, radio_offset: int, vol_pct: int, wifi_dbm):
+    """ACTIVE: top strip (clock + state), big waveform, bottom context bar."""
     accent = _ACCENT[state]
 
-    # Small clock top-left
-    draw.text((12, 9), now.strftime("%H:%M:%S"), font=_FONT_TSML,
-              fill=_tint(accent, 0.55))
+    # Top strip: clock left, state label right
+    draw.text((12, 8), now.strftime("%H:%M"), font=_FONT_TSML, fill=_tint(accent, 0.6))
+    _centered(draw, _STATE_LABEL[state], DISPLAY_WIDTH - 100, 8, _FONT_STATE, accent)
 
-    _draw_accent_lines(draw, state)
-
-    # Bottom bar: timer > media (when speaking) > state label
+    # Bottom context bar: timer > media > empty
     timers = (ha_ctx or {}).get("timers", [])
     media  = (ha_ctx or {}).get("media")
 
@@ -290,16 +290,12 @@ def _draw_active(draw: ImageDraw.ImageDraw, now: datetime, state: int,
         m, s = divmod(s, 60)
         h, m = divmod(m, 60)
         label = f"⏱  {h}h{m:02d}m{s:02d}" if h else f"⏱  {m}:{s:02d}"
-        _centered(draw, label, _CX, 281, _FONT_STATE, _tint(accent, 0.85))
-    elif media and state == STATE_SPEAKING:
+        _centered(draw, label, _CX, 295, _FONT_MEDIA, _tint(accent, 0.85))
+    elif media:
         full   = media_scroll_text(media["title"], media.get("artist", ""))
         offset = radio_offset % max(1, len(full))
         txt    = "♪  " + (full + "   " + full)[offset:offset + 38]
-        _centered(draw, txt, _CX, 283, _FONT_MEDIA, _tint(accent, 0.72))
-    else:
-        _centered(draw, _STATE_LABEL[state], _CX, 281, _FONT_STATE, accent)
-
-    _draw_corners(draw, state, bright=0.45)
+        _centered(draw, txt, _CX, 295, _FONT_MEDIA, _tint(accent, 0.72))
 
 
 # ── Public API ────────────────────────────────────────────────────────────
@@ -309,19 +305,20 @@ def render_frame(step: int, state: int, now: datetime,
 
     p = _pulse(state, step)
 
-    # Background: pre-cached per-state glow, scaled by pulse (fast scalar multiply)
+    # Background: pre-cached per-state glow, scaled by pulse
     arr = _BG_BASE + _BG_RADIAL[state] * (_GLOW_INT[state] * p)
 
-    # Waveform gaussian glow added in-place
-    _render_waveform(arr, state, step)
+    # Waveform: idle=subtle, active=bold
+    max_h = _MAX_H_IDLE if state == STATE_IDLE else _MAX_H_ACTIVE
+    _render_waveform(arr, state, step, max_h)
 
     # Clip → PIL → text
     img  = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGB")
     draw = ImageDraw.Draw(img)
 
     if state == STATE_IDLE:
-        _draw_idle(draw, now, state, ha_ctx, radio_offset)
+        _draw_idle(draw, now, state, ha_ctx, radio_offset, vol_pct, wifi_dbm)
     else:
-        _draw_active(draw, now, state, ha_ctx, radio_offset)
+        _draw_active(draw, now, state, ha_ctx, radio_offset, vol_pct, wifi_dbm)
 
     return to_rgb565(img)
