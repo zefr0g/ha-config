@@ -60,7 +60,7 @@ class ST7796S:
         c(0xF0); d(0xC3)    # Enable extension commands (page 1)
         c(0xF0); d(0x96)    # Enable extension commands (page 2)
 
-        c(0x36); d(0x28)    # MADCTL: MV=1 (landscape 480×320) + BGR panel order
+        c(0x36); d(0xE8)    # MADCTL: MY+MX+MV+BGR — landscape 480×320, rotated 180°
         c(0x3A); d(0x55)    # COLMOD: 16-bit RGB565
 
         c(0xB4); d(0x01)    # DIC: 1-dot inversion
