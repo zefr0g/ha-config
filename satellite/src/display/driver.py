@@ -1,4 +1,4 @@
-"""GC9A01 round TFT display driver — SPI with manual CS control."""
+"""ST7796S 4" TFT display driver — SPI0 with manual CS control, 480×320."""
 
 import fcntl
 import time
@@ -8,7 +8,7 @@ import RPi.GPIO as GPIO
 from config import SPI_DC, SPI_CS, SPI_RST, SPI_BLK, DISPLAY_SPI_SPEED
 
 
-class GC9A01:
+class ST7796S:
     def __init__(self):
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -22,8 +22,8 @@ class GC9A01:
         self._spi.max_speed_hz = DISPLAY_SPI_SPEED
         self._spi.mode = 0
         self._spi.no_cs = True  # CS controlled manually
-        # Mark fd as close-on-exec so subprocess.Popen forks never inherit it,
-        # which would cause SPI ioctl timeouts when the fork races with a transfer
+        # Prevent fork-inherited fd from racing with SPI transfers (no subprocess
+        # in this process, but defensive in case of future changes)
         fd = self._spi.fileno()
         fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
@@ -51,75 +51,58 @@ class GC9A01:
 
     def _init(self):
         c, d = self._cmd, self._data
-        c(0xEF)
-        c(0xEB); d(0x14)
-        c(0xFE); c(0xEF)
-        c(0xEB); d(0x14)
-        c(0x84); d(0x40)
-        c(0x85); d(0xFF)
-        c(0x86); d(0xFF)
-        c(0x87); d(0xFF)
-        c(0x88); d(0x0A)
-        c(0x89); d(0x21)
-        c(0x8A); d(0x00)
-        c(0x8B); d(0x80)
-        c(0x8C); d(0x01)
-        c(0x8D); d(0x01)
-        c(0x8E); d(0xFF)
-        c(0x8F); d(0xFF)
-        c(0xB6); d([0x00, 0x20])
-        c(0x36); d(0x08)
-        c(0x3A); d(0x05)
-        c(0x90); d([0x08, 0x08, 0x08, 0x08])
-        c(0xBD); d(0x06)
-        c(0xBC); d(0x00)
-        c(0xFF); d([0x60, 0x01, 0x04])
-        c(0xC3); d(0x13)
-        c(0xC4); d(0x13)
-        c(0xC9); d(0x22)
-        c(0xBE); d(0x11)
-        c(0xE1); d([0x10, 0x0E])
-        c(0xDF); d([0x21, 0x0C, 0x02])
-        c(0xF0); d([0x45, 0x09, 0x08, 0x08, 0x26, 0x2A])
-        c(0xF1); d([0x43, 0x70, 0x72, 0x36, 0x37, 0x6F])
-        c(0xF2); d([0x45, 0x09, 0x08, 0x08, 0x26, 0x2A])
-        c(0xF3); d([0x43, 0x70, 0x72, 0x36, 0x37, 0x6F])
-        c(0xED); d([0x1B, 0x0B])
-        c(0xAE); d(0x77)
-        c(0xCD); d(0x63)
-        c(0x70); d([0x07, 0x07, 0x04, 0x0E, 0x0F, 0x09, 0x07, 0x08, 0x03])
-        c(0xE8); d(0x34)
-        c(0x62); d([0x18, 0x0D, 0x71, 0xED, 0x70, 0x70,
-                    0x18, 0x0F, 0x71, 0xEF, 0x70, 0x70])
-        c(0x63); d([0x18, 0x11, 0x71, 0xF1, 0x70, 0x70,
-                    0x18, 0x13, 0x71, 0xF3, 0x70, 0x70])
-        c(0x64); d([0x28, 0x29, 0xF1, 0x01, 0xF1, 0x00, 0x07])
-        c(0x66); d([0x3C, 0x00, 0xCD, 0x67, 0x45, 0x45, 0x10, 0x00, 0x00, 0x00])
-        c(0x67); d([0x00, 0x3C, 0x00, 0x00, 0x00, 0x01, 0x54, 0x10, 0x32, 0x98])
-        c(0x74); d([0x10, 0x85, 0x80, 0x00, 0x00, 0x4E, 0x00])
-        c(0x98); d([0x3E, 0x07])
-        c(0x35)
-        c(0x21)
-        c(0x11); time.sleep(0.12)
-        c(0x29); time.sleep(0.02)
+
+        c(0x01)             # SWRESET
+        time.sleep(0.12)
+        c(0x11)             # SLPOUT
+        time.sleep(0.12)
+
+        c(0xF0); d(0xC3)    # Enable extension commands (page 1)
+        c(0xF0); d(0x96)    # Enable extension commands (page 2)
+
+        c(0x36); d(0x28)    # MADCTL: MV=1 (landscape 480×320) + BGR panel order
+        c(0x3A); d(0x55)    # COLMOD: 16-bit RGB565
+
+        c(0xB4); d(0x01)    # DIC: 1-dot inversion
+        c(0xB7); d(0xC6)    # Entry mode
+
+        c(0xE8); d([0x40, 0x8A, 0x00, 0x00, 0x29, 0x19, 0xA5, 0x33])  # DOCA
+        c(0xC1); d(0x06)    # PWR2
+        c(0xC2); d(0xA7)    # PWR3
+        c(0xC5); d(0x2A)    # VCMPCTL — raised from 0x18: deeper blacks, brighter whites
+        time.sleep(0.02)
+
+        # Positive gamma — steeper toe for deeper blacks, lifted shoulder for vivid highlights
+        c(0xE0); d([0xF0, 0x04, 0x08, 0x04, 0x04, 0x18, 0x2E,
+                    0x44, 0x42, 0x38, 0x14, 0x12, 0x18, 0x1C])
+        # Negative gamma
+        c(0xE1); d([0xE0, 0x04, 0x08, 0x04, 0x04, 0x08, 0x28,
+                    0x44, 0x41, 0x38, 0x14, 0x12, 0x18, 0x1C])
+        time.sleep(0.02)
+
+        c(0xF0); d(0x3C)    # Disable extension commands (page 1)
+        c(0xF0); d(0x69)    # Disable extension commands (page 2)
+
+        c(0x20)             # INVOFF — this panel renders correctly without inversion
+        c(0x13)             # NORON
+        c(0x29)             # DISPON
+        time.sleep(0.02)
 
     def blit_frame(self, rgb565_bytes):
-        """Send a full 240×240 RGB565 frame. CS held LOW for the entire transfer."""
+        """Send a full 480×320 RGB565 frame. CS held LOW for the entire pixel transfer."""
         self._cmd(0x2A)
-        self._data([0x00, 0x00, 0x00, 0xEF])
+        self._data([0x00, 0x00, 0x01, 0xDF])   # CASET: col 0..479
         self._cmd(0x2B)
-        self._data([0x00, 0x00, 0x00, 0xEF])
+        self._data([0x00, 0x00, 0x01, 0x3F])   # RASET: row 0..319
         self._cmd(0x2C)
 
         GPIO.output(SPI_CS, GPIO.LOW)
         GPIO.output(SPI_DC, GPIO.HIGH)
-        # Use 64-byte chunks to stay in PIO mode (below BCM2835 DMA threshold).
-        # Larger chunks trigger SPI DMA which conflicts with I2S PCM DMA when
-        # the audio device is open (e.g. LVA container running).
-        chunk = 64
+        # 64-byte chunks keep SPI in PIO mode — BCM2835 DMA kicks in above ~96 bytes
+        # and conflicts with the I2S PCM DMA used by the audio subsystem.
         data = bytes(rgb565_bytes)
-        for i in range(0, len(data), chunk):
-            self._spi.writebytes2(data[i:i + chunk])
+        for i in range(0, len(data), 64):
+            self._spi.writebytes2(data[i:i + 64])
         GPIO.output(SPI_CS, GPIO.HIGH)
 
     def backlight(self, on: bool):
