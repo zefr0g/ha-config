@@ -10,7 +10,7 @@ Use the hat's labeled power/GND rails as a bus.
 
 | Hat Label | Connected To |
 |-----------|-------------|
-| `+3.3V` | INMP441 VDD, GC9A01 VCC, MAX98357A SD (enable) |
+| `+3.3V` | INMP441 VDD, ST7796S VCC, MAX98357A SD (enable) |
 | `+5V` | MAX98357A VIN, WS2812B VDD ⚠ |
 | `GND` (either rail) | All module GNDs, INMP441 L/R |
 
@@ -29,6 +29,24 @@ Hat pin #18  ──► [horizontal rail A]  ──► INMP441 SCK
 
 Hat pin #19  ──► [horizontal rail B]  ──► INMP441 WS
                                       ──► MAX98357A LRC
+```
+
+---
+
+## Shared SPI Bus — use horizontal proto rails
+
+The ST7796S display and touch controller share SPI0 (CLK, MOSI, MISO).
+Use three horizontal rows on the proto area as bus rails:
+
+```
+Hat CLK   ──► [horizontal rail C]  ──► ST7796S SCK
+                                   ──► ST7796S T_CLK
+
+Hat MOSI  ──► [horizontal rail D]  ──► ST7796S SDI
+                                   ──► ST7796S T_DIN
+
+Hat MISO  ──► [horizontal rail E]  ──► ST7796S SOOK
+                                   ──► ST7796S T_DO
 ```
 
 ---
@@ -61,7 +79,7 @@ Hat pin #19  ──► [horizontal rail B]  ──► INMP441 WS
 
 ---
 
-## WS2812B — 12-LED RGB Ring
+## WS2812B — LED Ring
 
 Solder the 300Ω series resistor on the proto area between `#12` and the DIN wire.
 
@@ -77,18 +95,29 @@ Hat #12  ──[300Ω]──► WS2812B DIN
 
 ---
 
-## GC9A01 — 1.28" Round TFT Display
+## ST7796S — 4.0" TFT Display (480×320)
 
-| GC9A01 Pin | Hat Label | Notes |
-|------------|-----------|-------|
+| ST7796S Pin | Hat Label | Notes |
+|-------------|-----------|-------|
 | VCC | `+3.3V` rail | |
 | GND | `GND` rail | |
-| SCL | `CLK` | SPI0 clock |
-| SDA | `MOSI` | SPI0 data |
-| CS | `CEO` | Manual CS in software (`spi.no_cs = True`) |
-| DC | `#24` | Data/Command select |
-| RST | `#25` | Hardware reset |
-| BLK | `#23` | Backlight |
+| CS | `CEO` | SPI0 CE0 — manual CS in software |
+| RESET | `#25` | Hardware reset |
+| DC/RS | `#24` | Data/Command select |
+| SDI (MOSI) | rail D → `MOSI` | SPI0 MOSI shared bus |
+| SCK | rail C → `CLK` | SPI0 CLK shared bus |
+| LED | `#23` | Backlight (GPIO-controlled) |
+| SOOK (MISO) | rail E → `MISO` | SPI0 MISO shared bus |
+
+## ST7796S Touch Controller
+
+| ST7796S Pin | Hat Label | Notes |
+|-------------|-----------|-------|
+| T_CLK | rail C → `CLK` | SPI0 CLK shared bus |
+| T_DIN | rail D → `MOSI` | SPI0 MOSI shared bus |
+| T_DO | rail E → `MISO` | SPI0 MISO shared bus |
+| T_CS | `CE1` | SPI0 CE1 — separate CS from display |
+| T_IRQ | `#22` | Touch interrupt (active low) |
 
 ---
 
@@ -98,14 +127,8 @@ Hat #12  ──[300Ω]──► WS2812B DIN
 |----------|-----|
 | INMP441 VDD–GND | 100nF ceramic |
 | MAX98357A VIN–GND | 100nF ceramic + 10µF electrolytic |
-| GC9A01 VCC–GND | 100nF ceramic |
+| ST7796S VCC–GND | 100nF ceramic |
 | WS2812B VDD–GND | 100µF electrolytic |
-
----
-
-## Unused Hat Pins (available for future use)
-
-`SDA`, `SCL`, `TXD`, `RXD`, `#4`, `#17`, `#27`, `#22`, `MISO`, `CE1`, `#5`, `#6`, `#13`, `#16`
 
 ---
 
@@ -118,9 +141,16 @@ Hat #12  ──[300Ω]──► WS2812B DIN
 | `#20` | GPIO20 | I2S RX → INMP441 SD |
 | `#21` | GPIO21 | I2S TX → MAX98357A DIN |
 | `#12` | GPIO12 | PWM0 → WS2812B DIN (via 300Ω) |
-| `MOSI` | GPIO10 | SPI0 MOSI → GC9A01 SDA |
-| `CLK` | GPIO11 | SPI0 CLK → GC9A01 SCL |
-| `CEO` | GPIO8 | SPI0 CE0 → GC9A01 CS |
-| `#23` | GPIO23 | GC9A01 BLK |
-| `#24` | GPIO24 | GC9A01 DC |
-| `#25` | GPIO25 | GC9A01 RST |
+| `MOSI` | GPIO10 | SPI0 MOSI → ST7796S SDI + T_DIN (via rail D) |
+| `CLK` | GPIO11 | SPI0 CLK → ST7796S SCK + T_CLK (via rail C) |
+| `MISO` | GPIO9 | SPI0 MISO → ST7796S SOOK + T_DO (via rail E) |
+| `CEO` | GPIO8 | SPI0 CE0 → ST7796S CS |
+| `CE1` | GPIO7 | SPI0 CE1 → ST7796S T_CS |
+| `#22` | GPIO22 | ST7796S T_IRQ (touch interrupt) |
+| `#23` | GPIO23 | ST7796S LED (backlight) |
+| `#24` | GPIO24 | ST7796S DC/RS |
+| `#25` | GPIO25 | ST7796S RESET |
+
+## Unused Hat Pins
+
+`SDA`, `SCL`, `TXD`, `RXD`, `#4`, `#17`, `#27`, `#5`, `#6`, `#13`, `#16`

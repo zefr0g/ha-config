@@ -14,7 +14,7 @@ from datetime import datetime
 sys.path.insert(0, "/home/dd/dev/voice-assistant/src")
 
 from config import STATE_INT, STATE_IDLE
-from display.driver import GC9A01
+from display.driver import ST7796S
 from display.display_ui import render_frame, _read_wifi_dbm, media_scroll_text
 from ha_context import fetch_ha_context
 
@@ -31,7 +31,7 @@ def read_state() -> int:
 
 
 def main():
-    driver = GC9A01()
+    driver = ST7796S()
 
     def cleanup(sig=None, frame=None):
         print("\n[DISPLAY] Shutting down...")

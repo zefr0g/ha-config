@@ -111,6 +111,28 @@ def _fetch_active_radio_station() -> str | None:
     return latest["name"]
 
 
+_SOLAR_ENTITY = "sensor.current_power_production"
+_GRID_ENTITY  = "sensor.msunpv_powreso"
+
+
+def _fetch_solar() -> dict:
+    """Returns solar production (W) and grid power (W, negative = export)."""
+    solar_w, grid_w = 0, 0
+    s = _get(f"/api/states/{_SOLAR_ENTITY}")
+    if s:
+        try:
+            solar_w = int(float(s.get("state", 0)))
+        except (ValueError, TypeError):
+            pass
+    g = _get(f"/api/states/{_GRID_ENTITY}")
+    if g:
+        try:
+            grid_w = int(float(g.get("state", 0)))
+        except (ValueError, TypeError):
+            pass
+    return {"solar_w": solar_w, "grid_w": grid_w}
+
+
 def fetch_ha_context() -> dict:
     """
     Returns:
@@ -118,9 +140,12 @@ def fetch_ha_context() -> dict:
           "media":      None | {"title": str, "artist": str},
           "timers":     [{"name": str, "remaining_s": int}, ...],
           "volume_pct": int (0-100),
+          "solar_w":    int (watts, current production),
+          "grid_w":     int (watts, negative = export to grid),
         }
     """
-    result: dict = {"media": None, "timers": [], "volume_pct": 50}
+    result: dict = {"media": None, "timers": [], "volume_pct": 50,
+                    "solar_w": 0, "grid_w": 0}
 
     if not _token():
         return result
@@ -155,5 +180,8 @@ def fetch_ha_context() -> dict:
     wf = _get(f"/api/states/{_WATCHFACE_ENTITY}")
     if wf:
         result["watchface"] = wf.get("state", "").lower()
+
+    # Solar + grid
+    result.update(_fetch_solar())
 
     return result

@@ -2,10 +2,12 @@
 
 # ── GPIO ──────────────────────────────────────────────────────────────
 LED_PIN        = 12       # GPIO12 / PWM0
-SPI_DC         = 24       # GC9A01 Data/Command
-SPI_CS         = 8        # GC9A01 Chip Select (CE0, manual control)
-SPI_RST        = 25       # GC9A01 Reset
-SPI_BLK        = 23       # GC9A01 Backlight
+SPI_DC         = 24       # ST7796S Data/Command
+SPI_CS         = 8        # ST7796S Chip Select (CE0, manual control)
+SPI_RST        = 25       # ST7796S Reset
+SPI_BLK        = 23       # ST7796S Backlight
+TOUCH_CS       = 7        # ST7796S Touch CS (CE1)
+TOUCH_IRQ      = 22       # ST7796S Touch interrupt (active low)
 
 # ── LED ring ──────────────────────────────────────────────────────────
 LED_COUNT      = 3
@@ -16,11 +18,11 @@ LED_CHANNEL    = 0
 LED_BRIGHTNESS = 40       # 0-255, keep low for 5V ring on 3.3V PWM
 
 # ── Display ───────────────────────────────────────────────────────────
-DISPLAY_WIDTH  = 240
-DISPLAY_HEIGHT = 240
-DISPLAY_CX     = 120
-DISPLAY_CY     = 120
-DISPLAY_SPI_SPEED = 20_000_000  # 20 MHz, reliable on breadboard
+DISPLAY_WIDTH  = 480
+DISPLAY_HEIGHT = 320
+DISPLAY_CX     = 240
+DISPLAY_CY     = 160
+DISPLAY_SPI_SPEED = 40_000_000  # 40 MHz — proto hat (soldered) handles it; 307 KB frame needs >25 MHz for 10 FPS
 
 # ── VA states (int, shared between LED and display daemons) ───────────
 STATE_IDLE       = 0
