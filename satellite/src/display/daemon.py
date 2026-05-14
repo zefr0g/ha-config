@@ -50,6 +50,8 @@ def main():
     radio_offset  = 0
     _last_radio   = ""
     _scroll_frame = 0
+    _morph        = 0.0
+    _MORPH_SPEED  = 0.07  # ~14 frames per transition = 1.4s
 
     while True:
         t0 = time.monotonic()
@@ -95,8 +97,16 @@ def main():
             render_ctx = ha_ctx
 
         current_state = read_state()
+
+        # Smooth morph toward active/idle based on current state
+        target = 0.0 if current_state == STATE_IDLE else 1.0
+        if target > _morph:
+            _morph = min(1.0, _morph + _MORPH_SPEED)
+        else:
+            _morph = max(0.0, _morph - _MORPH_SPEED)
+
         vol_pct = (ha_ctx or {}).get("volume_pct", 50)
-        frame = render_frame(step, current_state, datetime.now(), vol_pct, wifi_dbm, render_ctx, radio_offset)
+        frame = render_frame(step, current_state, datetime.now(), vol_pct, wifi_dbm, render_ctx, radio_offset, _morph)
         driver.blit_frame(frame)
         step += 1
 
