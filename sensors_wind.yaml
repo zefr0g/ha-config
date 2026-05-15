@@ -14,7 +14,7 @@
 - platform: statistics
   name: "Wind Max 10min"
   unique_id: wind_max_10min
-  entity_id: sensor.weather_station_wind_gust
+  entity_id: sensor.weather_station_wind_speed
   state_characteristic: value_max
   max_age:
     minutes: 10
