@@ -6,7 +6,7 @@
 - platform: statistics
   name: "Wind Average 10min"
   unique_id: wind_average_10min
-  entity_id: sensor.vevor_7in1_0_2569_wind_average
+  entity_id: sensor.weather_station_wind_speed
   state_characteristic: mean
   max_age:
     minutes: 10
@@ -14,7 +14,7 @@
 - platform: statistics
   name: "Wind Max 10min"
   unique_id: wind_max_10min
-  entity_id: sensor.vevor_7in1_0_2569_wind_max
+  entity_id: sensor.weather_station_wind_gust
   state_characteristic: value_max
   max_age:
     minutes: 10
