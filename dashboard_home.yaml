@@ -107,12 +107,12 @@ views:
                   name: false
                   icon: false
                 entities:
-                  - entity: sensor.weather_station_temperature
+                  - entity: sensor.station_meteo_temperature_exterieure
                     name: Temp.
                     color: '#e45e33'
                     show_state: true
                     show_fill: true
-                  - entity: sensor.weather_station_humidity
+                  - entity: sensor.station_meteo_humidite_exterieure
                     name: Humidité
                     color: '#42a5f5'
                     y_axis: secondary
@@ -128,7 +128,7 @@ views:
                       flex-wrap: wrap;
                     }
                     .states.flex::after {
-                      content: "{{ relative_time(states['sensor.weather_station_temperature'].last_changed) }}";
+                      content: "{{ relative_time(states['sensor.station_meteo_temperature_exterieure'].last_changed) }}";
                       flex-basis: 100%;
                       font-size: 0.8em;
                       opacity: 0.7;
@@ -141,7 +141,7 @@ views:
                     primary: >-
                       {{ states('sensor.wind_average_10min') | float(0) | round(1) }} km/h
                     secondary: >-
-                      {% set d = states('sensor.weather_station_wind_direction') | float(0) %}
+                      {% set d = states('sensor.station_meteo_direction_vent') | float(0) %}
                       {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
                       {{ dirs[((d + 22.5) / 45) | int % 8] }} ({{ d | round(0) | int }}°)
                     icon: mdi:weather-windy
@@ -194,24 +194,24 @@ views:
                 alignment: center
                 chips:
                   - type: template
-                    entity: sensor.weather_station_uv_index
+                    entity: sensor.station_meteo_indice_uv
                     icon: mdi:sun-wireless
                     icon_color: orange
-                    content: "UV {{ states('sensor.weather_station_uv_index') }}"
+                    content: "UV {{ states('sensor.station_meteo_indice_uv') }}"
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.weather_station_rain_hourly
+                    entity: sensor.station_meteo_pluie_heure
                     icon: mdi:weather-rainy
                     icon_color: blue
-                    content: "{{ states('sensor.weather_station_rain_hourly') }} mm"
+                    content: "{{ states('sensor.station_meteo_pluie_heure') }} mm"
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.weather_station_solar_radiation
+                    entity: sensor.station_meteo_rayonnement_solaire
                     icon: mdi:brightness-5
                     icon_color: yellow
-                    content: "{{ states('sensor.weather_station_solar_radiation') }} W/m²"
+                    content: "{{ states('sensor.station_meteo_rayonnement_solaire') }} W/m²"
                     tap_action:
                       action: more-info
                   - type: template
