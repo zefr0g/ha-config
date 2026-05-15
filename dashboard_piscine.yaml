@@ -54,6 +54,12 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: /lovelace-video
+              - type: action
+                icon: mdi:timer-cog
+                icon_color: orange
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground/programmations
             card_mod:
               style: |
                 ha-card {
@@ -143,6 +149,18 @@ views:
                       --chip-spacing: 0;
                       padding: 0 4px 4px 4px !important;
                     }
+
+          # --- Min run time slider ---
+          - type: entities
+            entities:
+              - entity: input_number.piscine_duree_min_filtration
+                name: Durée min. pompe
+            card_mod:
+              style: |
+                ha-card {
+                  border: none !important;
+                  box-shadow: none !important;
+                }
 
           # --- Pump run history ---
           - type: history-graph

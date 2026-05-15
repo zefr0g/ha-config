@@ -1,0 +1,20 @@
+- id: tv_salon_chaine_tnt
+  alias: "TV Salon - Changer de chaîne TNT"
+  description: "Sélection de chaîne TNT via input_select.chaine_tnt"
+  trigger:
+    - platform: state
+      entity_id: input_select.chaine_tnt
+  condition:
+    - condition: state
+      entity_id: media_player.dd_tv
+      state: "on"
+    - condition: template
+      value_template: "{{ ' - ' in trigger.to_state.state }}"
+  action:
+    - action: media_player.play_media
+      target:
+        entity_id: media_player.dd_tv
+      data:
+        media_content_type: channel
+        media_content_id: "{{ trigger.to_state.state.split(' - ')[0] | int }}"
+  mode: single

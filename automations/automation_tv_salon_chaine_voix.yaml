@@ -1,0 +1,82 @@
+- id: tv_salon_chaine_voix
+  alias: "TV Salon - Changer de chaîne par la voix"
+  description: "Commandes vocales : chaîne 6 / mets M6 / passe sur Arte"
+  trigger:
+    - platform: conversation
+      command:
+        - "(mets|mais|va sur|passe sur|mets la|mais la|passe à|change pour) [la chaîne|chaîne|la] {channel}"
+        - "chaîne {channel}"
+  condition: []
+  action:
+    - action: media_player.play_media
+      target:
+        entity_id: media_player.dd_tv
+      data:
+        media_content_type: channel
+        media_content_id: >
+          {% set ch = (trigger.slots.channel | lower | trim).split(' sur ')[0].split(' dans ')[0] | trim %}
+          {% set map = {
+            "tf1": 1, "la une": 1, "un": 1, "une": 1, "1": 1,
+            "france 2": 2, "france deux": 2, "la deux": 2, "deux": 2, "2": 2,
+            "france 3": 3, "france trois": 3, "la trois": 3, "trois": 3, "3": 3,
+            "france 4": 4, "france quatre": 4, "quatre": 4, "4": 4,
+            "france 5": 5, "france cinq": 5, "cinq": 5, "5": 5,
+            "m6": 6, "la six": 6, "six": 6, "6": 6,
+            "arte": 7, "sept": 7, "7": 7,
+            "lcp": 8, "huit": 8, "8": 8,
+            "w9": 9, "neuf": 9, "9": 9,
+            "tmc": 10, "dix": 10, "10": 10,
+            "tfx": 11, "onze": 11, "11": 11,
+            "gulli": 12, "douze": 12, "12": 12,
+            "bfm tv": 13, "bfm": 13, "treize": 13, "13": 13,
+            "cnews": 14, "c news": 14, "quatorze": 14, "14": 14,
+            "lci": 15, "quinze": 15, "15": 15,
+            "france info": 16, "franceinfo": 16, "seize": 16, "16": 16,
+            "cstar": 17, "c star": 17, "dix-sept": 17, "17": 17,
+            "t18": 18, "dix-huit": 18, "18": 18,
+            "novo 19": 19, "novo": 19, "dix-neuf": 19, "19": 19,
+            "tf1 séries films": 20, "séries films": 20, "vingt": 20, "20": 20,
+            "l equipe": 21, "l'équipe": 21, "équipe": 21, "vingt et un": 21, "21": 21,
+            "6ter": 22, "six ter": 22, "vingt-deux": 22, "22": 22,
+            "rmc story": 23, "vingt-trois": 23, "23": 23,
+            "rmc découverte": 24, "rmc decouverte": 24, "vingt-quatre": 24, "24": 24,
+            "rmc life": 25, "vingt-cinq": 25, "25": 25,
+            "paris première": 26, "paris premiere": 26, "vingt-six": 26, "26": 26
+          } %}
+          {{ map.get(ch, 0) }}
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.chaine_tnt
+      data:
+        option: >
+          {% set ch = (trigger.slots.channel | lower | trim).split(' sur ')[0].split(' dans ')[0] | trim %}
+          {% set map = {
+            "tf1": "01 - TF1", "la une": "01 - TF1", "un": "01 - TF1", "une": "01 - TF1", "1": "01 - TF1",
+            "france 2": "02 - France 2", "france deux": "02 - France 2", "deux": "02 - France 2", "2": "02 - France 2",
+            "france 3": "03 - France 3", "france trois": "03 - France 3", "trois": "03 - France 3", "3": "03 - France 3",
+            "france 4": "04 - France 4", "quatre": "04 - France 4", "4": "04 - France 4",
+            "france 5": "05 - France 5", "cinq": "05 - France 5", "5": "05 - France 5",
+            "m6": "06 - M6", "six": "06 - M6", "6": "06 - M6",
+            "arte": "07 - Arte", "sept": "07 - Arte", "7": "07 - Arte",
+            "lcp": "08 - LCP", "huit": "08 - LCP", "8": "08 - LCP",
+            "w9": "09 - W9", "neuf": "09 - W9", "9": "09 - W9",
+            "tmc": "10 - TMC", "dix": "10 - TMC", "10": "10 - TMC",
+            "tfx": "11 - TFX", "onze": "11 - TFX", "11": "11 - TFX",
+            "gulli": "12 - Gulli", "douze": "12 - Gulli", "12": "12 - Gulli",
+            "bfm tv": "13 - BFM TV", "bfm": "13 - BFM TV", "treize": "13 - BFM TV", "13": "13 - BFM TV",
+            "cnews": "14 - CNews", "c news": "14 - CNews", "quatorze": "14 - CNews", "14": "14 - CNews",
+            "lci": "15 - LCI", "quinze": "15 - LCI", "15": "15 - LCI",
+            "france info": "16 - France Info", "franceinfo": "16 - France Info", "seize": "16 - France Info", "16": "16 - France Info",
+            "cstar": "17 - CStar", "c star": "17 - CStar", "17": "17 - CStar",
+            "t18": "18 - T18", "18": "18 - T18",
+            "novo": "19 - Novo 19", "novo 19": "19 - Novo 19", "19": "19 - Novo 19",
+            "tf1 séries films": "20 - TF1 Séries Films", "séries films": "20 - TF1 Séries Films", "20": "20 - TF1 Séries Films",
+            "l equipe": "21 - L'Équipe", "équipe": "21 - L'Équipe", "21": "21 - L'Équipe",
+            "6ter": "22 - 6ter", "six ter": "22 - 6ter", "22": "22 - 6ter",
+            "rmc story": "23 - RMC Story", "23": "23 - RMC Story",
+            "rmc découverte": "24 - RMC Découverte", "rmc decouverte": "24 - RMC Découverte", "24": "24 - RMC Découverte",
+            "rmc life": "25 - RMC Life", "25": "25 - RMC Life",
+            "paris première": "26 - Paris Première", "paris premiere": "26 - Paris Première", "26": "26 - Paris Première"
+          } %}
+          {{ map.get(ch, states('input_select.chaine_tnt')) }}
+  mode: single

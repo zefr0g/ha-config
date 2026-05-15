@@ -1,15 +1,15 @@
 alias: "Piscine 2 — Arrêter pompe quand surplus insuffisant"
-description: "Arrête la pompe si production < 700W ou si import > 200W ET production < 1000W, pendant 1 min."
+description: "Arrête la pompe si production < 700W ou si import > 200W ET production < 1000W, pendant 3 min, et uniquement si la pompe tourne depuis >= durée min (input_number.piscine_duree_min_filtration)."
 trigger:
   - platform: numeric_state
     entity_id: sensor.current_power_production
     below: 700
-    for: "00:01:00"
+    for: "00:03:00"
     id: production_low
   - platform: numeric_state
     entity_id: sensor.msunpv_powreso
     above: 200
-    for: "00:01:00"
+    for: "00:03:00"
     id: import_high
 condition:
   - condition: state
@@ -21,6 +21,10 @@ condition:
   - condition: state
     entity_id: binary_sensor.heure_creuse
     state: "off"
+  - condition: template
+    value_template: >
+      {% set min_s = states('input_number.piscine_duree_min_filtration') | float(20) * 60 %}
+      {{ (now() - states.switch.piscine_relais.last_changed).total_seconds() >= min_s }}
   - condition: or
     conditions:
       - condition: trigger
