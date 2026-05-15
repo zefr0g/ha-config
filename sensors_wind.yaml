@@ -6,7 +6,7 @@
 - platform: statistics
   name: "Wind Average 10min"
   unique_id: wind_average_10min
-  entity_id: sensor.weather_station_wind_speed
+  entity_id: sensor.station_meteo_vitesse_vent
   state_characteristic: mean
   max_age:
     minutes: 10
@@ -14,7 +14,7 @@
 - platform: statistics
   name: "Wind Max 10min"
   unique_id: wind_max_10min
-  entity_id: sensor.weather_station_wind_speed
+  entity_id: sensor.station_meteo_vitesse_vent
   state_characteristic: value_max
   max_age:
     minutes: 10
