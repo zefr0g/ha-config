@@ -39,9 +39,7 @@ esphome:
             id(spk_max98357).play(buf.data(), buf.size());
         - delay: 400ms
         - output.turn_off: max98357_sd
-        - light.turn_on:
-            id: led_ring
-            effect: "Veille"
+        - light.turn_off: led_ring
         - micro_wake_word.start:
 
 esp32:
@@ -179,9 +177,7 @@ voice_assistant:
     - globals.set:
         id: va_state
         value: '0'
-    - light.turn_on:
-        id: led_ring
-        effect: "Veille"
+    - light.turn_off: led_ring
     - micro_wake_word.start:
 
   on_error:
@@ -197,9 +193,7 @@ voice_assistant:
     - globals.set:
         id: va_state
         value: '0'
-    - light.turn_on:
-        id: led_ring
-        effect: "Veille"
+    - light.turn_off: led_ring
     - micro_wake_word.start:
 
 # ── WS2812B Ring — GPIO15 ─────────────────────────────────
@@ -214,14 +208,6 @@ light:
     restore_mode: ALWAYS_OFF
     default_transition_length: 0s
     effects:
-      - addressable_lambda:
-          name: "Veille"
-          update_interval: 1000ms
-          lambda: |-
-            for (int i = 0; i < it.size(); i++) {
-              it[i] = Color(0, 0, 30);
-            }
-
       - addressable_lambda:
           name: "Ecoute"
           update_interval: 30ms
@@ -284,184 +270,140 @@ display:
     update_interval: 100ms
     lambda: |-
       static int step = 0;
-      it.fill(Color(0, 0, 0));
+      const float PI = 3.14159265f;
+      const int cx = 120, cy = 120;
+
       auto t = id(time_ha).now();
       if (!t.is_valid()) { step++; return; }
 
-      const float PI = 3.14159265f;
-      const int cx = 120, cy = 120;
       int state = id(va_state);
 
-      // ── Precompute sin/cos lookup (360 entries) ──────────
-      static float lut_sin[360];
-      static float lut_cos[360];
-      static bool lut_ready = false;
-      if (!lut_ready) {
-        for (int i = 0; i < 360; i++) {
-          float a = i * PI / 180.0f;
-          lut_sin[i] = sinf(a);
-          lut_cos[i] = cosf(a);
-        }
-        lut_ready = true;
-      }
-
-      float off1 = fmodf(step * 0.6f, 360.0f);
-      float off2 = fmodf(360.0f - fmodf(step * 0.8f, 360.0f), 360.0f);
-      float off3 = fmodf(step * 0.4f, 360.0f);
-      float pulse = (sinf(step * 0.1f) + 1.0f) / 2.0f;  // ~6s period
-
-      // ── State-dependent accent color ─────────────────────
-      Color accent;
+      // ── Accent + background per state ─────────────────────
+      // accent: full-brightness state color
+      // dark:   very dim tint for background fill
+      uint8_t ar, ag, ab, dr, dg, db;
       switch (state) {
-        case 1:  accent = Color(0, 100, 255); break;   // écoute — bleu vif
-        case 2:  accent = Color(160, 0, 220); break;   // traitement — violet
-        case 3:  accent = Color(0, 200, 60);  break;   // parle — vert
-        case 4:  accent = Color(255, 40, 0);  break;   // erreur — rouge
-        default: accent = Color(0, 40, 80);   break;   // veille — bleu sombre
+        case 1: ar=0;   ag=160; ab=255; dr=0;  dg=5;  db=20; break; // écoute — cyan-blue
+        case 2: ar=150; ag=50;  ab=240; dr=10; dg=0;  db=20; break; // traitement — violet
+        case 3: ar=30;  ag=210; ab=80;  dr=0;  dg=14; db=5;  break; // parle — green
+        case 4: ar=255; ag=55;  ab=20;  dr=20; dg=3;  db=0;  break; // erreur — red
+        default:ar=60;  ag=110; ab=200; dr=4;  dg=7;  db=14; break; // veille — slate-blue
+      }
+      Color accent(ar, ag, ab);
+
+      // ── State-tinted dark background ──────────────────────
+      it.fill(Color(dr, dg, db));
+
+      // ── Radial accent halo: bright at rim, fade inward ───
+      // 40 concentric outline circles create a smooth gradient
+      for (int r = 119; r >= 80; r--) {
+        float frac = (r - 80.0f) / 39.0f;
+        frac *= frac * 0.32f;
+        it.circle(cx, cy, r,
+          Color((uint8_t)(ar * frac), (uint8_t)(ag * frac), (uint8_t)(ab * frac)));
       }
 
-      // ── Second indicator on outer ring ───────────────────
+      // ── 12 tick marks on rim ──────────────────────────────
+      for (int i = 0; i < 12; i++) {
+        float a = (i * 30.0f - 90.0f) * PI / 180.0f;
+        float ca = cosf(a), sa = sinf(a);
+        bool cardinal = (i % 3 == 0);
+        int r1 = cardinal ? 97 : 104;
+        Color tc = cardinal ? Color(110, 130, 165) : Color(45, 55, 75);
+        for (int r = r1; r <= 111; r++)
+          it.draw_pixel_at(cx + (int)(r * ca), cy + (int)(r * sa), tc);
+      }
+
+      // ── Second progress arc (fills clockwise each minute) ─
       static uint32_t last_sec_ms = 0;
-      static int last_sec = -1;
-      if (t.second != last_sec) { last_sec_ms = millis(); last_sec = t.second; }
-      float frac = (millis() - last_sec_ms) / 1000.0f;
-      if (frac > 1.0f) frac = 1.0f;
-      float smooth_s = fmodf(t.second + frac, 60.0f);
-      float s_a = (smooth_s * 6.0f - 90.0f) * PI / 180.0f;
-      float cs = cosf(s_a), ss = sinf(s_a);
-      for (int r = 112; r <= 118; r++)
-        it.draw_pixel_at(cx + (int)(r * cs), cy + (int)(r * ss), Color(255, 255, 255));
-      float cs1 = cosf(s_a - 0.04f), ss1 = sinf(s_a - 0.04f);
-      float cs2 = cosf(s_a + 0.04f), ss2 = sinf(s_a + 0.04f);
-      for (int r = 112; r <= 118; r++) {
-        it.draw_pixel_at(cx + (int)(r * cs1), cy + (int)(r * ss1), Color(180, 180, 180));
-        it.draw_pixel_at(cx + (int)(r * cs2), cy + (int)(r * ss2), Color(180, 180, 180));
+      static int last_sec_v = -1;
+      if (t.second != last_sec_v) { last_sec_ms = millis(); last_sec_v = t.second; }
+      float frac_s = (millis() - last_sec_ms) / 1000.0f;
+      if (frac_s > 1.0f) frac_s = 1.0f;
+      float smooth_s = t.second + frac_s;
+      if (smooth_s >= 60.0f) smooth_s = 59.99f;
+      int arc_deg = (int)(smooth_s * 6.0f); // 0..359
+      for (int d = 0; d <= arc_deg; d++) {
+        float rad = (d - 90) * PI / 180.0f;
+        float ca = cosf(rad), sa = sinf(rad);
+        for (int r = 112; r <= 116; r++)
+          it.draw_pixel_at(cx + (int)(r * ca), cy + (int)(r * sa), accent);
+      }
+      // Leading white glow dot at arc tip
+      {
+        float rad = (arc_deg - 90) * PI / 180.0f;
+        float ca = cosf(rad), sa = sinf(rad);
+        for (int r = 110; r <= 118; r++)
+          it.draw_pixel_at(cx + (int)(r * ca), cy + (int)(r * sa), Color(255, 255, 255));
       }
 
-      // ── Pulsing state ring (outermost) ───────────────────
-      uint8_t pr = (uint8_t)(accent.r * (0.6f + 0.4f * pulse));
-      uint8_t pg = (uint8_t)(accent.g * (0.6f + 0.4f * pulse));
-      uint8_t pb = (uint8_t)(accent.b * (0.6f + 0.4f * pulse));
-      Color ring_col = Color(pr, pg, pb);
-      for (int r = 114; r <= 116; r++)
-        it.circle(cx, cy, r, ring_col);
-
-      // ── Rotating arc ring 1 — r=104..108, 6 segments ─────
-      Color c1 = (state == 0) ? Color(0, 180, 220) : accent;
-      for (int s = 0; s < 6; s++) {
-        float base = s * 60.0f + off1;
-        for (int d = 3; d < 52; d++) {
-          int idx = ((int)(base + d)) % 360;
-          if (idx < 0) idx += 360;
-          for (int r = 104; r <= 108; r++)
-            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c1);
+      // ── Processing: rotating comet inside rim ─────────────
+      if (state == 2) {
+        int head = (step * 7) % 360;
+        for (int d = 0; d < 200; d++) {
+          int deg = (head - d + 360) % 360;
+          float bright = (200 - d) / 200.0f;
+          float rad = (deg - 90) * PI / 180.0f;
+          float ca = cosf(rad), sa = sinf(rad);
+          for (int r = 93; r <= 97; r++)
+            it.draw_pixel_at(cx + (int)(r * ca), cy + (int)(r * sa),
+              Color((uint8_t)(ar * bright), (uint8_t)(ag * bright), (uint8_t)(ab * bright)));
         }
       }
 
-      // ── Rotating arc ring 2 — r=89..92, 4 segments ───────
-      Color c2 = (state == 0) ? Color(0, 100, 160) : Color(accent.r / 2, accent.g / 2, accent.b / 2);
-      for (int s = 0; s < 4; s++) {
-        float base = s * 90.0f + off2;
-        for (int d = 5; d < 75; d++) {
-          int idx = ((int)(base + d)) % 360;
-          if (idx < 0) idx += 360;
-          for (int r = 89; r <= 92; r++)
-            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c2);
-        }
-      }
-
-      // ── Concentric decorative circles ────────────────────
-      it.circle(cx, cy, 80, Color(10, 30, 50));
-      it.circle(cx, cy, 79, Color(10, 30, 50));
-      it.circle(cx, cy, 55, Color(8, 20, 35));
-
-      // ── Rotating arc ring 3 — r=70..72, 8 segments ───────
-      Color c3 = (state == 0) ? Color(0, 60, 100) : Color(accent.r / 3, accent.g / 3, accent.b / 3);
-      for (int s = 0; s < 8; s++) {
-        float base = s * 45.0f + off3;
-        for (int d = 3; d < 37; d++) {
-          int idx = ((int)(base + d)) % 360;
-          if (idx < 0) idx += 360;
-          for (int r = 70; r <= 72; r++)
-            it.draw_pixel_at(cx + (int)(r * lut_cos[idx]), cy + (int)(r * lut_sin[idx]), c3);
-        }
-      }
-
-      // ── Digital time ─────────────────────────────────────
-      Color time_col = (state > 0) ? accent : Color(180, 230, 255);
-      it.printf(cx, cy - 22, id(font_large), time_col,
+      // ── Digital time (center) ──────────────────────────────
+      it.printf(cx, cy - 22, id(font_large), Color(228, 236, 252),
                 TextAlign::CENTER, "%02d:%02d", t.hour, t.minute);
-
-      // ── Seconds ──────────────────────────────────────────
-      it.printf(cx, cy + 12, id(font_small), Color(60, 120, 160),
+      it.printf(cx, cy + 14, id(font_small), Color(60, 90, 140),
                 TextAlign::CENTER, ":%02d", t.second);
 
-      // ── VA state text ────────────────────────────────────
-      const char* state_txt = nullptr;
+      // ── State label or date ───────────────────────────────
+      const char* stxt = nullptr;
       switch (state) {
-        case 1: state_txt = "Ecoute...";     break;
-        case 2: state_txt = "Traitement..."; break;
-        case 3: state_txt = "Parle...";      break;
-        case 4: state_txt = "Erreur";        break;
+        case 1: stxt = "Ecoute...";     break;
+        case 2: stxt = "Traitement..."; break;
+        case 3: stxt = "Parle...";      break;
+        case 4: stxt = "Erreur";        break;
       }
-      if (state_txt) {
-        it.printf(cx, cy + 34, id(font_small), accent,
-                  TextAlign::CENTER, "%s", state_txt);
+      if (stxt) {
+        float p = 0.65f + 0.35f * (0.5f + 0.5f * sinf(step * 0.18f));
+        it.printf(cx, cy + 36, id(font_small),
+          Color((uint8_t)(ar * p), (uint8_t)(ag * p), (uint8_t)(ab * p)),
+          TextAlign::CENTER, "%s", stxt);
       } else {
-        // ── Date (veille only) ─────────────────────────────
-        const char* jours[] = {"dim", "lun", "mar", "mer", "jeu", "ven", "sam"};
-        const char* mois[]  = {"jan", "fev", "mar", "avr", "mai", "jun",
-                                "jul", "aou", "sep", "oct", "nov", "dec"};
-        char date_buf[20];
-        snprintf(date_buf, sizeof(date_buf), "%s %02d %s",
+        const char* jours[] = {"dim","lun","mar","mer","jeu","ven","sam"};
+        const char* mois[]  = {"jan","fev","mar","avr","mai","jun",
+                                "jul","aou","sep","oct","nov","dec"};
+        char dbuf[20];
+        snprintf(dbuf, sizeof(dbuf), "%s %02d %s",
                  jours[t.day_of_week - 1], t.day_of_month, mois[t.month - 1]);
-        it.printf(cx, cy + 34, id(font_small), Color(40, 80, 100),
-                  TextAlign::CENTER, "%s", date_buf);
+        it.printf(cx, cy + 36, id(font_small), Color(80, 100, 140),
+                  TextAlign::CENTER, "%s", dbuf);
       }
 
-      // ── Volume bars (top) ────────────────────────────────
-      int vol_pct = (int)(id(volume_level).state);
-      int vol_bars = 0;
-      if      (vol_pct > 80) vol_bars = 4;
-      else if (vol_pct > 55) vol_bars = 3;
-      else if (vol_pct > 30) vol_bars = 2;
-      else if (vol_pct >  5) vol_bars = 1;
-      // Icône speaker (géométrique)
-      int spk_x = cx - 22, spk_y = cy - 58;
-      it.filled_rectangle(spk_x,     spk_y + 2, 4, 6, Color(60, 100, 140));
-      it.line(spk_x + 4, spk_y + 2, spk_x + 7, spk_y,     Color(60, 100, 140));
-      it.line(spk_x + 4, spk_y + 7, spk_x + 7, spk_y + 9, Color(60, 100, 140));
-      it.line(spk_x + 7, spk_y,     spk_x + 7, spk_y + 9, Color(60, 100, 140));
-      // Barres
-      for (int b = 0; b < 4; b++) {
-        int bx = cx - 9 + b * 5;
-        int by = cy - 58;
-        int h  = 3 + b * 3;
-        Color bc = (b < vol_bars) ? Color(0, 60 + b * 30, 180) : Color(20, 20, 30);
-        it.filled_rectangle(bx, by + (12 - h), 3, h, bc);
-      }
-
-      // ── WiFi signal indicator (arcs concentriques) ───────
+      // ── WiFi fan (top) ────────────────────────────────────
       float dbm = id(wifi_signal_db).state;
-      int wifi_arcs = 0;
-      if      (dbm > -55) wifi_arcs = 3;
-      else if (dbm > -67) wifi_arcs = 2;
-      else if (dbm > -80) wifi_arcs = 1;
-      int wfi_x = cx, wfi_y = cy + 64;
-      // Point central
-      Color dot_col = (wifi_arcs > 0) ? Color(0, 80, 200) : Color(30, 30, 40);
-      it.filled_rectangle(wfi_x - 1, wfi_y - 1, 3, 3, dot_col);
-      // 3 arcs de rayon croissant
-      int wfi_radii[3] = {4, 8, 12};
+      int wbars = (dbm > -55) ? 3 : (dbm > -67) ? 2 : (dbm > -80) ? 1 : 0;
+      Color wdim(22, 28, 40);
+      int wx = cx, wy = cy - 70;
+      it.filled_rectangle(wx - 1, wy - 1, 3, 3, wbars > 0 ? Color(40, 100, 220) : wdim);
       for (int ai = 0; ai < 3; ai++) {
-        int r = wfi_radii[ai];
-        Color arc_col = (ai < wifi_arcs) ? Color(0, 60 + ai * 40, 180) : Color(20, 20, 30);
-        for (int angle = 35; angle <= 145; angle += 2) {
-          float rad = angle * PI / 180.0f;
-          int px = wfi_x + (int)roundf(r * cosf(rad));
-          int py = wfi_y - (int)roundf(r * sinf(rad));
-          it.draw_pixel_at(px, py, arc_col);
+        int wr = 5 + ai * 4;
+        Color wc = ai < wbars ? accent : wdim;
+        for (int ang = -50; ang <= 50; ang += 7) {
+          float rad = (ang - 90) * PI / 180.0f;
+          it.draw_pixel_at(wx + (int)roundf(wr * cosf(rad)),
+                           wy + (int)roundf(wr * sinf(rad)), wc);
         }
+      }
+
+      // ── Volume dots (bottom) ──────────────────────────────
+      int vol_pct = (int)(id(volume_level).state);
+      int vactive = (int)roundf(vol_pct / 100.0f * 8.0f);
+      Color vdim(22, 28, 40);
+      for (int i = 0; i < 8; i++) {
+        int dx = cx - 25 + i * 7;
+        it.filled_rectangle(dx - 2, cy + 76, 5, 5, i < vactive ? accent : vdim);
       }
 
       step++;

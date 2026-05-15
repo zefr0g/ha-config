@@ -50,6 +50,12 @@ views:
             tap_action:
               action: navigate
               navigation_path: /lovelace-video
+          - type: action
+            icon: mdi:timer-cog
+            icon_color: orange
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-playground/programmations
         card_mod:
           style: |
             ha-card {

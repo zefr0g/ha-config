@@ -1,0 +1,9 @@
+piscine_duree_min_filtration:
+  name: "Piscine — Durée min. pompe (min)"
+  min: 5
+  max: 60
+  step: 5
+  initial: 20
+  unit_of_measurement: min
+  icon: mdi:timer-outline
+  mode: slider
