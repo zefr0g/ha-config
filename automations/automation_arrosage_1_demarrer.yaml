@@ -1,12 +1,12 @@
 alias: "Arrosage 1 — Démarrer sur surplus solaire"
 description: >-
-  Ouvre la vanne d'arrosage quand le surplus d'injection est supérieur à 500W
+  Ouvre la vanne d'arrosage quand le surplus d'injection est supérieur à 1000W
   depuis 10 min, qu'il ne pleut pas et qu'il n'est pas prévu de pluie.
   Ne s'active qu'une fois par jour (entre 9h et 17h).
 trigger:
   - platform: numeric_state
     entity_id: sensor.msunpv_powreso
-    below: -500
+    below: -1000
     for: "00:10:00"
 condition:
   - condition: state

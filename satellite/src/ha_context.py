@@ -71,7 +71,8 @@ def _fetch_timers() -> list:
         # Include active timers and ringing timers (done but not yet dismissed)
         if is_active or remaining == 0:
             result.append({
-                "name": t["name"],
+                "id": t.get("id", t.get("name", "")),
+                "name": t.get("name", ""),
                 "remaining_s": remaining,
                 "ringing": not is_active and remaining == 0,
             })
@@ -111,6 +112,31 @@ def _fetch_active_radio_station() -> str | None:
     return latest["name"]
 
 
+_WEATHER_ENTITY = "weather.forecast_maison"
+_OUTDOOR_TEMP   = "sensor.station_meteo_temperature_exterieure"
+
+
+def _fetch_weather() -> dict:
+    """Outdoor temperature (°C, rounded) + condition string (HA weather state)."""
+    out = {"temp": None, "condition": None}
+    w = _get(f"/api/states/{_WEATHER_ENTITY}")
+    if w:
+        out["condition"] = w.get("state")
+        t = w.get("attributes", {}).get("temperature")
+        if t is not None:
+            try:
+                out["temp"] = round(float(t))
+            except (ValueError, TypeError):
+                pass
+    s = _get(f"/api/states/{_OUTDOOR_TEMP}")   # prefer the real outdoor sensor
+    if s:
+        try:
+            out["temp"] = round(float(s.get("state")))
+        except (ValueError, TypeError):
+            pass
+    return out
+
+
 _SOLAR_ENTITY = "sensor.current_power_production"
 _GRID_ENTITY  = "sensor.msunpv_powreso"
 
@@ -145,7 +171,7 @@ def fetch_ha_context() -> dict:
         }
     """
     result: dict = {"media": None, "timers": [], "volume_pct": 50,
-                    "solar_w": 0, "grid_w": 0}
+                    "solar_w": 0, "grid_w": 0, "sat_playing": False}
 
     if not _token():
         return result
@@ -153,6 +179,7 @@ def fetch_ha_context() -> dict:
     # Satellite state + volume (single fetch reused below)
     sat = _get(f"/api/states/{_SATELLITE_ENTITY}")
     if sat:
+        result["sat_playing"] = sat.get("state") == "playing"
         vol = sat.get("attributes", {}).get("volume_level")
         if vol is not None:
             result["volume_pct"] = round(float(vol) * 100)
@@ -183,5 +210,8 @@ def fetch_ha_context() -> dict:
 
     # Solar + grid
     result.update(_fetch_solar())
+
+    # Weather (ambient home screen)
+    result["weather"] = _fetch_weather()
 
     return result

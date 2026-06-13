@@ -5,7 +5,7 @@ description: >-
 trigger:
   - platform: numeric_state
     entity_id: sensor.msunpv_powreso
-    above: -200
+    above: 0
     for: "00:05:00"
     id: surplus_faible
   - platform: numeric_state
@@ -29,7 +29,7 @@ condition:
   - condition: or
     conditions:
       - condition: template
-        value_template: "{{ trigger.id in ['pluie_prevue', 'duree_max_manuel'] }}"
+        value_template: "{{ trigger.id == 'pluie_prevue' }}"
       - condition: state
         entity_id: input_boolean.arrosage_automatique
         state: "on"

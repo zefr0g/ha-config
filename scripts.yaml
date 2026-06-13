@@ -115,7 +115,7 @@ radio_rtl:
     target:
       entity_id: media_player.rpi_satellite_media_player
     data:
-      media_content_id: http://streaming.radio.rtl.fr/rtl-1-44-128
+      media_content_id: https://icecast.rtl.fr/rtl-1-44-128
       media_content_type: music
 radio_europe_2:
   alias: Radio Europe 2
@@ -125,7 +125,7 @@ radio_europe_2:
     target:
       entity_id: media_player.rpi_satellite_media_player
     data:
-      media_content_id: http://icecast.virginradio.fr/virginradio-4.aac
+      media_content_id: http://europe2.lmn.fm/europe2.mp3
       media_content_type: music
 radio_rtl2:
   alias: Radio RTL 2
@@ -135,7 +135,7 @@ radio_rtl2:
     target:
       entity_id: media_player.rpi_satellite_media_player
     data:
-      media_content_id: http://streaming.radio.rtl2.fr/rtl2-1-44-128
+      media_content_id: https://icecast.rtl2.fr/rtl2-1-44-128
       media_content_type: music
 arreter_radio:
   alias: Arrêter la radio
@@ -207,7 +207,7 @@ schedule_entity_action:
             {%- endfor -%}
             {{ ns.found if ns.found else e }}
           {%- endif -%}
-        entry_id: "{{ now().timestamp() | int }}"
+        entry_id: "{{ now().timestamp() | int }}-{{ range(99999) | random }}"
         end_ts: "{{ (now() + timedelta(minutes=minutes | int)).timestamp() | int }}"
         opposite_op: "{{ 'turn_off' if op == 'turn_on' else 'turn_on' }}"
     - if:
@@ -248,12 +248,26 @@ delayed_entity_action:
   alias: Action différée (helper)
   description: >-
     Helper interne pour schedule_entity_action. Ne pas appeler directement.
-    Attend le délai, exécute l'action, puis retire l'entrée de input_text.scheduled_actions.
+    Attend le délai (annulable en retirant l'entrée de input_text.scheduled_actions),
+    exécute l'action si toujours programmée, puis retire l'entrée.
   mode: parallel
   max: 20
   sequence:
-    - delay:
+    # Attend la fin du délai, ou l'annulation : si l'entrée disparaît de
+    # input_text.scheduled_actions, le wait se termine immédiatement.
+    - wait_template: >-
+        {%- set raw = states('input_text.scheduled_actions') -%}
+        {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
+        {{ entry_id not in (lst | map(attribute='i') | list) }}
+      timeout:
         minutes: '{{ minutes | int }}'
+      continue_on_timeout: true
+    # wait.completed == true => l'entrée a été retirée => action annulée => on s'arrête.
+    - if:
+        - condition: template
+          value_template: '{{ wait.completed }}'
+      then:
+        - stop: Action programmée annulée
     - action: >-
         {%- set d = resolved.split('.')[0] -%}
         {%- if d == 'valve' -%}
@@ -274,3 +288,45 @@ delayed_entity_action:
           {%- set raw = states('input_text.scheduled_actions') -%}
           {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
           {{ (lst | rejectattr('i', 'equalto', entry_id) | list) | to_json }}
+cancel_scheduled_action:
+  alias: Annuler action programmée
+  description: >-
+    Annule une ou plusieurs actions différées programmées via
+    schedule_entity_action (celles affichées dans "En cours"). Passer le nom ou
+    l'entity_id de l'entité pour annuler les actions la concernant, ou "tout"
+    pour toutes les annuler. N'affecte PAS les minuteurs (timers) de l'assistant.
+  mode: parallel
+  max: 10
+  icon: mdi:timer-off
+  fields:
+    entity:
+      name: Entité
+      description: >-
+        Nom ou entity_id de l'entité dont annuler les actions programmées,
+        ou "tout" / "all" pour toutes les annuler.
+      required: true
+      selector:
+        text: {}
+  sequence:
+    # Retire les entrées correspondantes : chaque script.delayed_entity_action
+    # en attente détecte la disparition de son entrée et s'arrête.
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.scheduled_actions
+      data:
+        value: >-
+          {%- set raw = states('input_text.scheduled_actions') -%}
+          {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
+          {%- set q = entity | string | lower | trim -%}
+          {%- if q in ['tout', 'all', 'toutes', 'tous', '*'] -%}
+            {{ [] | to_json }}
+          {%- else -%}
+            {%- set ns = namespace(kept=[]) -%}
+            {%- for a in lst -%}
+              {%- set n = a.n | string | lower -%}
+              {%- if not (q in n or n in q) -%}
+                {%- set ns.kept = ns.kept + [a] -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.kept | to_json }}
+          {%- endif -%}

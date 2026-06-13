@@ -1,117 +1,149 @@
 #!/usr/bin/env python3
 """
-Display daemon — single-threaded 10 FPS render loop.
+Display daemon — single-threaded loop driving the ST7796S 480×320 panel.
 
-State is read from /tmp/va_state written by voice-leds.service.
-No threads, no subprocesses — SPI transfers are never racing anything.
+Each iteration: poll touch, refresh HA context (slow), render a full frame with
+the UI controller, then diff it against what's on the panel and push only the
+changed rectangle over SPI. Idle costs almost nothing (the diff is empty most
+ticks); interactions and the voice waveform animate smoothly.
+
+State (idle/listening/…) is read from /tmp/va_state written by voice-leds.service.
+No threads, no subprocesses — SPI transfers never race anything.
 """
 
+import json
 import signal
 import sys
 import time
 from datetime import datetime
 
+import numpy as np
+
 sys.path.insert(0, "/home/dd/dev/voice-assistant/src")
 
-from config import STATE_INT, STATE_IDLE
+from config import STATE_INT, STATE_IDLE, DISPLAY_CONFIG_FILE
+from display import theme as T
 from display.driver import ST7796S
-from display.display_ui import render_frame, _read_wifi_dbm, media_scroll_text
+from display.touch import Touch
+from display.app import App
 from ha_context import fetch_ha_context
 
 STATE_FILE = "/tmp/va_state"
+
+_DISPLAY_DEFAULTS = {"brightness": 100, "contrast": 42, "gamma": "natural", "power": True}
+
+POLL_HZ        = 20          # touch poll / animation cap
+IDLE_RENDER_DT = 0.50        # idle re-render cadence (colon blinks at 1 Hz)
 
 
 def read_state() -> int:
     try:
         with open(STATE_FILE) as f:
-            state_str = f.read().strip()
-        return STATE_INT.get(state_str, STATE_IDLE)
+            return STATE_INT.get(f.read().strip(), STATE_IDLE)
     except Exception:
         return STATE_IDLE
 
 
+def read_display_config() -> dict:
+    try:
+        with open(DISPLAY_CONFIG_FILE) as f:
+            return {**_DISPLAY_DEFAULTS, **json.load(f)}
+    except Exception:
+        return dict(_DISPLAY_DEFAULTS)
+
+
+def apply_display_config(driver, prev, curr):
+    if curr["brightness"] != prev.get("brightness"):
+        driver.brightness(curr["brightness"])
+    if curr["contrast"] != prev.get("contrast"):
+        driver.contrast(curr["contrast"])
+    if curr["gamma"] != prev.get("gamma"):
+        driver.set_gamma(curr["gamma"])
+    if curr["power"] != prev.get("power"):
+        driver.display_power(curr["power"])
+
+
+def blit_diff(driver, prev_arr, img):
+    """Push only the bounding box of pixels that changed since the last frame."""
+    new_arr = np.asarray(img)
+    if prev_arr is None:
+        driver.blit_frame(T.to_rgb565(img))
+        return new_arr.copy()
+    diff = np.any(new_arr != prev_arr, axis=2)
+    if not diff.any():
+        return prev_arr
+    rows = np.where(diff.any(axis=1))[0]
+    cols = np.where(diff.any(axis=0))[0]
+    y0, y1, x0, x1 = int(rows[0]), int(rows[-1]), int(cols[0]), int(cols[-1])
+    crop = img.crop((x0, y0, x1 + 1, y1 + 1))
+    driver.blit_rect(T.to_rgb565(crop), x0, y0, x1, y1)
+    return new_arr.copy()
+
+
+def interpolate_timers(ctx, since):
+    """Tick timer countdowns locally between 5 s HA polls."""
+    if not ctx or not ctx.get("timers"):
+        return ctx
+    dt = int(time.monotonic() - since)
+    return {**ctx, "timers": [
+        {**t, "remaining_s": max(0, t.get("remaining_s", 0) - dt)}
+        for t in ctx["timers"]
+    ]}
+
+
 def main():
     driver = ST7796S()
+    touch = Touch()
+    app = App()
 
     def cleanup(sig=None, frame=None):
         print("\n[DISPLAY] Shutting down...")
-        driver.close()
+        try:
+            touch.close()
+        finally:
+            driver.close()
         sys.exit(0)
 
-    signal.signal(signal.SIGINT,  cleanup)
+    signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
 
-    print("[DISPLAY] Render loop starting at 10 FPS (no threads)")
-    step          = 0
-    wifi_dbm      = _read_wifi_dbm()
-    ha_ctx        = fetch_ha_context()
-    ha_fetch_mono = time.monotonic()
-    slow_tick     = 0
-    radio_offset  = 0
-    _last_radio   = ""
-    _scroll_frame = 0
-    _morph        = 0.0
-    _MORPH_SPEED  = 0.07  # ~14 frames per transition = 1.4s
+    print("[DISPLAY] ST7796S UI loop starting")
+    ctx = fetch_ha_context()
+    ctx_mono = time.monotonic()
+    disp_cfg = read_display_config()
+    apply_display_config(driver, {}, disp_cfg)
+
+    prev_arr = None
+    last_render = 0.0
+    period = 1.0 / POLL_HZ
 
     while True:
         t0 = time.monotonic()
 
-        slow_tick += 1
-        if slow_tick >= 50:       # refresh slow sensors every ~5s
-            wifi_dbm      = _read_wifi_dbm()
-            ha_ctx        = fetch_ha_context()
-            ha_fetch_mono = time.monotonic()
-            slow_tick     = 0
-            wf = (ha_ctx or {}).get("watchface", "")
-            if wf:
-                try:
-                    with open("/tmp/va_watchface", "w") as f:
-                        f.write(wf)
-                except OSError:
-                    pass
+        tap = touch.poll_tap()
+        if tap:
+            app.handle_tap(tap[0], tap[1], ctx)
 
-        # Advance radio scroll offset every 8 frames (~0.8s per char)
-        media = ha_ctx.get("media") if ha_ctx else None
-        if media:
-            radio_txt = media_scroll_text(media["title"], media["artist"])
-            if radio_txt != _last_radio:
-                radio_offset = 0
-                _scroll_frame = 0
-                _last_radio = radio_txt
-            _scroll_frame += 1
-            if _scroll_frame >= 8:
-                radio_offset += 1
-                _scroll_frame = 0
-        else:
-            radio_offset = 0
-            _last_radio  = ""
+        if t0 - ctx_mono >= 5.0:
+            ctx = fetch_ha_context()
+            ctx_mono = t0
 
-        # Interpolate timer countdown locally between HA polls
-        elapsed = time.monotonic() - ha_fetch_mono
-        if ha_ctx and ha_ctx.get("timers"):
-            render_ctx = {**ha_ctx, "timers": [
-                {**t, "remaining_s": max(0, t["remaining_s"] - int(elapsed))}
-                for t in ha_ctx["timers"]
-            ]}
-        else:
-            render_ctx = ha_ctx
+        new_cfg = read_display_config()
+        if new_cfg != disp_cfg:
+            apply_display_config(driver, disp_cfg, new_cfg)
+            disp_cfg = new_cfg
 
-        current_state = read_state()
+        state = read_state()
+        animating = app.is_animating(state)
 
-        # Smooth morph toward active/idle based on current state
-        target = 0.0 if current_state == STATE_IDLE else 1.0
-        if target > _morph:
-            _morph = min(1.0, _morph + _MORPH_SPEED)
-        else:
-            _morph = max(0.0, _morph - _MORPH_SPEED)
+        # Render when something moves, on a tap, or on the slow idle cadence.
+        if tap or animating or (t0 - last_render) >= IDLE_RENDER_DT:
+            render_ctx = interpolate_timers(ctx, ctx_mono)
+            img = app.render(state, datetime.now(), render_ctx)
+            prev_arr = blit_diff(driver, prev_arr, img)
+            last_render = t0
 
-        vol_pct = (ha_ctx or {}).get("volume_pct", 50)
-        frame = render_frame(step, current_state, datetime.now(), vol_pct, wifi_dbm, render_ctx, radio_offset, _morph)
-        driver.blit_frame(frame)
-        step += 1
-
-        elapsed = time.monotonic() - t0
-        time.sleep(max(0, 0.1 - elapsed))
+        time.sleep(max(0, period - (time.monotonic() - t0)))
 
 
 if __name__ == "__main__":

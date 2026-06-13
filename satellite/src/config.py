@@ -50,6 +50,16 @@ ACCENT_COLORS = {
     STATE_ERROR:      (255, 40,   0),
 }
 
+# ── MQTT ──────────────────────────────────────────────────────────────
+MQTT_BROKER       = "dd-ha"
+MQTT_PORT         = 1883
+MQTT_TOPIC_PREFIX = "pi-satellite/display"
+# Credentials file: one line "username:password" (chmod 600)
+MQTT_CREDS_FILE   = "/home/dd/dev/voice-assistant/.mqtt_creds"
+
+# ── Display config IPC ────────────────────────────────────────────────
+DISPLAY_CONFIG_FILE = "/tmp/display_config.json"
+
 # ── Log → state mapping (shared parse logic) ─────────────────────────
 # Speaking window: "Playing TTS response" fires when mpv starts the URL;
 # "TTS response finished" fires when playback actually ends — this matches
