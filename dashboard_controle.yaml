@@ -68,6 +68,18 @@ views:
       # ─── Télévision ───────────────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: &no_inner_border
+          style: |
+            :host {
+              --ha-card-border-width: 0;
+              --ha-card-box-shadow: none;
+              --ha-card-background: transparent;
+            }
+            ha-card {
+              border: 1px solid var(--divider-color) !important;
+              background: var(--ha-card-background, var(--card-background-color)) !important;
+              box-shadow: var(--material-shadow-elevation-2dp) !important;
+            }
         cards:
           - type: custom:mushroom-title-card
             title: Télévision
@@ -101,15 +113,76 @@ views:
                   perform_action: button.press
                   target:
                     entity_id: button.wake_on_lan_40_16_3b_48_95_26
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-spacing: 4px;
+                  padding: 0 8px 8px 8px !important;
+                }
+
+      # ─── dd-room ──────────────────────────────────────────
+      - type: custom:stack-in-card
+        mode: vertical
+        card_mod: *no_inner_border
+        cards:
+          - type: custom:mushroom-title-card
+            title: dd-room
+            subtitle: >-
+              {{ 'En marche' if is_state('binary_sensor.dd_room','on') else 'Éteint' }}
+          - type: custom:mushroom-template-card
+            entity: sensor.dd_room_power
+            icon: mdi:flash
+            icon_color: >-
+              {{ 'amber' if is_state('binary_sensor.dd_room','on') else 'grey' }}
+            primary: >-
+              {% set p = states('sensor.dd_room_power') %}
+              {{ p ~ ' W (estimé)' if p not in ['unknown','unavailable','None'] else 'Hors ligne' }}
+            secondary: >-
+              {% set c = state_attr('sensor.dd_room_power','cpu_w') %}
+              {% set r = state_attr('sensor.dd_room_power','dram_w') %}
+              {% set g = state_attr('sensor.dd_room_power','gpu_w') %}
+              {% if c is not none %}CPU {{ c }} · RAM {{ r }}{% if g is not none %} · GPU {{ g }}{% else %} · GPU n/a{% endif %} W · +30 W socle{% else %}—{% endif %}
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+          - type: custom:mushroom-chips-card
+            chips:
               - type: template
-                icon: mdi:desktop-classic
+                entity: binary_sensor.dd_room
+                icon: >-
+                  {{ 'mdi:desktop-classic' if is_state('binary_sensor.dd_room','on')
+                  else 'mdi:desktop-tower-monitor' }}
+                icon_color: >-
+                  {{ 'green' if is_state('binary_sensor.dd_room','on') else 'grey' }}
+                content: >-
+                  {{ 'Actif' if is_state('binary_sensor.dd_room','on') else 'Hors ligne' }}
+              - type: template
+                icon: mdi:lan-connect
                 icon_color: indigo
-                content: Wake dd-room
+                content: Réveiller
                 tap_action:
                   action: perform-action
                   perform_action: wake_on_lan.send_magic_packet
                   data:
                     mac: d4:3d:7e:f5:4a:5d
+              - type: template
+                icon: mdi:power-sleep
+                icon_color: blue
+                content: Veille
+                tap_action:
+                  action: perform-action
+                  perform_action: shell_command.suspend_dd_room
+                  confirmation:
+                    text: Mettre dd-room en veille ?
+              - type: template
+                icon: mdi:power
+                icon_color: red
+                content: Éteindre
+                tap_action:
+                  action: perform-action
+                  perform_action: shell_command.shutdown_dd_room
+                  confirmation:
+                    text: Éteindre dd-room ?
             card_mod:
               style: |
                 ha-card {
@@ -120,6 +193,7 @@ views:
       # ─── Climatisation ────────────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: *no_inner_border
         cards:
           - type: custom:mushroom-title-card
             title: Climatisation
@@ -157,6 +231,7 @@ views:
       # ─── Prises & Éclairages ──────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: *no_inner_border
         cards:
           - type: custom:mushroom-title-card
             title: Prises & Éclairages
@@ -198,6 +273,7 @@ views:
       # ─── Extérieur ────────────────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: *no_inner_border
         cards:
           - type: custom:mushroom-title-card
             title: Extérieur
@@ -209,16 +285,36 @@ views:
                 entity: cover.awning_0001
                 name: Store banne
                 show_buttons_control: true
-              - type: custom:mushroom-entity-card
-                entity: valve.valve_controller_valve
-                name: Vanne arrosage
-                icon: mdi:water-pump
-                tap_action:
-                  action: toggle
+              - type: vertical-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: valve.valve_controller_valve
+                    name: Vanne arrosage
+                    icon: mdi:water-pump
+                    tap_action:
+                      action: toggle
+                  - type: custom:mushroom-chips-card
+                    chips:
+                      - type: template
+                        icon: mdi:clock-outline
+                        content: >-
+                          {{ (states('sensor.arrosage_duree_aujourd_hui') | float * 60) | round(0) | int }} min
+                        icon_color: blue
+                      - type: template
+                        icon: mdi:counter
+                        content: >-
+                          {{ states('sensor.arrosage_activations_aujourd_hui') }}x
+                        icon_color: blue
+                      - type: template
+                        icon: mdi:history
+                        content: >-
+                          {{ (states('sensor.arrosage_duree_hier') | float * 60) | round(0) | int }} min hier
+                        icon_color: grey
 
       # ─── Eau chaude ───────────────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: *no_inner_border
         cards:
           - type: custom:mushroom-title-card
             title: Eau chaude
@@ -237,9 +333,111 @@ views:
                 name: MSunPV état
                 icon: mdi:solar-power-variant
 
+      # ─── Enceinte Entrée ──────────────────────────────────
+      - type: custom:stack-in-card
+        mode: vertical
+        card_mod: *no_inner_border
+        cards:
+          - type: custom:mushroom-title-card
+            title: Enceinte Entrée
+          - type: custom:mushroom-media-player-card
+            entity: media_player.enceinte_entree
+            use_media_info: true
+            use_media_artwork: true
+            show_volume_level: true
+            media_controls:
+              - on_off
+              - play_pause
+              - previous
+              - next
+            volume_controls:
+              - volume_mute
+              - volume_set
+              - volume_buttons
+            collapsible_controls: false
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                icon: mdi:radio
+                icon_color: yellow
+                content: Inter
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.play_media
+                  target:
+                    entity_id: media_player.enceinte_entree
+                  data:
+                    media_content_id: http://icecast.radiofrance.fr/franceinter-hifi.aac
+                    media_content_type: music
+              - type: template
+                icon: mdi:radio
+                icon_color: blue
+                content: Info
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.play_media
+                  target:
+                    entity_id: media_player.enceinte_entree
+                  data:
+                    media_content_id: http://icecast.radiofrance.fr/franceinfo-hifi.aac
+                    media_content_type: music
+              - type: template
+                icon: mdi:radio
+                icon_color: red
+                content: RTL
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.play_media
+                  target:
+                    entity_id: media_player.enceinte_entree
+                  data:
+                    media_content_id: http://streaming.radio.rtl.fr/rtl-1-44-128
+                    media_content_type: music
+              - type: template
+                icon: mdi:radio
+                icon_color: orange
+                content: RTL2
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.play_media
+                  target:
+                    entity_id: media_player.enceinte_entree
+                  data:
+                    media_content_id: http://streaming.radio.rtl2.fr/rtl2-1-44-128
+                    media_content_type: music
+              - type: template
+                icon: mdi:radio
+                icon_color: purple
+                content: Europe 2
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.play_media
+                  target:
+                    entity_id: media_player.enceinte_entree
+                  data:
+                    media_content_id: http://icecast.virginradio.fr/virginradio-4.aac
+                    media_content_type: music
+              - type: template
+                icon: mdi:stop
+                icon_color: grey
+                content: Stop
+                tap_action:
+                  action: perform-action
+                  perform_action: media_player.media_stop
+                  target:
+                    entity_id: media_player.enceinte_entree
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-spacing: 4px;
+                  padding: 0 8px 8px 8px !important;
+                }
+
       # ─── Satellite ────────────────────────────────────────
       - type: custom:stack-in-card
         mode: vertical
+        card_mod: *no_inner_border
         cards:
           - type: custom:mushroom-title-card
             title: Satellite

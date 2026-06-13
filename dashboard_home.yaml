@@ -208,13 +208,6 @@ views:
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.station_meteo_rayonnement_solaire
-                    icon: mdi:brightness-5
-                    icon_color: yellow
-                    content: "{{ states('sensor.station_meteo_rayonnement_solaire') }} W/m²"
-                    tap_action:
-                      action: more-info
-                  - type: template
                     entity: sensor.84_weather_alert
                     icon: mdi:weather-lightning-rainy
                     icon_color: >-
@@ -671,7 +664,7 @@ views:
                 entity: valve.valve_controller_valve
                 primary: Arrosage
                 secondary: >-
-                  {% if is_state('valve.valve_controller_valve', 'open') %}Ouvert{% else %}Fermé{% endif %}
+                  {{ (states('sensor.arrosage_duree_aujourd_hui') | float * 60) | round(0) | int }} min aujourd'hui
                 icon: >-
                   {% if is_state('valve.valve_controller_valve', 'open') %}mdi:water{% else %}mdi:water-off{% endif %}
                 icon_color: >-
@@ -1065,15 +1058,6 @@ views:
                           --chip-spacing: 0;
                           padding: 0 8px 4px 8px !important;
                         }
-          - type: custom:scheduler-card
-            include:
-              - climate.mitsusalon_mitsusalon
-              - climate.mitsucouloir_mitsucouloir
-              - switch.piscine_relais
-              - light.wled_outside
-              - switch.manubal
-              - cover.awning_0001
-              - valve.valve_controller_valve
           - type: markdown
             title: Actions programmées
             content: >

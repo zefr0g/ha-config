@@ -68,20 +68,22 @@ See `satellite/CLAUDE.md` for full hardware/software detail. Summary:
 | Microphone | INMP441 | I2S GPIO18/19/20 | 48kHz S32_LE stereo |
 | Amp + speaker | MAX98357A | I2S GPIO18/19/21 | shared clock with mic |
 | LED strip | WS2812B 3 LEDs | PWM GPIO12 | DMA channel **5**, 5V, 300Ω |
-| Display | GC9A01 1.28" 240×240 | SPI0 | 20MHz, `no_cs=True`, manual CS GPIO8 |
+| Display | ST7796S 4.0" 480×320 (landscape) | SPI0 | 40MHz, `no_cs=True`, manual CS GPIO8 |
+| Touch | XPT2046 (on display) | SPI0 CE1 | GPIO7 (T_CS), GPIO22 (T_IRQ) — reserved, no driver yet |
 
 **Critical constraints:**
 - SPI chunks ≤ 64 bytes — larger chunks trigger BCM2835 DMA, conflicts with I2S PCM DMA → `TimeoutError`
 - No `subprocess.Popen` in display process — fork races with SPI DMA
 - WS2812B DMA channel 5 only (channel 10 = only 1 LED lights)
-- GC9A01: never toggle CS between chunks — resets write-address counter
+- ST7796S: never toggle CS between chunks — resets write-address counter
 
 **Wake word:** "petit pois" — microWakeWord model at `~/.config/linux-voice-assistant/wakewords/petit_pois.tflite` on pi-satellite.
 
 **Systemd services** (all running):
 - `lva.service` (user dd) — LVA Docker container, ESPHome API → dd-ha:6053
 - `voice-leds.service` (root) — LED daemon, Docker SDK log streaming → /tmp/va_state
-- `voice-display.service` (root) — 10 FPS Pillow render loop, reads /tmp/va_state
+- `voice-display.service` (root) — Pillow render loop (480×320), reads /tmp/va_state
+- `voice-display-control.service` (dd) — MQTT bridge: display brightness/contrast/gamma/power in HA
 
 **Deploy satellite changes:**
 ```bash

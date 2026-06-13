@@ -1,5 +1,5 @@
 [Unit]
-Description=Voice Assistant Round Display
+Description=Voice Assistant Display (ST7796S 480x320)
 After=docker.service lva.service
 Wants=lva.service
 
