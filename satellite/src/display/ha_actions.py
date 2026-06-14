@@ -29,6 +29,9 @@ STATIONS = [
      "url": "https://icecast.rtl2.fr/rtl2-1-44-128", "color": (0, 160, 227)},
     {"id": "europe2", "label": "Europe 2",
      "url": "http://europe2.lmn.fm/europe2.mp3", "color": (255, 90, 0)},
+    {"id": "nova", "label": "Radio Nova",
+     # main Nova channel; the old nova-128 mount 404s — mount renamed to radionova
+     "url": "http://radionova.ice.infomaniak.ch/radionova-256.aac", "color": (149, 95, 233)},
 ]
 
 
