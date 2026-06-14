@@ -10,7 +10,9 @@ the render loop never blocks for long.
 import json
 import urllib.request
 
-from ha_context import _HA_URL, _headers, _SATELLITE_ENTITY, _SATELLITE_DEVICE_ID
+from ha_context import (
+    _HA_URL, _headers, _SATELLITE_ENTITY, _SATELLITE_DEVICE_ID, _MEDIA_ENTITY,
+)
 
 # ── Radio stations (id, label, stream URL, brand colour) ─────────────────────
 # Streams mirror scripts.yaml; calling play_media directly avoids a script hop.
@@ -51,16 +53,19 @@ def _service(domain: str, service: str, data: dict) -> bool:
 
 
 # ── Radio ─────────────────────────────────────────────────────────────────
+# Play through the Music Assistant player, not the raw LVA player: MASS owns the
+# satellite speaker (its active_queue *is* media_player.rpi_satellite_media_player),
+# so a play_media on the LVA entity underneath gets overridden by MASS's queue.
 def play_radio(url: str) -> bool:
     return _service("media_player", "play_media", {
-        "entity_id": _SATELLITE_ENTITY,
+        "entity_id": _MEDIA_ENTITY,
         "media_content_id": url,
         "media_content_type": "music",
     })
 
 
 def stop_radio() -> bool:
-    return _service("media_player", "media_stop", {"entity_id": _SATELLITE_ENTITY})
+    return _service("media_player", "media_stop", {"entity_id": _MEDIA_ENTITY})
 
 
 # ── Volume ──────────────────────────────────────────────────────────────────

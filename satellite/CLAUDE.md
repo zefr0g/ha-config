@@ -124,9 +124,26 @@ glowing waveform rises from the bottom and the accent colour shifts per state.
   are edge-triggered on release. Calibration is an affine raw→screen map per axis
   (`swap` + `mx,cx,my,cy`) least-squares-fit from 4 corner taps, stored in
   `.touch_calib.json`; (re)generate with `display/calibrate.py`.
-- **HA actions** (`ha_actions.py`) — radio plays directly on the satellite
-  (`media_player.play_media`, 5 stations + stop), volume via `volume_set`,
-  timers via the conversation agent (same path as voice timers).
+- **HA actions** (`ha_actions.py`) — radio plays through the **Music Assistant**
+  player `media_player.enceinte_entree` (`media_player.play_media`, 6 stations +
+  stop), NOT the raw LVA player: MASS owns the satellite speaker (`active_queue`),
+  so a `play_media` on the LVA entity underneath gets clobbered by MASS's queue.
+  Volume via `volume_set`; timers via the conversation agent (same path as voice
+  timers). `ha_context.py` reads the *current* station from `enceinte_entree`'s
+  `media_content_id` (matching the known stream URL) so the screen reflects radio
+  changes made by voice or the dashboard too (`App._sync_station`).
+
+### Assist / voice routing (on dd-ha, not the Pi)
+- Satellite uses the preferred pipeline → agent `conversation.ollama_3060_12g`
+  (gemma4:12b on `dd-room.local:11434`), STT `faster_whisper`, TTS Piper.
+- gemma is unreliable at tool-calling (sometimes replies "Terminé"/"c'est fait"
+  with `success:[]` — no action) and the Ollama endpoint is intermittently
+  unreachable (instant `intent-failed`). Mitigation: **"Prefer handling commands
+  locally"** enabled on the Ollama agent → recognized device commands run on HA's
+  deterministic engine (independent of dd-room), gemma only for fallback/questions.
+- Voice timer phrasing that works: **"lance/démarre un minuteur de N minutes"**,
+  cancel with **"annule/arrête/supprime le minuteur"**. "mets un minuteur …" does
+  NOT work (no native intent). Radio: the `script.radio_*` aliases ("mets RTL", …).
 
 ## Source Layout
 

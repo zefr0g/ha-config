@@ -185,20 +185,24 @@ def fetch_ha_context() -> dict:
             result["volume_pct"] = round(float(vol) * 100)
 
         if sat.get("state") == "playing":
-            # Try MASS media entity first for richer metadata
+            # Try MASS media entity first for richer metadata. MASS owns the
+            # speaker, so its media_content_id is the source of truth for *which*
+            # station is playing — including changes made by voice or dashboard.
             mass_state = _get(f"/api/states/{_MEDIA_ENTITY}")
-            title, artist = None, ""
+            title, artist, content_id = None, "", None
             if mass_state and mass_state.get("state") == "playing":
                 attrs = mass_state.get("attributes", {})
                 title = attrs.get("media_title") or attrs.get("media_station")
                 artist = attrs.get("media_artist") or ""
+                content_id = attrs.get("media_content_id")
 
             # Fall back to last-triggered radio script name
             if not title:
                 title = _fetch_active_radio_station()
 
-            if title:
-                result["media"] = {"title": title, "artist": artist}
+            if title or content_id:
+                result["media"] = {"title": title or "Radio", "artist": artist,
+                                   "content_id": content_id}
 
     # Voice timers via built-in conversation agent
     result["timers"] = _fetch_timers()

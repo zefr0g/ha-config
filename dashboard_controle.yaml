@@ -392,7 +392,7 @@ views:
                   target:
                     entity_id: media_player.enceinte_entree
                   data:
-                    media_content_id: http://streaming.radio.rtl.fr/rtl-1-44-128
+                    media_content_id: https://icecast.rtl.fr/rtl-1-44-128
                     media_content_type: music
               - type: template
                 icon: mdi:radio
@@ -404,7 +404,7 @@ views:
                   target:
                     entity_id: media_player.enceinte_entree
                   data:
-                    media_content_id: http://streaming.radio.rtl2.fr/rtl2-1-44-128
+                    media_content_id: https://icecast.rtl2.fr/rtl2-1-44-128
                     media_content_type: music
               - type: template
                 icon: mdi:radio
@@ -416,7 +416,7 @@ views:
                   target:
                     entity_id: media_player.enceinte_entree
                   data:
-                    media_content_id: http://icecast.virginradio.fr/virginradio-4.aac
+                    media_content_id: http://europe2.lmn.fm/europe2.mp3
                     media_content_type: music
               - type: template
                 icon: mdi:stop
