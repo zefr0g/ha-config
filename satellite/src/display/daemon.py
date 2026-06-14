@@ -31,6 +31,7 @@ from display.app import App
 from ha_context import fetch_ha_context
 
 STATE_FILE = "/tmp/va_state"
+RING_FILE  = "/tmp/va_timer_ring"   # written by the LED daemon while a timer rings
 
 _DISPLAY_DEFAULTS = {"brightness": 100, "contrast": 42, "gamma": "natural", "power": True}
 
@@ -44,6 +45,14 @@ def read_state() -> int:
             return STATE_INT.get(f.read().strip(), STATE_IDLE)
     except Exception:
         return STATE_IDLE
+
+
+def read_ring() -> bool:
+    try:
+        with open(RING_FILE) as f:
+            return f.read().strip() == "1"
+    except Exception:
+        return False
 
 
 def read_display_config() -> dict:
@@ -160,10 +169,11 @@ def main():
 
         state = read_state()
         animating = app.is_animating(state)
+        ringing = read_ring()
 
-        # Render when something moves, on a tap, or on the slow idle cadence.
-        if tap or animating or (t0 - last_render) >= IDLE_RENDER_DT:
-            render_ctx = interpolate_timers(ctx, ctx_mono)
+        # Render when something moves, on a tap, while ringing, or on idle cadence.
+        if tap or animating or ringing or (t0 - last_render) >= IDLE_RENDER_DT:
+            render_ctx = {**interpolate_timers(ctx, ctx_mono), "timer_ringing": ringing}
             img = app.render(state, datetime.now(), render_ctx)
             prev_arr = blit_diff(driver, prev_arr, img)
             last_render = t0

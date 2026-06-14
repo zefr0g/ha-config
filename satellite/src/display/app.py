@@ -136,7 +136,6 @@ class App:
         self._home_radio_box = None              # tappable status pills on home
         self._home_timer_box = None
         self._home_vol_box = None                # tappable volume slider on home
-        self._home_ring_box = None               # "Arrêter" button shown while ringing
         self.timer_custom = False                # custom-duration entry mode
         self.custom_min = 15
         self.t0 = time.monotonic()
@@ -176,12 +175,6 @@ class App:
         if self.screen == "home":
             if self.menu_open:
                 self._tap_menu(x, y)
-            elif self._home_ring_box and _hit(self._home_ring_box, x, y):
-                # The sound is voice-only (say "stop"); tapping just clears the
-                # finished timer from HA so the card goes away.
-                print("[UI] clear finished timer (home hint)", flush=True)
-                if cancel_timers():
-                    self._toast_msg("Minuteur effacé")
             elif self._home_vol_box and _hit(self._home_vol_box, x, y):
                 pct = max(0, min(100, int(round((x - 90) / 300 * 100))))
                 self._vol, self._vol_set_at = pct, time.monotonic()
@@ -324,9 +317,9 @@ class App:
     # ── HOME (ambient) ──────────────────────────────────────────────────────
     def _render_home(self, draw, img, state, now, ctx, accent):
         self._home_radio_box = self._home_timer_box = self._home_vol_box = None
-        self._home_ring_box = None
         timers = (ctx or {}).get("timers", [])
-        ringing = any(t.get("ringing") for t in timers)
+        # Ring state comes from the LED daemon's log tail (HA hides finished timers).
+        ringing = bool((ctx or {}).get("timer_ringing"))
         # status: weather (top-right)
         weather = (ctx or {}).get("weather") or {}
         temp, cond = weather.get("temp"), weather.get("condition")
@@ -429,7 +422,6 @@ class App:
         self._icon_bell(draw, box[0] + 40, cy, red)
         T.text_center(draw, (box[0] + 60 + box[2]) // 2, cy, "Dites « stop »",
                       T.F_LABEL, T.INK, anchor="mm")
-        self._home_ring_box = box
 
     def _icon_bell(self, draw, cx, cy, color):
         draw.pieslice([cx - 10, cy - 12, cx + 10, cy + 6], 180, 360, fill=color)
