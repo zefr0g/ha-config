@@ -1,1 +1,9 @@
 .claude/
+
+# Secrets / credentials — never commit
+.ha_token
+secrets.yaml
+*.token
+
+# Build artifacts
+*.stl
