@@ -87,73 +87,104 @@ desarmer_alarme:
       specific_area: 0
   mode: single
   icon: mdi:alarm-off
+# Voice radio. A spoken command runs *during* the voice pipeline; if the script
+# started the MASS stream immediately, the assistant's TTS reply (played on the
+# satellite's single audio output) collides with it and the radio dies. So each
+# station fires this helper and returns instantly — the helper waits for the
+# satellite to stop speaking, then starts the stream. The dashboard and the
+# satellite touch screen call media_player.play_media directly (no TTS, no wait).
+radio_play:
+  alias: Radio (lecture différée)
+  description: >-
+    Helper interne des commandes radio vocales. Ne pas appeler directement.
+    Attend que le satellite ait fini de parler, puis lance le flux sur MASS.
+  mode: restart
+  icon: mdi:radio
+  fields:
+    url:
+      description: URL du flux radio
+      required: true
+      selector:
+        text: {}
+  sequence:
+  - delay: "00:00:01"          # let the assistant begin its spoken reply
+  - wait_template: "{{ is_state('assist_satellite.rpi_satellite_satellite_assist', 'idle') }}"
+    timeout: "00:00:08"
+    continue_on_timeout: true
+  - delay: "00:00:01"          # let the satellite's mpv release the output
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.enceinte_entree
+    data:
+      media_content_id: "{{ url }}"
+      media_content_type: music
 radio_france_inter:
   alias: Radio France Inter
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: http://icecast.radiofrance.fr/franceinter-hifi.aac
-      media_content_type: music
+      variables:
+        url: http://icecast.radiofrance.fr/franceinter-hifi.aac
 radio_france_info:
   alias: Radio France Info
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: http://icecast.radiofrance.fr/franceinfo-hifi.aac
-      media_content_type: music
+      variables:
+        url: http://icecast.radiofrance.fr/franceinfo-hifi.aac
 radio_rtl:
   alias: Radio RTL
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: https://icecast.rtl.fr/rtl-1-44-128
-      media_content_type: music
+      variables:
+        url: https://icecast.rtl.fr/rtl-1-44-128
 radio_europe_2:
   alias: Radio Europe 2
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: http://europe2.lmn.fm/europe2.mp3
-      media_content_type: music
+      variables:
+        url: http://europe2.lmn.fm/europe2.mp3
 radio_rtl2:
   alias: Radio RTL 2
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: https://icecast.rtl2.fr/rtl2-1-44-128
-      media_content_type: music
+      variables:
+        url: https://icecast.rtl2.fr/rtl2-1-44-128
 radio_nova:
   alias: Radio Nova
   icon: mdi:radio
   sequence:
-  - action: media_player.play_media
+  - action: script.turn_on
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: script.radio_play
     data:
-      media_content_id: http://radionova.ice.infomaniak.ch/radionova-256.aac
-      media_content_type: music
+      variables:
+        url: http://radionova.ice.infomaniak.ch/radionova-256.aac
 arreter_radio:
   alias: Arrêter la radio
   icon: mdi:stop
   sequence:
   - action: media_player.media_stop
     target:
-      entity_id: media_player.rpi_satellite_media_player
+      entity_id: media_player.enceinte_entree
 schedule_entity_action:
   alias: Programmer action différée
   description: >-

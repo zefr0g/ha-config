@@ -128,6 +128,7 @@ class App:
         self.shutdown_requested = False  # daemon polls this → graceful poweroff
         self.last_touch = time.monotonic()
         self.active_station = None     # station id currently playing (optimistic)
+        self._station_set_at = 0.0     # last on-screen radio tap (optimistic window)
         self._vol = 50
         self._vol_set_at = 0.0
         self._toast = ""
@@ -219,12 +220,14 @@ class App:
             if _hit(box, x, y):
                 if play_radio(st["url"]):
                     self.active_station = st["id"]
+                    self._station_set_at = time.monotonic()
                     self._toast_msg(f"Lecture · {st['label']}")
                 return
         if _hit((392, 258, 462, 308), x, y):        # stop
             print("[UI] stop_radio (stop button)", flush=True)
             if stop_radio():
                 self.active_station = None
+                self._station_set_at = time.monotonic()
                 self._toast_msg("Radio arrêtée")
             return
         if _hit((18, 262, 372, 304), x, y):         # volume slider
@@ -253,7 +256,7 @@ class App:
                     self._toast_msg(f"Minuteur · {self.custom_min} min")
                     self.timer_custom = False
             return
-        if (ctx or {}).get("timers") and _hit((294, 170, 346, 222), x, y):  # cancel ✕
+        if (ctx or {}).get("timers") and _hit((286, 158, 446, 202), x, y):  # cancel
             print("[UI] cancel_timers", flush=True)
             if cancel_timers():
                 self._toast_msg("Minuteurs annulés")
@@ -282,6 +285,7 @@ class App:
     # ── rendering ──────────────────────────────────────────────────────────────
     def render(self, state, now: datetime, ctx) -> Image.Image:
         self.maybe_timeout()
+        self._sync_station(ctx)
         accent = T.ACCENT.get(state, T.ACCENT[STATE_IDLE])
         img = T.background(accent)
         draw = ImageDraw.Draw(img)
@@ -320,14 +324,18 @@ class App:
         timers = (ctx or {}).get("timers", [])
         # Ring state comes from the LED daemon's log tail (HA hides finished timers).
         ringing = bool((ctx or {}).get("timer_ringing"))
+        voice_active = state != STATE_IDLE and not self.menu_open
         # status: weather (top-right)
         weather = (ctx or {}).get("weather") or {}
         temp, cond = weather.get("temp"), weather.get("condition")
-        if temp is not None:
-            _weather_icon(draw, W - 96, 30, 16, cond, accent)
-            draw.text((W - 18, 14), f"{temp}°", font=T.F_TEMP, fill=T.INK, anchor="ra")
+        if temp is not None and not voice_active:
+            label = f"{temp}°"
+            tw = draw.textlength(label, font=T.F_TEMP)
+            chip = (int(W - 22 - tw - 46), 14, W - 14, 52)
+            T.card(img, draw, chip, radius=19, fill=T.CARD, elevate=False)
+            _weather_icon(draw, chip[0] + 24, 33, 13, cond, accent)
+            draw.text((W - 26, 33), label, font=T.F_TEMP, fill=T.INK, anchor="rm")
 
-        voice_active = state != STATE_IDLE and not self.menu_open
         f = 0.25 if voice_active else 1.0
         yb = 138 if voice_active else 196          # text baseline
         col = T.dim(T.INK, f)
@@ -346,14 +354,32 @@ class App:
 
         if ringing and not self.menu_open:
             # A finished timer takes over the lower band with a "say stop" hint.
-            self._render_ring_hint(draw)
+            self._render_ring_hint(draw, img)
         elif not voice_active and not self.menu_open:
-            self._status_pills(draw, ctx, accent, y=248 if playing else 280)
+            self._status_pills(draw, img, ctx, accent, y=248 if playing else 280)
             if playing:
                 self._home_volume(draw, ctx, accent)
 
         if self.menu_open:
             self._render_menu(draw, img, accent)
+
+    def _sync_station(self, ctx):
+        """Reconcile the optimistic station with HA's real playing state, so radio
+        changes made by voice or the dashboard show up on screen too. HA's media
+        content_id is authoritative; we honour a recent on-screen tap first since
+        HA lags a few seconds behind."""
+        if time.monotonic() - self._station_set_at < 6.0:
+            return
+        ctx = ctx or {}
+        if not ctx.get("sat_playing"):
+            self.active_station = None
+            return
+        cid = ((ctx.get("media") or {}).get("content_id") or "")
+        for st in STATIONS:
+            if st["url"] in cid:               # unambiguous: full stream URL match
+                self.active_station = st["id"]
+                return
+        # Playing an unrecognised source (e.g. a voice response) — leave as-is.
 
     def _station_label(self):
         for st in STATIONS:
@@ -361,7 +387,7 @@ class App:
                 return st["label"]
         return None
 
-    def _status_pills(self, draw, ctx, accent, y=280):
+    def _status_pills(self, draw, img, ctx, accent, y=280):
         """Tappable pills on home reflecting a running timer / playing radio."""
         pills = []
         timers = (ctx or {}).get("timers", [])
@@ -374,17 +400,21 @@ class App:
         if not pills:
             return
 
-        PAD, ICON, GAP, h = 14, 20, 12, 32
+        PAD, ICON, GAP, h = 16, 20, 12, 34
         widths = [int(PAD + ICON + 8 + draw.textlength(t, font=T.F_SMALL) + PAD)
                   for _, t in pills]
         x = T.CX - (sum(widths) + GAP * (len(pills) - 1)) // 2
         for (kind, txt), w in zip(pills, widths):
             box = (x, y, x + w, y + h)
-            T.rounded(draw, box, h // 2, fill=T.CARD, outline=T.dim(accent, 0.7))
+            T.card(img, draw, box, radius=h // 2, fill=T.CARD_HI, elevate=False)
             icx, icy = x + PAD + ICON // 2, y + h // 2
             if kind == "radio":
-                draw.ellipse([icx - 9, icy - 9, icx + 9, icy + 9], outline=accent, width=2)
-                draw.polygon([(icx - 3, icy - 4), (icx - 3, icy + 4), (icx + 4, icy)], fill=accent)
+                logo = T.station_icon(self.active_station, ICON)
+                if logo is not None:
+                    img.paste(logo, (icx - ICON // 2, icy - ICON // 2), logo)
+                else:
+                    draw.ellipse([icx - 9, icy - 9, icx + 9, icy + 9], outline=accent, width=2)
+                    draw.polygon([(icx - 3, icy - 4), (icx - 3, icy + 4), (icx + 4, icy)], fill=accent)
                 self._home_radio_box = box
             else:
                 draw.ellipse([icx - 9, icy - 9, icx + 9, icy + 9], outline=accent, width=2)
@@ -402,22 +432,19 @@ class App:
         sx = 56
         draw.polygon([(sx - 6, vy - 5), (sx, vy - 5), (sx + 7, vy - 11),
                       (sx + 7, vy + 11), (sx, vy + 5), (sx - 6, vy + 5)], fill=T.INK_DIM)
-        draw.line([vx0, vy, vx1, vy], fill=T.INK_FAINT, width=4)
-        fillx = vx0 + int((vx1 - vx0) * pct / 100)
-        draw.line([vx0, vy, fillx, vy], fill=accent, width=4)
-        draw.ellipse([fillx - 9, vy - 9, fillx + 9, vy + 9], fill=T.INK)
-        draw.text((vx1 + 12, vy), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="lm")
+        self._slider(draw, vx0, vx1, vy, pct, accent)
+        draw.text((vx1 + 14, vy), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="lm")
         self._home_vol_box = (vx0 - 12, vy - 22, vx1 + 12, vy + 22)
 
-    def _render_ring_hint(self, draw):
+    def _render_ring_hint(self, draw, img):
         """Home hint while a timer is ringing. The sound is voice-only — saying
         the stop word is the thing that actually silences it — so this is a hint,
         not an action button. Tapping it only clears the finished timer card."""
         red = (255, 80, 60)
         T.text_center(draw, T.CX, 224, "Minuteur terminé", T.F_LABEL, red)
         box = (110, 252, 370, 304)
-        T.rounded(draw, box, 18, fill=T.mix(T.CARD, red, 0.16),
-                  outline=T.dim(red, 0.65), width=1)
+        T.card(img, draw, box, radius=18, fill=T.mix(T.CARD, red, 0.18),
+               elevate=False)
         cy = (box[1] + box[3]) // 2
         self._icon_bell(draw, box[0] + 40, cy, red)
         T.text_center(draw, (box[0] + 60 + box[2]) // 2, cy, "Dites « stop »",
@@ -430,43 +457,51 @@ class App:
 
     def _render_menu(self, draw, img, accent):
         # Dim the ambient home behind the menu (in place, keeps `draw` valid).
-        img.paste(Image.blend(img, Image.new("RGB", img.size, (3, 4, 9)), 0.9))
+        img.paste(Image.blend(img, Image.new("RGB", img.size, (2, 3, 7)), 0.80))
         if self.menu_confirm_off:
-            self._render_confirm_off(draw, accent)
+            self._render_confirm_off(draw, img, accent)
             return
         for box, icon, label in (
-            ((30, 96, 232, 248), "radio", "Radio"),
-            ((248, 96, 450, 248), "timer", "Minuteur"),
+            ((28, 90, 232, 250), "radio", "Radio"),
+            ((248, 90, 452, 250), "timer", "Minuteur"),
         ):
-            T.rounded(draw, box, 22, fill=T.CARD, outline=T.dim(accent, 0.9), width=2)
+            T.card(img, draw, box, radius=22, fill=T.CARD)
             cx = (box[0] + box[2]) // 2
-            if icon == "radio":
-                self._icon_radio(draw, cx, 150, accent)
-            else:
-                self._icon_timer(draw, cx, 150, accent)
-            T.text_center(draw, cx, 200, label, T.F_TITLE, T.INK)
+            self._icon_chip(draw, cx, 150, accent, icon)
+            T.text_center(draw, cx, 206, label, T.F_TITLE, T.INK)
 
-        # Power-off button under the two cards.
-        red = (255, 130, 100)
-        T.rounded(draw, OFF_BTN_BOX, 22, fill=T.CARD, outline=T.dim(red, 0.9), width=2)
+        # Power-off button under the two cards (muted; not a primary action).
+        red = (255, 120, 96)
+        T.card(img, draw, OFF_BTN_BOX, radius=22, fill=T.CARD)
         cy = (OFF_BTN_BOX[1] + OFF_BTN_BOX[3]) // 2
-        self._icon_power(draw, OFF_BTN_BOX[0] + 32, cy, red, r=13)
-        draw.text((OFF_BTN_BOX[0] + 56, cy), "Éteindre", font=T.F_LABEL,
-                  fill=T.INK, anchor="lm")
+        self._icon_power(draw, OFF_BTN_BOX[0] + 36, cy, red, r=12)
+        draw.text((OFF_BTN_BOX[0] + 60, cy), "Éteindre", font=T.F_LABEL,
+                  fill=T.INK_DIM, anchor="lm")
 
-    def _render_confirm_off(self, draw, accent):
+    def _icon_chip(self, draw, cx, cy, accent, kind, r=36):
+        """A tinted disc behind a glyph — gives every icon a consistent home."""
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r],
+                     fill=T.mix(T.CARD_HI, accent, 0.22))
+        glyph = T.lighten(accent, 0.55)   # bright glyph reads on the tinted disc
+        if kind == "radio":
+            self._icon_radio(draw, cx, cy + 3, glyph)
+        else:
+            self._icon_timer(draw, cx, cy + 1, glyph)
+
+    def _render_confirm_off(self, draw, img, accent):
         red = (255, 110, 90)
-        T.rounded(draw, OFF_CARD_BOX, 22, fill=T.CARD, outline=T.dim(red, 0.8), width=2)
+        T.card(img, draw, OFF_CARD_BOX, radius=22, fill=T.CARD)
         self._icon_power(draw, T.CX, 124, red, r=18)
-        T.text_center(draw, T.CX, 162, "Éteindre le satellite ?", T.F_TITLE, T.INK)
-        T.rounded(draw, OFF_CANCEL_BOX, 16, fill=T.CARD_HI, outline=T.INK_FAINT)
+        T.text_center(draw, T.CX, 158, "Éteindre le satellite ?", T.F_TITLE, T.INK)
+        T.card(img, draw, OFF_CANCEL_BOX, radius=16, fill=T.CARD_HI, elevate=False)
         T.text_center(draw, (OFF_CANCEL_BOX[0] + OFF_CANCEL_BOX[2]) // 2,
                       (OFF_CANCEL_BOX[1] + OFF_CANCEL_BOX[3]) // 2,
                       "Annuler", T.F_LABEL, T.INK, anchor="mm")
-        T.rounded(draw, OFF_CONFIRM_BOX, 16, fill=T.CARD, outline=red, width=2)
+        T.card(img, draw, OFF_CONFIRM_BOX, radius=16,
+               fill=T.mix(T.CARD, red, 0.22), elevate=False)
         T.text_center(draw, (OFF_CONFIRM_BOX[0] + OFF_CONFIRM_BOX[2]) // 2,
                       (OFF_CONFIRM_BOX[1] + OFF_CONFIRM_BOX[3]) // 2,
-                      "Éteindre", T.F_LABEL, red, anchor="mm")
+                      "Éteindre", T.F_LABEL, T.lighten(red, 0.25), anchor="mm")
 
     # ── RADIO ─────────────────────────────────────────────────────────────────
     def _render_radio(self, draw, img, now, ctx, accent):
@@ -478,37 +513,41 @@ class App:
         for i, st in enumerate(STATIONS):
             box = self._station_box(i)
             active = playing and self.active_station == st["id"]
-            fill = T.CARD_HI if active else T.CARD
-            T.rounded(draw, box, 12, fill=fill,
-                      outline=st["color"] if active else T.INK_FAINT,
-                      width=2 if active else 1)
-            cy = (box[1] + box[3]) // 2
-            draw.ellipse([box[0] + 14, cy - 6, box[0] + 26, cy + 6], fill=st["color"])
-            draw.text((box[0] + 40, cy), st["label"], font=T.F_LABEL,
+            T.card(img, draw, box, radius=13,
+                   fill=T.CARD_HI if active else T.CARD, elevate=False)
+            x0, y0, x1, y1 = box
+            cy = (y0 + y1) // 2
+            icon = T.station_icon(st["id"], 36)
+            if icon is not None:
+                img.paste(icon, (x0 + 12, cy - 18), icon)
+                text_x = x0 + 60
+            else:                                        # fallback: brand dot
+                draw.ellipse([x0 + 24, cy - 6, x0 + 36, cy + 6], fill=st["color"])
+                text_x = x0 + 50
+            draw.text((text_x, cy), st["label"], font=T.F_LABEL,
                       fill=T.INK if active else T.INK_DIM, anchor="lm")
             if active:
-                bx = box[2] - 22
-                draw.polygon([(bx, cy - 7), (bx, cy + 7), (bx + 12, cy)], fill=accent)
+                self._icon_eq(draw, x1 - 28, cy, accent)
 
         # volume slider
         vx0, vx1, vy = 30, 360, 283
         pct = self._volume(ctx)
-        draw.line([vx0, vy, vx1, vy], fill=T.INK_FAINT, width=4)
-        fillx = vx0 + int((vx1 - vx0) * pct / 100)
-        draw.line([vx0, vy, fillx, vy], fill=accent, width=4)
-        draw.ellipse([fillx - 9, vy - 9, fillx + 9, vy + 9], fill=T.INK)
+        self._slider(draw, vx0, vx1, vy, pct, accent)
         draw.text((vx0, vy - 30), "Volume", font=T.F_SMALL, fill=T.INK_DIM)
         draw.text((vx1, vy - 30), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="ra")
 
-        # stop button
-        T.rounded(draw, (392, 258, 462, 308), 12, fill=T.CARD, outline=T.INK_FAINT)
-        draw.rectangle([418, 277, 436, 289], fill=T.mix(accent, (255, 80, 60), 0.6))
+        # stop button — a clear round control, red while playing, muted when idle
+        sx, sy = 427, 283
+        T.card(img, draw, (sx - 27, sy - 27, sx + 27, sy + 27), radius=27,
+               fill=T.CARD_HI, elevate=False)
+        sq = (255, 95, 72) if playing else T.INK_FAINT
+        draw.rounded_rectangle([sx - 9, sy - 9, sx + 9, sy + 9], 3, fill=sq)
 
     # ── TIMER ───────────────────────────────────────────────────────────────
     def _render_timer(self, draw, img, now, ctx, accent):
         self._header(draw, "Minuteur", now)
         if self.timer_custom:
-            self._render_custom(draw, accent)
+            self._render_custom(draw, img, accent)
             return
 
         timers = (ctx or {}).get("timers", [])
@@ -522,9 +561,9 @@ class App:
             for j, tm in enumerate(timers[1:3]):
                 r = max(0, tm.get("remaining_s", 0))
                 m, s = divmod(r, 60)
-                draw.text((262, 96 + j * 34), f"• {m}:{s:02d}",
+                draw.text((262, 92 + j * 32), f"• {m}:{s:02d}",
                           font=T.F_BODY, fill=T.INK_DIM)
-            self._cancel_btn(draw)
+            self._cancel_btn(draw, img)
         else:
             T.text_center(draw, T.CX, 150, "Aucun minuteur", T.F_BODY, T.INK_DIM)
 
@@ -532,40 +571,46 @@ class App:
         for i in range(5):
             box = self._preset_box(i)
             cx = (box[0] + box[2]) // 2
-            T.rounded(draw, box, 12, fill=T.CARD, outline=T.dim(accent, 0.8))
+            T.card(img, draw, box, radius=14, fill=T.CARD, elevate=False)
             if i < 4:
-                draw.text((cx, box[1] + 12), str(TIMER_PRESETS[i]),
+                draw.text((cx, box[1] + 11), str(TIMER_PRESETS[i]),
                           font=T.F_TITLE, fill=T.INK, anchor="ma")
-                draw.text((cx, box[1] + 36), "min", font=T.F_SMALL,
+                draw.text((cx, box[1] + 37), "min", font=T.F_SMALL,
                           fill=T.INK_DIM, anchor="ma")
             else:
                 draw.text((cx, (box[1] + box[3]) // 2), "Perso",
-                          font=T.F_LABEL, fill=T.INK, anchor="mm")
+                          font=T.F_LABEL, fill=T.lighten(accent, 0.4), anchor="mm")
 
-    def _cancel_btn(self, draw):
-        cx, cy, red = 320, 196, (255, 90, 70)
-        draw.ellipse([cx - 26, cy - 26, cx + 26, cy + 26], outline=red, width=3)
-        draw.line([cx - 9, cy - 9, cx + 9, cy + 9], fill=red, width=3)
-        draw.line([cx - 9, cy + 9, cx + 9, cy - 9], fill=red, width=3)
-        draw.text((cx, cy + 34), "Annuler", font=T.F_SMALL, fill=T.INK_DIM, anchor="ma")
+    def _cancel_btn(self, draw, img):
+        red = (255, 95, 72)
+        box = (286, 158, 446, 202)
+        T.card(img, draw, box, radius=22, fill=T.mix(T.CARD, red, 0.16), elevate=False)
+        cy = (box[1] + box[3]) // 2
+        cx = box[0] + 32
+        draw.line([cx - 8, cy - 8, cx + 8, cy + 8], fill=red, width=3)
+        draw.line([cx - 8, cy + 8, cx + 8, cy - 8], fill=red, width=3)
+        draw.text((cx + 22, cy), "Annuler", font=T.F_LABEL,
+                  fill=T.INK, anchor="lm")
 
-    def _render_custom(self, draw, accent):
+    def _render_custom(self, draw, img, accent):
         # big value
         T.text_center(draw, T.CX - 20, 120, str(self.custom_min), T.F_RING, T.INK, anchor="mm")
         draw.text((T.CX + 64, 120), "min", font=T.F_BODY, fill=T.INK_DIM, anchor="lm")
-        # −1 / +1 round buttons (drawn glyphs, no font risk)
+        # −1 / +1 round buttons (filled discs, bright glyphs)
         for cx2, plus in ((90, False), (390, True)):
-            draw.ellipse([cx2 - 30, 90, cx2 + 30, 150], outline=accent, width=3)
+            T.card(img, draw, (cx2 - 30, 90, cx2 + 30, 150), radius=30,
+                   fill=T.CARD_HI, elevate=False)
             draw.line([cx2 - 12, 120, cx2 + 12, 120], fill=T.INK, width=3)
             if plus:
                 draw.line([cx2, 108, cx2, 132], fill=T.INK, width=3)
         # −5 / +5 pills
         for bx, label in (((150, 176, 230, 214), "-5"), ((250, 176, 330, 214), "+5")):
-            T.rounded(draw, bx, 14, fill=T.CARD, outline=T.dim(accent, 0.7))
+            T.card(img, draw, bx, radius=15, fill=T.CARD, elevate=False)
             draw.text(((bx[0] + bx[2]) // 2, (bx[1] + bx[3]) // 2), label,
                       font=T.F_LABEL, fill=T.INK, anchor="mm")
-        # Démarrer
-        T.rounded(draw, (110, 250, 370, 302), 16, fill=T.CARD_HI, outline=accent, width=2)
+        # Démarrer (primary action — accent-tinted fill)
+        T.card(img, draw, (110, 250, 370, 302), radius=18,
+               fill=T.mix(T.CARD_HI, accent, 0.30), elevate=False)
         T.text_center(draw, T.CX, (250 + 302) // 2,
                       f"Démarrer · {self.custom_min} min", T.F_LABEL, T.INK, anchor="mm")
 
@@ -605,6 +650,21 @@ class App:
         draw.arc([cx - 24, cy - 22, cx + 24, cy + 26], 0, 360, fill=accent, width=3)
         draw.line([cx - 8, cy - 30, cx + 8, cy - 30], fill=accent, width=3)
         draw.line([cx, cy + 2, cx, cy - 12], fill=accent, width=3)
+
+    def _slider(self, draw, x0, x1, y, pct, accent):
+        """A filled track with a rounded fill and a clean knob."""
+        pct = max(0, min(100, pct))
+        fillx = x0 + int((x1 - x0) * pct / 100)
+        draw.line([x0, y, x1, y], fill=T.INK_FAINT, width=5)
+        if fillx > x0:
+            draw.line([x0, y, fillx, y], fill=accent, width=5)
+        draw.ellipse([fillx - 10, y - 10, fillx + 10, y + 10], fill=T.INK)
+
+    def _icon_eq(self, draw, cx, cy, color):
+        """Three little bars — a 'now playing' mark."""
+        for i, h in enumerate((7, 12, 9)):
+            x = cx - 7 + i * 7
+            draw.rounded_rectangle([x, cy - h, x + 3, cy + h], 1, fill=color)
 
     def _icon_power(self, draw, cx, cy, color, r=14):
         # Standard power symbol: ring open at the top + vertical stem.

@@ -32,10 +32,10 @@ ha-config/
 - Key addons: Whisper (STT), Piper (TTS), openWakeWord, Music Assistant, Mosquitto MQTT, ESPHome, Matter Server, Linky, rtl_433, Frigate (separate VM)
 
 ### Key entities / scripts
-- `media_player.rpi_satellite_media_player` — voice satellite speaker
-- `media_player.enceinte_entree` — MASS entry speaker
+- `media_player.rpi_satellite_media_player` — voice satellite speaker (LVA player; friendly name **"Pi Satellite"**)
+- `media_player.enceinte_entree` — Music Assistant player; **owns the satellite speaker** (its `active_queue` IS `rpi_satellite_media_player`). Radio/music must play here — `play_media` on the raw LVA player gets overridden by MASS's queue.
 - `input_select.rpi_watchface` — satellite watchface (aurora/ember/signal)
-- `script.radio_*` — 5 radio stations (France Inter, France Info, RTL, RTL2, Europe 2)
+- `script.radio_*` — 6 radio stations (France Inter, France Info, RTL, RTL2, Europe 2, Nova). All play through `media_player.enceinte_entree` (MASS). Voice scripts fire `script.radio_play` (fire-and-forget, mode restart) which waits for the satellite to finish its TTS reply before starting the stream, else the reply clobbers the just-started radio.
 - `script.espkyogate_*` — alarm arm/disarm
 - `script.ptz_*` — Ezviz garage camera PTZ
 

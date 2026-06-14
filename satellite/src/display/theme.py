@@ -8,7 +8,7 @@ the palette in one place makes every screen feel like one device.
 
 import os
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from config import (
     DISPLAY_WIDTH, DISPLAY_HEIGHT,
@@ -19,13 +19,16 @@ W, H = DISPLAY_WIDTH, DISPLAY_HEIGHT
 CX, CY = W // 2, H // 2
 
 # ── Palette ─────────────────────────────────────────────────────────────────
-BG_TOP    = (10, 12, 20)     # subtle vertical gradient, top
-BG_BOTTOM = (3,  4,  9)      # bottom (near black)
-INK       = (236, 240, 248)  # primary text (warm white)
+# Surfaces sit ABOVE the background on contrast alone — no accent outlines.
+# The step from BG → CARD → CARD_HI is what reads as elevation on the panel.
+BG_TOP    = (12, 14, 22)     # subtle vertical gradient, top
+BG_BOTTOM = (4,  5, 11)      # bottom (near black)
+INK       = (237, 241, 249)  # primary text (warm white)
 INK_DIM   = (150, 158, 176)  # secondary text
-INK_FAINT = (84,  92, 110)   # tertiary / hairlines
-CARD      = (22, 26, 38)     # raised surface
-CARD_HI   = (32, 38, 54)     # raised surface, pressed/active
+INK_FAINT = (78,  86, 104)   # tertiary text
+HAIRLINE  = (46,  52,  70)   # neutral card edge (NEVER accent) — defines surfaces
+CARD      = (26, 30, 43)     # raised surface
+CARD_HI   = (38, 44, 61)     # raised surface, pressed/active/selected
 
 # Accent per voice state — used for glow, active chips, sliders, waveform.
 ACCENT = {
@@ -70,7 +73,7 @@ def font(weight: str, size: int) -> ImageFont.FreeTypeFont:
 
 # Pre-built fonts used across screens
 F_CLOCK  = font("thin",   150)   # ambient HH:MM hero
-F_CLOCK_S = font("thin",  60)    # ambient seconds (smaller, trailing)
+F_CLOCK_S = font("light",  42)   # ambient seconds (smaller, trailing)
 F_CLOCK2 = font("thin",   34)    # small clock (in radio/timer headers)
 F_DATE   = font("light",  26)
 F_TEMP   = font("light",  30)
@@ -91,6 +94,70 @@ def mix(a, b, t: float):
 def dim(color, f: float):
     f = max(0.0, min(1.0, f))
     return tuple(int(c * f) for c in color)
+
+
+def lighten(color, f: float):
+    """Blend a colour toward white by f (0→color, 1→white)."""
+    f = max(0.0, min(1.0, f))
+    return tuple(int(c + (255 - c) * f) for c in color)
+
+
+# ── Elevation: cached soft drop-shadow sprites ───────────────────────────────
+# A blurred shadow under each card is the single biggest "product vs DIY" cue,
+# but a GaussianBlur per frame is far too expensive on the Pi. Sprites are keyed
+# on (w, h, radius) and built once — menus/sub-screens reuse them every frame.
+_shadow_cache: dict = {}
+
+
+def _shadow(w: int, h: int, radius: int, blur: int = 9, alpha: int = 120):
+    key = (w, h, radius, blur, alpha)
+    spr = _shadow_cache.get(key)
+    if spr is None:
+        pad = blur * 3
+        mask = Image.new("L", (w + pad * 2, h + pad * 2), 0)
+        ImageDraw.Draw(mask).rounded_rectangle(
+            [pad, pad, pad + w, pad + h], radius=radius, fill=alpha)
+        mask = mask.filter(ImageFilter.GaussianBlur(blur))
+        spr = (mask, pad)
+        _shadow_cache[key] = spr
+    return spr
+
+
+def card(img, draw, box, radius=18, fill=CARD, elevate=True,
+         bevel=True, edge=HAIRLINE):
+    """A filled, raised surface — the building block for every panel.
+
+    Replaces the old accent-outlined boxes: depth comes from a soft shadow,
+    a neutral hairline edge, and a faint top bevel — never a coloured border.
+    """
+    x0, y0, x1, y1 = (int(v) for v in box)
+    if elevate:
+        mask, pad = _shadow(x1 - x0, y1 - y0, radius)
+        black = Image.new("RGB", mask.size, (0, 0, 0))
+        img.paste(black, (x0 - pad, y0 - pad + 5), mask)   # offset down 5px
+    draw.rounded_rectangle((x0, y0, x1, y1), radius=radius, fill=fill,
+                           outline=edge, width=1)
+    if bevel:
+        draw.line([(x0 + radius, y0 + 1), (x1 - radius, y0 + 1)],
+                  fill=lighten(fill, 0.11), width=1)
+
+
+# ── Station icons (real broadcaster logos, see assets/radio/) ────────────────
+_ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+_icon_cache: dict = {}
+
+
+def station_icon(name: str, size: int):
+    """Load a station logo tile as RGBA at `size`px. Cached; None if missing."""
+    key = (name, size)
+    if key not in _icon_cache:
+        path = os.path.join(_ASSET_DIR, "radio", f"{name}.png")
+        try:
+            im = Image.open(path).convert("RGBA").resize((size, size), Image.LANCZOS)
+        except Exception:
+            im = None
+        _icon_cache[key] = im
+    return _icon_cache[key]
 
 
 # ── Background (built once per accent, cached) ───────────────────────────────
