@@ -137,6 +137,16 @@ radio_rtl2:
     data:
       media_content_id: https://icecast.rtl2.fr/rtl2-1-44-128
       media_content_type: music
+radio_nova:
+  alias: Radio Nova
+  icon: mdi:radio
+  sequence:
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.rpi_satellite_media_player
+    data:
+      media_content_id: http://radionova.ice.infomaniak.ch/radionova-256.aac
+      media_content_type: music
 arreter_radio:
   alias: Arrêter la radio
   icon: mdi:stop
