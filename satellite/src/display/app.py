@@ -177,9 +177,11 @@ class App:
             if self.menu_open:
                 self._tap_menu(x, y)
             elif self._home_ring_box and _hit(self._home_ring_box, x, y):
-                print("[UI] dismiss ringing timer (home button)", flush=True)
+                # The sound is voice-only (say "stop"); tapping just clears the
+                # finished timer from HA so the card goes away.
+                print("[UI] clear finished timer (home hint)", flush=True)
                 if cancel_timers():
-                    self._toast_msg("Minuteur arrêté")
+                    self._toast_msg("Minuteur effacé")
             elif self._home_vol_box and _hit(self._home_vol_box, x, y):
                 pct = max(0, min(100, int(round((x - 90) / 300 * 100))))
                 self._vol, self._vol_set_at = pct, time.monotonic()
@@ -350,8 +352,8 @@ class App:
             T.text_center(draw, T.CX, 232, date_str, T.F_DATE, T.INK_DIM)
 
         if ringing and not self.menu_open:
-            # A finished timer takes over the lower band with a direct stop button.
-            self._render_ring_stop(draw)
+            # A finished timer takes over the lower band with a "say stop" hint.
+            self._render_ring_hint(draw)
         elif not voice_active and not self.menu_open:
             self._status_pills(draw, ctx, accent, y=248 if playing else 280)
             if playing:
@@ -414,15 +416,18 @@ class App:
         draw.text((vx1 + 12, vy), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="lm")
         self._home_vol_box = (vx0 - 12, vy - 22, vx1 + 12, vy + 22)
 
-    def _render_ring_stop(self, draw):
-        """Direct 'stop the alarm' button on home while a timer is ringing."""
+    def _render_ring_hint(self, draw):
+        """Home hint while a timer is ringing. The sound is voice-only — saying
+        the stop word is the thing that actually silences it — so this is a hint,
+        not an action button. Tapping it only clears the finished timer card."""
         red = (255, 80, 60)
-        T.text_center(draw, T.CX, 230, "Minuteur terminé", T.F_LABEL, red)
-        box = (120, 256, 360, 306)
-        T.rounded(draw, box, 18, fill=T.mix(T.CARD, red, 0.22), outline=red, width=2)
+        T.text_center(draw, T.CX, 224, "Minuteur terminé", T.F_LABEL, red)
+        box = (110, 252, 370, 304)
+        T.rounded(draw, box, 18, fill=T.mix(T.CARD, red, 0.16),
+                  outline=T.dim(red, 0.65), width=1)
         cy = (box[1] + box[3]) // 2
-        self._icon_bell(draw, box[0] + 42, cy, red)
-        T.text_center(draw, (box[0] + 64 + box[2]) // 2, cy, "Arrêter",
+        self._icon_bell(draw, box[0] + 40, cy, red)
+        T.text_center(draw, (box[0] + 60 + box[2]) // 2, cy, "Dites « stop »",
                       T.F_LABEL, T.INK, anchor="mm")
         self._home_ring_box = box
 
