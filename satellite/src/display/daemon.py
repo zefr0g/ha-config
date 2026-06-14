@@ -12,6 +12,8 @@ No threads, no subprocesses — SPI transfers never race anything.
 """
 
 import json
+import os
+import shutil
 import signal
 import sys
 import time
@@ -80,6 +82,22 @@ def blit_diff(driver, prev_arr, img):
     return new_arr.copy()
 
 
+def perform_poweroff(driver, touch):
+    """Graceful system poweroff requested from the touch UI.
+
+    Close the SPI/touch devices first so no transfer is in flight, then *replace*
+    this process with `systemctl poweroff` via os.execv — execv does not fork, so
+    it can't race SPI DMA (unlike subprocess.Popen, which is forbidden here).
+    """
+    print("[DISPLAY] UI requested poweroff — closing SPI, powering off", flush=True)
+    try:
+        touch.close()
+    finally:
+        driver.close()
+    systemctl = shutil.which("systemctl") or "/usr/bin/systemctl"
+    os.execv(systemctl, [systemctl, "poweroff"])
+
+
 def interpolate_timers(ctx, since):
     """Tick timer countdowns locally between 5 s HA polls."""
     if not ctx or not ctx.get("timers"):
@@ -123,6 +141,13 @@ def main():
         tap = touch.poll_tap()
         if tap:
             app.handle_tap(tap[0], tap[1], ctx)
+
+        if app.shutdown_requested:
+            # Show the "Arrêt en cours…" splash, hold it briefly, then power off.
+            img = app.render(read_state(), datetime.now(), ctx)
+            blit_diff(driver, prev_arr, img)
+            time.sleep(1.2)
+            perform_poweroff(driver, touch)   # never returns
 
         if t0 - ctx_mono >= 5.0:
             ctx = fetch_ha_context()

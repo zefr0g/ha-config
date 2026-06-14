@@ -59,6 +59,13 @@ def main():
                    "timers": [{"name": "minuteur", "remaining_s": 312}]}),
         scene("12_timer_custom", lambda a: (setattr(a, "screen", "timer"),
               setattr(a, "timer_custom", True), setattr(a, "custom_min", 25))),
+        scene("13_menu_poweroff", lambda a: setattr(a, "menu_open", True)),
+        scene("14_confirm_off", lambda a: (setattr(a, "menu_open", True),
+              setattr(a, "menu_confirm_off", True))),
+        scene("15_shutdown", lambda a: setattr(a, "screen", "shutdown")),
+        scene("16_home_ring", lambda a: None,
+              ctx={**CTX, "timers": [{"name": "minuteur", "remaining_s": 0,
+                                      "ringing": True}]}),
     ]
     for name, img in scenes:
         path = os.path.join(out, f"{name}.png")
