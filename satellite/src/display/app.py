@@ -36,6 +36,12 @@ MENU_TIMEOUT = 12.0   # seconds of no touch before the menu/sub-screens return h
 TIMER_PRESETS = [1, 4, 8, 11]   # quick-add minutes (5th button = custom)
 CUSTOM_MIN, CUSTOM_MAX = 1, 90  # bounds for custom duration
 
+# Power-off button + confirm dialog geometry (inside the menu overlay)
+OFF_BTN_BOX     = (140, 262, 340, 306)   # "Éteindre" button under the two cards
+OFF_CARD_BOX    = (50, 84, 430, 250)     # confirm dialog card
+OFF_CANCEL_BOX  = (80, 190, 230, 238)
+OFF_CONFIRM_BOX = (250, 190, 400, 238)
+
 # Clock layout: anchor the HH:MM right edge (= the MM/SS junction) and the
 # seconds left edge at fixed x, so per-digit width changes never shift the
 # layout (Roboto figures aren't tabular). Centred using nominal widths.
@@ -116,8 +122,10 @@ def _draw_waveform(img: Image.Image, state, t, accent, strength=1.0):
 
 class App:
     def __init__(self):
-        self.screen = "home"          # home | radio | timer
+        self.screen = "home"          # home | radio | timer | shutdown
         self.menu_open = False
+        self.menu_confirm_off = False    # power-off confirm dialog showing
+        self.shutdown_requested = False  # daemon polls this → graceful poweroff
         self.last_touch = time.monotonic()
         self.active_station = None     # station id currently playing (optimistic)
         self._vol = 50
@@ -128,6 +136,7 @@ class App:
         self._home_radio_box = None              # tappable status pills on home
         self._home_timer_box = None
         self._home_vol_box = None                # tappable volume slider on home
+        self._home_ring_box = None               # "Arrêter" button shown while ringing
         self.timer_custom = False                # custom-duration entry mode
         self.custom_min = 15
         self.t0 = time.monotonic()
@@ -152,10 +161,13 @@ class App:
         self.last_touch = time.monotonic()
 
     def maybe_timeout(self):
+        if self.screen == "shutdown":
+            return    # terminal screen — never auto-dismiss
         if (self.screen != "home" or self.menu_open) and \
            time.monotonic() - self.last_touch > MENU_TIMEOUT:
             self.screen = "home"
             self.menu_open = False
+            self.menu_confirm_off = False
 
     # ── touch routing ────────────────────────────────────────────────────────
     def handle_tap(self, x, y, ctx):
@@ -164,6 +176,10 @@ class App:
         if self.screen == "home":
             if self.menu_open:
                 self._tap_menu(x, y)
+            elif self._home_ring_box and _hit(self._home_ring_box, x, y):
+                print("[UI] dismiss ringing timer (home button)", flush=True)
+                if cancel_timers():
+                    self._toast_msg("Minuteur arrêté")
             elif self._home_vol_box and _hit(self._home_vol_box, x, y):
                 pct = max(0, min(100, int(round((x - 90) / 300 * 100))))
                 self._vol, self._vol_set_at = pct, time.monotonic()
@@ -175,16 +191,27 @@ class App:
                 self.screen = "timer"
             else:
                 self.menu_open = True
+                self.menu_confirm_off = False
         elif self.screen == "radio":
             self._tap_radio(x, y, ctx)
         elif self.screen == "timer":
             self._tap_timer(x, y, ctx)
 
     def _tap_menu(self, x, y):
+        if self.menu_confirm_off:                       # power-off confirm dialog
+            if _hit(OFF_CONFIRM_BOX, x, y):
+                print("[UI] poweroff confirmed", flush=True)
+                self.shutdown_requested = True
+                self.screen, self.menu_open = "shutdown", False
+            elif _hit(OFF_CANCEL_BOX, x, y):
+                self.menu_confirm_off = False
+            return
         if _hit((30, 96, 232, 248), x, y):
             self.screen, self.menu_open = "radio", False
         elif _hit((248, 96, 450, 248), x, y):
             self.screen, self.menu_open = "timer", False
+        elif _hit(OFF_BTN_BOX, x, y):
+            self.menu_confirm_off = True
         else:
             self.menu_open = False
 
@@ -264,6 +291,13 @@ class App:
         img = T.background(accent)
         draw = ImageDraw.Draw(img)
 
+        if self.screen == "shutdown":
+            self._icon_power(draw, T.CX, H // 2 - 44, (255, 140, 110), r=20)
+            T.text_center(draw, T.CX, H // 2 + 4, "Arrêt en cours…", T.F_TITLE, T.INK)
+            T.text_center(draw, T.CX, H // 2 + 40,
+                          "Débranchez une fois l'écran éteint", T.F_SMALL, T.INK_DIM)
+            return img
+
         if self.screen == "home":
             self._render_home(draw, img, state, now, ctx, accent)
         elif self.screen == "radio":
@@ -288,6 +322,9 @@ class App:
     # ── HOME (ambient) ──────────────────────────────────────────────────────
     def _render_home(self, draw, img, state, now, ctx, accent):
         self._home_radio_box = self._home_timer_box = self._home_vol_box = None
+        self._home_ring_box = None
+        timers = (ctx or {}).get("timers", [])
+        ringing = any(t.get("ringing") for t in timers)
         # status: weather (top-right)
         weather = (ctx or {}).get("weather") or {}
         temp, cond = weather.get("temp"), weather.get("condition")
@@ -306,13 +343,16 @@ class App:
                   font=T.F_CLOCK_S, fill=T.dim(col, 0.62), anchor="ls")
 
         playing = bool((ctx or {}).get("sat_playing"))
-        # Date when ambient; hidden while playing so the now-playing pill + volume
-        # slider have room (the pill carries the context instead).
-        if not voice_active and not playing:
+        # Date when ambient; hidden while playing (the now-playing pill + volume
+        # slider take the space) or while a timer is ringing (the stop button does).
+        if not voice_active and not playing and not ringing:
             date_str = f"{_DAY_FR[now.weekday()]} {now.day} {_MON_FR[now.month]}"
             T.text_center(draw, T.CX, 232, date_str, T.F_DATE, T.INK_DIM)
 
-        if not voice_active and not self.menu_open:
+        if ringing and not self.menu_open:
+            # A finished timer takes over the lower band with a direct stop button.
+            self._render_ring_stop(draw)
+        elif not voice_active and not self.menu_open:
             self._status_pills(draw, ctx, accent, y=248 if playing else 280)
             if playing:
                 self._home_volume(draw, ctx, accent)
@@ -374,9 +414,29 @@ class App:
         draw.text((vx1 + 12, vy), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="lm")
         self._home_vol_box = (vx0 - 12, vy - 22, vx1 + 12, vy + 22)
 
+    def _render_ring_stop(self, draw):
+        """Direct 'stop the alarm' button on home while a timer is ringing."""
+        red = (255, 80, 60)
+        T.text_center(draw, T.CX, 230, "Minuteur terminé", T.F_LABEL, red)
+        box = (120, 256, 360, 306)
+        T.rounded(draw, box, 18, fill=T.mix(T.CARD, red, 0.22), outline=red, width=2)
+        cy = (box[1] + box[3]) // 2
+        self._icon_bell(draw, box[0] + 42, cy, red)
+        T.text_center(draw, (box[0] + 64 + box[2]) // 2, cy, "Arrêter",
+                      T.F_LABEL, T.INK, anchor="mm")
+        self._home_ring_box = box
+
+    def _icon_bell(self, draw, cx, cy, color):
+        draw.pieslice([cx - 10, cy - 12, cx + 10, cy + 6], 180, 360, fill=color)
+        draw.rectangle([cx - 12, cy + 4, cx + 12, cy + 8], fill=color)
+        draw.ellipse([cx - 3, cy + 8, cx + 3, cy + 14], fill=color)
+
     def _render_menu(self, draw, img, accent):
         # Dim the ambient home behind the menu (in place, keeps `draw` valid).
         img.paste(Image.blend(img, Image.new("RGB", img.size, (3, 4, 9)), 0.9))
+        if self.menu_confirm_off:
+            self._render_confirm_off(draw, accent)
+            return
         for box, icon, label in (
             ((30, 96, 232, 248), "radio", "Radio"),
             ((248, 96, 450, 248), "timer", "Minuteur"),
@@ -388,6 +448,28 @@ class App:
             else:
                 self._icon_timer(draw, cx, 150, accent)
             T.text_center(draw, cx, 200, label, T.F_TITLE, T.INK)
+
+        # Power-off button under the two cards.
+        red = (255, 130, 100)
+        T.rounded(draw, OFF_BTN_BOX, 22, fill=T.CARD, outline=T.dim(red, 0.9), width=2)
+        cy = (OFF_BTN_BOX[1] + OFF_BTN_BOX[3]) // 2
+        self._icon_power(draw, OFF_BTN_BOX[0] + 32, cy, red, r=13)
+        draw.text((OFF_BTN_BOX[0] + 56, cy), "Éteindre", font=T.F_LABEL,
+                  fill=T.INK, anchor="lm")
+
+    def _render_confirm_off(self, draw, accent):
+        red = (255, 110, 90)
+        T.rounded(draw, OFF_CARD_BOX, 22, fill=T.CARD, outline=T.dim(red, 0.8), width=2)
+        self._icon_power(draw, T.CX, 124, red, r=18)
+        T.text_center(draw, T.CX, 162, "Éteindre le satellite ?", T.F_TITLE, T.INK)
+        T.rounded(draw, OFF_CANCEL_BOX, 16, fill=T.CARD_HI, outline=T.INK_FAINT)
+        T.text_center(draw, (OFF_CANCEL_BOX[0] + OFF_CANCEL_BOX[2]) // 2,
+                      (OFF_CANCEL_BOX[1] + OFF_CANCEL_BOX[3]) // 2,
+                      "Annuler", T.F_LABEL, T.INK, anchor="mm")
+        T.rounded(draw, OFF_CONFIRM_BOX, 16, fill=T.CARD, outline=red, width=2)
+        T.text_center(draw, (OFF_CONFIRM_BOX[0] + OFF_CONFIRM_BOX[2]) // 2,
+                      (OFF_CONFIRM_BOX[1] + OFF_CONFIRM_BOX[3]) // 2,
+                      "Éteindre", T.F_LABEL, red, anchor="mm")
 
     # ── RADIO ─────────────────────────────────────────────────────────────────
     def _render_radio(self, draw, img, now, ctx, accent):
@@ -526,3 +608,9 @@ class App:
         draw.arc([cx - 24, cy - 22, cx + 24, cy + 26], 0, 360, fill=accent, width=3)
         draw.line([cx - 8, cy - 30, cx + 8, cy - 30], fill=accent, width=3)
         draw.line([cx, cy + 2, cx, cy - 12], fill=accent, width=3)
+
+    def _icon_power(self, draw, cx, cy, color, r=14):
+        # Standard power symbol: ring open at the top + vertical stem.
+        w = max(2, r // 5)
+        draw.arc([cx - r, cy - r, cx + r, cy + r], -60, 240, fill=color, width=w)
+        draw.line([cx, cy - r - w, cx, cy + 1], fill=color, width=w)
