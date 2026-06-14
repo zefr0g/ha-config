@@ -77,7 +77,7 @@ See `satellite/CLAUDE.md` for full hardware/software detail. Summary:
 - WS2812B DMA channel 5 only (channel 10 = only 1 LED lights)
 - ST7796S: never toggle CS between chunks — resets write-address counter
 
-**Wake word:** "petit pois" — microWakeWord model at `~/.config/linux-voice-assistant/wakewords/petit_pois.tflite` on pi-satellite.
+**Wake word:** "Hey Jarvis" (built-in microWakeWord). A custom "petit pois" model exists at `~/.config/linux-voice-assistant/wakewords/petit_pois.tflite` on pi-satellite but is **not used** — it under-performs. Set via `select.rpi_satellite_mot_d_activation`. Note: recreating the LVA container resets this to a default, so re-select "Hey Jarvis" afterwards.
 
 **Systemd services** (all running):
 - `lva.service` (user dd) — LVA Docker container, ESPHome API → dd-ha:6053
