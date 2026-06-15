@@ -22,6 +22,7 @@ CTX = {
     "timers": [],
     "volume_pct": 35,
     "weather": {"temp": 19, "condition": "partlycloudy"},
+    "wifi": {"connected": True, "quality": 82},
 }
 
 
@@ -64,6 +65,10 @@ def main():
               setattr(a, "menu_confirm_off", True))),
         scene("15_shutdown", lambda a: setattr(a, "screen", "shutdown")),
         scene("16_home_ring", lambda a: None, ctx={**CTX, "timer_ringing": True}),
+        scene("17_error_toast", lambda a: (setattr(a, "screen", "radio"),
+              a._toast_msg("Lecture impossible", 99, error=True))),
+        scene("18_home_wifi_down", lambda a: None,
+              ctx={**CTX, "wifi": {"connected": False, "quality": 0}}),
     ]
     for name, img in scenes:
         path = os.path.join(out, f"{name}.png")

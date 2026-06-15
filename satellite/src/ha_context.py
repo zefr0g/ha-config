@@ -159,6 +159,30 @@ def _fetch_solar() -> dict:
     return {"solar_w": solar_w, "grid_w": grid_w}
 
 
+def read_wifi() -> dict:
+    """Local Wi-Fi link quality from /proc/net/wireless — no HA call, no
+    subprocess (safe in the display loop). `quality` is the driver's link metric
+    as a 0-100 % (the metric is /70 on the Pi's brcmfmac); `connected` is a
+    nonzero link on any wl* interface. Reported even when HA/token is down, so
+    the home screen can flag a network drop independently of HA reachability."""
+    try:
+        with open("/proc/net/wireless") as f:
+            lines = f.readlines()[2:]   # skip the two header rows
+    except Exception:
+        return {"connected": False, "quality": 0}
+    for ln in lines:
+        parts = ln.split()
+        if not parts or not parts[0].startswith("wl"):
+            continue
+        try:
+            link = float(parts[2].rstrip("."))   # "70." → 70.0
+        except (ValueError, IndexError):
+            continue
+        q = max(0, min(100, round(link / 70 * 100)))
+        return {"connected": q > 0, "quality": q}
+    return {"connected": False, "quality": 0}
+
+
 def fetch_ha_context() -> dict:
     """
     Returns:
@@ -168,10 +192,12 @@ def fetch_ha_context() -> dict:
           "volume_pct": int (0-100),
           "solar_w":    int (watts, current production),
           "grid_w":     int (watts, negative = export to grid),
+          "wifi":       {"connected": bool, "quality": int 0-100},
         }
     """
     result: dict = {"media": None, "timers": [], "volume_pct": 50,
-                    "solar_w": 0, "grid_w": 0, "sat_playing": False}
+                    "solar_w": 0, "grid_w": 0, "sat_playing": False,
+                    "wifi": read_wifi()}
 
     if not _token():
         return result

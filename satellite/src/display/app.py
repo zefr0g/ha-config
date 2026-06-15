@@ -133,6 +133,7 @@ class App:
         self._vol_set_at = 0.0
         self._toast = ""
         self._toast_until = 0.0
+        self._toast_error = False
         self._timer_init: dict[str, int] = {}   # id → initial seconds (for ring)
         self._home_radio_box = None              # tappable status pills on home
         self._home_timer_box = None
@@ -142,9 +143,11 @@ class App:
         self.t0 = time.monotonic()
 
     # ── helpers ──────────────────────────────────────────────────────────────
-    def _toast_msg(self, msg, secs=1.6):
+    def _toast_msg(self, msg, secs=1.6, error=False):
         self._toast = msg
-        self._toast_until = time.monotonic() + secs
+        # errors linger a touch longer so they're not missed
+        self._toast_until = time.monotonic() + (secs if not error else max(secs, 2.6))
+        self._toast_error = error
 
     def _volume(self, ctx):
         # Optimistic: show the value we just set until HA catches up (~6 s).
@@ -180,7 +183,8 @@ class App:
                 pct = max(0, min(100, int(round((x - 90) / 300 * 100))))
                 self._vol, self._vol_set_at = pct, time.monotonic()
                 print(f"[UI] home volume -> {pct}", flush=True)
-                set_volume(pct)
+                if not set_volume(pct):
+                    self._toast_msg("Volume indisponible", error=True)
             elif self._home_radio_box and _hit(self._home_radio_box, x, y):
                 self.screen = "radio"
             elif self._home_timer_box and _hit(self._home_timer_box, x, y):
@@ -222,6 +226,8 @@ class App:
                     self.active_station = st["id"]
                     self._station_set_at = time.monotonic()
                     self._toast_msg(f"Lecture · {st['label']}")
+                else:
+                    self._toast_msg("Lecture impossible", error=True)
                 return
         if _hit((392, 258, 462, 308), x, y):        # stop
             print("[UI] stop_radio (stop button)", flush=True)
@@ -229,12 +235,15 @@ class App:
                 self.active_station = None
                 self._station_set_at = time.monotonic()
                 self._toast_msg("Radio arrêtée")
+            else:
+                self._toast_msg("Échec de l'arrêt", error=True)
             return
         if _hit((18, 262, 372, 304), x, y):         # volume slider
             pct = int(round((x - 30) / (360 - 30) * 100))
             pct = max(0, min(100, pct))
             self._vol, self._vol_set_at = pct, time.monotonic()
-            set_volume(pct)
+            if not set_volume(pct):
+                self._toast_msg("Volume indisponible", error=True)
 
     def _tap_timer(self, x, y, ctx):
         if _hit((0, 0, 70, 56), x, y):
@@ -255,11 +264,15 @@ class App:
                 if start_timer(self.custom_min):
                     self._toast_msg(f"Minuteur · {self.custom_min} min")
                     self.timer_custom = False
+                else:
+                    self._toast_msg("Minuteur impossible", error=True)
             return
         if (ctx or {}).get("timers") and _hit((286, 158, 446, 202), x, y):  # cancel
             print("[UI] cancel_timers", flush=True)
             if cancel_timers():
                 self._toast_msg("Minuteurs annulés")
+            else:
+                self._toast_msg("Échec de l'annulation", error=True)
             return
         for i in range(5):
             if _hit(self._preset_box(i), x, y):
@@ -267,6 +280,8 @@ class App:
                     print(f"[UI] start_timer {TIMER_PRESETS[i]}", flush=True)
                     if start_timer(TIMER_PRESETS[i]):
                         self._toast_msg(f"Minuteur · {TIMER_PRESETS[i]} min")
+                    else:
+                        self._toast_msg("Minuteur impossible", error=True)
                 else:
                     self.timer_custom = True
                 return
@@ -335,6 +350,13 @@ class App:
             T.card(img, draw, chip, radius=19, fill=T.CARD, elevate=False)
             _weather_icon(draw, chip[0] + 24, 33, 13, cond, accent)
             draw.text((W - 26, 33), label, font=T.F_TEMP, fill=T.INK, anchor="rm")
+
+        # Wi-Fi signal (top-left). Subtle when ambient; a red apex dot flags a
+        # network drop. Hidden during voice so the waveform stays clean.
+        if not voice_active:
+            wifi = (ctx or {}).get("wifi") or {}
+            self._wifi_icon(draw, 30, 46, wifi.get("quality", 0),
+                            wifi.get("connected", False))
 
         f = 0.25 if voice_active else 1.0
         yb = 138 if voice_active else 196          # text baseline
@@ -636,7 +658,8 @@ class App:
             return
         w, _ = T.text_size(draw, self._toast, T.F_LABEL)
         box = (T.CX - w // 2 - 20, H - 46, T.CX + w // 2 + 20, H - 12)
-        T.rounded(draw, box, 17, fill=T.CARD_HI)
+        fill = T.mix(T.CARD_HI, (255, 70, 55), 0.5) if self._toast_error else T.CARD_HI
+        T.rounded(draw, box, 17, fill=fill)
         T.text_center(draw, T.CX, H - 40, self._toast, T.F_LABEL, T.INK)
 
     # ── menu icons ─────────────────────────────────────────────────────────────
@@ -665,6 +688,17 @@ class App:
         for i, h in enumerate((7, 12, 9)):
             x = cx - 7 + i * 7
             draw.rounded_rectangle([x, cy - h, x + 3, cy + h], 1, fill=color)
+
+    def _wifi_icon(self, draw, cx, cy, quality, connected):
+        """Classic upward signal fan anchored at the apex dot (cx, cy). Lit arcs
+        scale with link quality; offline shows faint arcs + a red dot."""
+        bars = (1 + (quality >= 40) + (quality >= 70)) if connected else 0
+        for i, r in enumerate((7, 14, 21)):
+            lit = connected and bars > i
+            draw.arc([cx - r, cy - r, cx + r, cy + r], 225, 315,
+                     fill=T.INK_DIM if lit else T.INK_FAINT, width=3)
+        draw.ellipse([cx - 2, cy - 2, cx + 2, cy + 2],
+                     fill=T.INK_DIM if connected else (255, 90, 70))
 
     def _icon_power(self, draw, cx, cy, color, r=14):
         # Standard power symbol: ring open at the top + vertical stem.
