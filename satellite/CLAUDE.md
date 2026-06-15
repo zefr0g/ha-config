@@ -105,6 +105,57 @@ Full wiring in [WIRING.md](WIRING.md).
 | `voice-leds.service` | `systemd/voice-leds.service` | root | LED ring daemon (DMA/PWM requires root) |
 | `voice-display.service` | `systemd/voice-display.service` | root | Display render loop (SPI/GPIO requires root) |
 | `voice-display-control.service` | `systemd/voice-display-control.service` | dd | MQTT discovery bridge → display tunables in HA |
+| `bt-agent.service` | `systemd/bt-agent.service` | root | Just-Works pairing agent for Bluetooth speaker mode |
+| `voice-bt.service` | `systemd/voice-bt.service` | dd | BT control bridge: writes `/tmp/va_bt_status.json`, reads `/tmp/va_bt_cmd` (pairing/status for the touch UI) |
+
+---
+
+## Bluetooth speaker mode (A2DP sink)
+
+The Pi doubles as a Bluetooth speaker: a phone connects and plays through the
+MAX98357A. Works **fully offline** (no Wi-Fi/HA needed) — for portable/battery
+use. Audio path: phone → A2DP → **PipeWire** (already the audio hub; LVA plays
+through it too via the PulseAudio socket) → mixed onto the I2S sink → amp. No
+device contention because PipeWire mixes; sustained BT audio is no heavier on
+the SPI/I2S-DMA balance than radio, which already works.
+
+**Setup (done; pieces tracked in repo):**
+- `apt install libspa-0.2-bluetooth` — the PipeWire↔BlueZ SPA plugin. Without it
+  PipeWire literally cannot do BT audio (no `spa-0.2/bluez5/`). Pulls in SBC/AAC/
+  LDAC/aptX/LC3 codecs.
+- `apt install bluez-tools` + `bt-agent.service` — headless Just-Works pairing.
+- **`wireplumber/51-headless-bluez.conf`** → `/etc/wireplumber/wireplumber.conf.d/`.
+  THE non-obvious fix: WirePlumber's `main` profile keeps `monitor.bluez.seat-monitoring`
+  enabled, and this headless session has no logind seat, so the bluez monitor stays
+  dormant and no A2DP sink is registered (phones error with a passkey/pairing failure
+  or silently no-op). Disabling seat-monitoring fixes it.
+- `/etc/bluetooth/main.conf`: `AutoEnable=true` (powers adapter at boot).
+- Adapter was soft-`rfkill`'d at boot; cleared via `/sys/class/rfkill/*/soft`
+  (no `rfkill` CLI installed). systemd-rfkill persists the unblocked state.
+- Paired phone must be **trusted** (`bluetoothctl trust <mac>`) to auto-reconnect.
+
+**Gotchas:**
+- Re-pairing a phone that the Pi still has bonded fails with a passkey error
+  ("clé d'accès") — key mismatch. Fix: `bluetoothctl remove <mac>` + forget on
+  phone, then pair fresh.
+- `journalctl --user -u wireplumber` returns nothing over a non-login SSH session;
+  read logs via `systemctl --user status wireplumber -n N` instead.
+- Discoverability is **not** persistent and off by default (secure at home; only
+  needed to pair NEW devices — a trusted phone reconnects without it). The touch
+  UI's **Bluetooth tile** (menu → Bluetooth) opens it on demand: "Appairer un
+  appareil" makes the Pi discoverable for BT_PAIR_WINDOW (120 s) with a live
+  countdown, and shows the connected device. Flow: display writes `/tmp/va_bt_cmd`
+  ("pair"/"stop") → `voice-bt.service` runs bluetoothctl + writes
+  `/tmp/va_bt_status.json` → display reads it. No bluetoothctl in the display
+  process (fork-safe). See `display/bt_bridge.py` + `display/bt_actions.py`.
+- **Home now-playing pill:** when BT audio is playing, the ambient home screen
+  shows a Bluetooth pill with the track title (tap → Bluetooth screen), exactly
+  like the radio pill. Playback status + Title/Artist come from BlueZ AVRCP
+  (`org.bluez.MediaPlayer1` via `busctl --json=short`, no PipeWire introspection,
+  no extra deps). NB: BT playback does **not** go through the MASS media_player,
+  so `sat_playing` is false during BT — the pill is driven purely by the bridge.
+- The bridge polls bluetoothctl/busctl at 1 Hz only during a pairing window,
+  else every 4 s (idle CPU); the command file is still read every second.
 
 ---
 
@@ -157,7 +208,9 @@ src/
     ├── theme.py       — palette, fonts (Roboto), per-state accent, background, RGB565
     ├── touch.py       — XPT2046 driver (edge-triggered taps, calibration)
     ├── ha_actions.py  — HA service calls (radio / volume / timers)
-    ├── app.py         — UI controller + Home/Menu/Radio/Timer screens + voice overlay
+    ├── bt_actions.py  — read BT status / request pairing (file IPC; fork-safe)
+    ├── bt_bridge.py   — voice-bt.service daemon: bluetoothctl ↔ status/cmd files
+    ├── app.py         — UI controller + Home/Menu/Radio/Timer/Bluetooth screens + voice overlay
     ├── daemon.py      — loop: poll touch → render → diff → blit changed rect
     ├── control.py     — MQTT-discovery bridge for display tunables
     ├── calibrate.py   — interactive touch calibration (run with daemon stopped)

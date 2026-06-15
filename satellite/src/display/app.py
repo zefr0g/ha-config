@@ -25,6 +25,7 @@ from config import (
 from display.ha_actions import (
     STATIONS, play_radio, stop_radio, set_volume, start_timer, cancel_timers,
 )
+from display.bt_actions import read_bt_status, request_pairing, stop_pairing
 
 W, H = T.W, T.H
 _DAY_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -36,11 +37,21 @@ MENU_TIMEOUT = 12.0   # seconds of no touch before the menu/sub-screens return h
 TIMER_PRESETS = [1, 4, 8, 11]   # quick-add minutes (5th button = custom)
 CUSTOM_MIN, CUSTOM_MAX = 1, 90  # bounds for custom duration
 
+# Menu tiles (box, icon, label, target screen) — three across.
+MENU_CARDS = (
+    ((16,  90, 157, 240), "radio",     "Radio",     "radio"),
+    ((170, 90, 311, 240), "timer",     "Minuteur",  "timer"),
+    ((323, 90, 464, 240), "bluetooth", "Bluetooth", "bluetooth"),
+)
+
 # Power-off button + confirm dialog geometry (inside the menu overlay)
-OFF_BTN_BOX     = (140, 262, 340, 306)   # "Éteindre" button under the two cards
+OFF_BTN_BOX     = (140, 258, 340, 300)   # "Éteindre" button under the tiles
 OFF_CARD_BOX    = (50, 84, 430, 250)     # confirm dialog card
 OFF_CANCEL_BOX  = (80, 190, 230, 238)
 OFF_CONFIRM_BOX = (250, 190, 400, 238)
+
+# Bluetooth screen geometry
+BT_PAIR_BTN_BOX = (90, 150, 390, 220)    # primary "make discoverable" / "stop" button
 
 # Clock layout: anchor the HH:MM right edge (= the MM/SS junction) and the
 # seconds left edge at fixed x, so per-digit width changes never shift the
@@ -54,6 +65,12 @@ _CLOCK_RIGHT = int(T.CX + (_WM_NOM - _CLK_GAP - _WS_NOM) / 2)
 
 def _hit(box, x, y):
     return box[0] <= x <= box[2] and box[1] <= y <= box[3]
+
+
+def _short(s, n):
+    """Truncate with an ellipsis so a long BT track title can't overflow a pill."""
+    s = s or ""
+    return s if len(s) <= n else s[: n - 1].rstrip() + "…"
 
 
 # ── Procedural weather icon (crisp at any accent, no font glyph roulette) ────
@@ -122,7 +139,7 @@ def _draw_waveform(img: Image.Image, state, t, accent, strength=1.0):
 
 class App:
     def __init__(self):
-        self.screen = "home"          # home | radio | timer | shutdown
+        self.screen = "home"          # home | radio | timer | bluetooth | shutdown
         self.menu_open = False
         self.menu_confirm_off = False    # power-off confirm dialog showing
         self.shutdown_requested = False  # daemon polls this → graceful poweroff
@@ -137,9 +154,12 @@ class App:
         self._timer_init: dict[str, int] = {}   # id → initial seconds (for ring)
         self._home_radio_box = None              # tappable status pills on home
         self._home_timer_box = None
+        self._home_bt_box = None                 # tappable bluetooth now-playing pill
         self._home_vol_box = None                # tappable volume slider on home
         self.timer_custom = False                # custom-duration entry mode
         self.custom_min = 15
+        self._bt = dict(read_bt_status())        # bluetooth status (refreshed on its screen)
+        self._pairing_active = False             # discoverable window open (keeps screen up)
         self.t0 = time.monotonic()
 
     # ── helpers ──────────────────────────────────────────────────────────────
@@ -166,6 +186,8 @@ class App:
     def maybe_timeout(self):
         if self.screen == "shutdown":
             return    # terminal screen — never auto-dismiss
+        if self.screen == "bluetooth" and self._pairing_active:
+            return    # keep the pairing screen up for the whole discoverable window
         if (self.screen != "home" or self.menu_open) and \
            time.monotonic() - self.last_touch > MENU_TIMEOUT:
             self.screen = "home"
@@ -189,6 +211,8 @@ class App:
                 self.screen = "radio"
             elif self._home_timer_box and _hit(self._home_timer_box, x, y):
                 self.screen = "timer"
+            elif self._home_bt_box and _hit(self._home_bt_box, x, y):
+                self.screen = "bluetooth"
             else:
                 self.menu_open = True
                 self.menu_confirm_off = False
@@ -196,6 +220,8 @@ class App:
             self._tap_radio(x, y, ctx)
         elif self.screen == "timer":
             self._tap_timer(x, y, ctx)
+        elif self.screen == "bluetooth":
+            self._tap_bluetooth(x, y)
 
     def _tap_menu(self, x, y):
         if self.menu_confirm_off:                       # power-off confirm dialog
@@ -206,11 +232,11 @@ class App:
             elif _hit(OFF_CANCEL_BOX, x, y):
                 self.menu_confirm_off = False
             return
-        if _hit((30, 96, 232, 248), x, y):
-            self.screen, self.menu_open = "radio", False
-        elif _hit((248, 96, 450, 248), x, y):
-            self.screen, self.menu_open = "timer", False
-        elif _hit(OFF_BTN_BOX, x, y):
+        for box, _icon, _label, target in MENU_CARDS:
+            if _hit(box, x, y):
+                self.screen, self.menu_open = target, False
+                return
+        if _hit(OFF_BTN_BOX, x, y):
             self.menu_confirm_off = True
         else:
             self.menu_open = False
@@ -286,6 +312,26 @@ class App:
                     self.timer_custom = True
                 return
 
+    def _tap_bluetooth(self, x, y):
+        if _hit((0, 0, 70, 56), x, y):              # back chevron
+            self.screen = "home"
+            return
+        if _hit(BT_PAIR_BTN_BOX, x, y):             # toggle discoverable
+            if self._bt.get("discoverable"):
+                print("[UI] bt stop_pairing", flush=True)
+                self._pairing_active = False
+                if stop_pairing():
+                    self._toast_msg("Recherche arrêtée")
+                else:
+                    self._toast_msg("Bluetooth indisponible", error=True)
+            else:
+                print("[UI] bt request_pairing", flush=True)
+                if request_pairing():
+                    self._pairing_active = True     # assume on until the bridge confirms
+                    self._toast_msg("Détectable · 2 min")
+                else:
+                    self._toast_msg("Bluetooth indisponible", error=True)
+
     # ── geometry ──────────────────────────────────────────────────────────────
     def _station_box(self, i):
         col, row = i % 2, i // 2
@@ -299,6 +345,8 @@ class App:
 
     # ── rendering ──────────────────────────────────────────────────────────────
     def render(self, state, now: datetime, ctx) -> Image.Image:
+        self._bt = read_bt_status()
+        self._pairing_active = bool(self._bt.get("discoverable"))
         self.maybe_timeout()
         self._sync_station(ctx)
         accent = T.ACCENT.get(state, T.ACCENT[STATE_IDLE])
@@ -318,6 +366,8 @@ class App:
             self._render_radio(draw, img, now, ctx, accent)
         elif self.screen == "timer":
             self._render_timer(draw, img, now, ctx, accent)
+        elif self.screen == "bluetooth":
+            self._render_bluetooth(draw, img, now, accent)
 
         # Voice waveform overlay (home) or top strip (sub-screens)
         t = time.monotonic() - self.t0
@@ -336,6 +386,7 @@ class App:
     # ── HOME (ambient) ──────────────────────────────────────────────────────
     def _render_home(self, draw, img, state, now, ctx, accent):
         self._home_radio_box = self._home_timer_box = self._home_vol_box = None
+        self._home_bt_box = None
         timers = (ctx or {}).get("timers", [])
         # Ring state comes from the LED daemon's log tail (HA hides finished timers).
         ringing = bool((ctx or {}).get("timer_ringing"))
@@ -368,9 +419,11 @@ class App:
                   font=T.F_CLOCK_S, fill=T.dim(col, 0.62), anchor="ls")
 
         playing = bool((ctx or {}).get("sat_playing"))
-        # Date when ambient; hidden while playing (the now-playing pill + volume
+        bt_playing = bool(self._bt.get("playing"))
+        media_active = playing or bt_playing
+        # Date when ambient; hidden while audio plays (the now-playing pill + volume
         # slider take the space) or while a timer is ringing (the stop button does).
-        if not voice_active and not playing and not ringing:
+        if not voice_active and not media_active and not ringing:
             date_str = f"{_DAY_FR[now.weekday()]} {now.day} {_MON_FR[now.month]}"
             T.text_center(draw, T.CX, 232, date_str, T.F_DATE, T.INK_DIM)
 
@@ -419,6 +472,8 @@ class App:
             pills.append(("timer", f"{m}:{s:02d}" if m < 60 else f"{m//60}h{m%60:02d}"))
         if (ctx or {}).get("sat_playing"):
             pills.append(("radio", self._station_label() or "Radio"))
+        if self._bt.get("playing"):
+            pills.append(("bluetooth", _short(self._bt.get("title") or "Bluetooth", 20)))
         if not pills:
             return
 
@@ -438,6 +493,9 @@ class App:
                     draw.ellipse([icx - 9, icy - 9, icx + 9, icy + 9], outline=accent, width=2)
                     draw.polygon([(icx - 3, icy - 4), (icx - 3, icy + 4), (icx + 4, icy)], fill=accent)
                 self._home_radio_box = box
+            elif kind == "bluetooth":
+                self._icon_bt(draw, icx, icy, accent, a=9, width=2)
+                self._home_bt_box = box
             else:
                 draw.ellipse([icx - 9, icy - 9, icx + 9, icy + 9], outline=accent, width=2)
                 draw.line([icx, icy, icx, icy - 6], fill=accent, width=2)
@@ -483,14 +541,11 @@ class App:
         if self.menu_confirm_off:
             self._render_confirm_off(draw, img, accent)
             return
-        for box, icon, label in (
-            ((28, 90, 232, 250), "radio", "Radio"),
-            ((248, 90, 452, 250), "timer", "Minuteur"),
-        ):
-            T.card(img, draw, box, radius=22, fill=T.CARD)
+        for box, icon, label, _target in MENU_CARDS:
+            T.card(img, draw, box, radius=20, fill=T.CARD)
             cx = (box[0] + box[2]) // 2
-            self._icon_chip(draw, cx, 150, accent, icon)
-            T.text_center(draw, cx, 206, label, T.F_TITLE, T.INK)
+            self._icon_chip(draw, cx, 152, accent, icon, r=32)
+            T.text_center(draw, cx, 202, label, T.F_LABEL, T.INK)
 
         # Power-off button under the two cards (muted; not a primary action).
         red = (255, 120, 96)
@@ -507,6 +562,8 @@ class App:
         glyph = T.lighten(accent, 0.55)   # bright glyph reads on the tinted disc
         if kind == "radio":
             self._icon_radio(draw, cx, cy + 3, glyph)
+        elif kind == "bluetooth":
+            self._icon_bt(draw, cx, cy, glyph, a=17, width=4)
         else:
             self._icon_timer(draw, cx, cy + 1, glyph)
 
@@ -645,6 +702,62 @@ class App:
         m, s = divmod(rem, 60)
         txt = f"{m}:{s:02d}" if m < 60 else f"{m//60}:{m%60:02d}:{s:02d}"
         T.text_center(draw, cx, cy, txt, T.F_RING, T.INK, anchor="mm")
+
+    # ── BLUETOOTH ─────────────────────────────────────────────────────────────
+    def _render_bluetooth(self, draw, img, now, accent):
+        discoverable = bool(self._bt.get("discoverable"))
+        connected = self._bt.get("connected")
+        self._header(draw, "Bluetooth", now)
+
+        # Connection status card
+        box = (24, 70, 456, 120)
+        T.card(img, draw, box, radius=16, fill=T.CARD, elevate=False)
+        cy = (box[1] + box[3]) // 2
+        dot = (40, 220, 120) if connected else T.INK_FAINT
+        draw.ellipse([box[0] + 20, cy - 6, box[0] + 32, cy + 6], fill=dot)
+        self._icon_bt(draw, box[0] + 56, cy, T.INK_DIM, a=11, width=3)
+        if connected:
+            draw.text((box[0] + 78, cy), connected, font=T.F_LABEL,
+                      fill=T.INK, anchor="lm")
+            draw.text((box[2] - 18, cy), "Connecté", font=T.F_SMALL,
+                      fill=T.mix(T.INK_DIM, (40, 220, 120), 0.5), anchor="rm")
+        else:
+            draw.text((box[0] + 78, cy), "Aucun appareil connecté",
+                      font=T.F_LABEL, fill=T.INK_DIM, anchor="lm")
+
+        # Primary action: make discoverable / stop (toggles the pairing window)
+        if discoverable:
+            rem = max(0, int(self._bt.get("pairing_remaining", 0)))
+            m, s = divmod(rem, 60)
+            T.card(img, draw, BT_PAIR_BTN_BOX, radius=18,
+                   fill=T.mix(T.CARD_HI, accent, 0.30), elevate=False)
+            bcx = (BT_PAIR_BTN_BOX[0] + BT_PAIR_BTN_BOX[2]) // 2
+            T.text_center(draw, bcx, BT_PAIR_BTN_BOX[1] + 12,
+                          f"Détectable · {m}:{s:02d}", T.F_LABEL, T.INK)
+            T.text_center(draw, bcx, BT_PAIR_BTN_BOX[1] + 40,
+                          "touchez pour arrêter", T.F_SMALL, T.INK_DIM)
+            T.text_center(draw, T.CX, 244,
+                          "Cherchez « pi-satellite » sur le téléphone",
+                          T.F_SMALL, T.INK_DIM)
+        else:
+            T.card(img, draw, BT_PAIR_BTN_BOX, radius=18,
+                   fill=T.mix(T.CARD_HI, accent, 0.22), elevate=False)
+            bcx = (BT_PAIR_BTN_BOX[0] + BT_PAIR_BTN_BOX[2]) // 2
+            bcy = (BT_PAIR_BTN_BOX[1] + BT_PAIR_BTN_BOX[3]) // 2
+            self._icon_bt(draw, bcx - 78, bcy, T.lighten(accent, 0.4), a=14, width=4)
+            draw.text((bcx - 52, bcy), "Appairer un appareil", font=T.F_LABEL,
+                      fill=T.INK, anchor="lm")
+            T.text_center(draw, T.CX, 244,
+                          "Rend le satellite détectable pendant 2 min",
+                          T.F_SMALL, T.INK_DIM)
+
+    def _icon_bt(self, draw, cx, cy, color, a=15, width=3):
+        """The Bluetooth rune as a single stroke (two right knees + left crossbars)."""
+        d = a * 0.62
+        q = a * 0.5
+        pts = [(cx - d, cy - q), (cx + d, cy + q), (cx, cy + a),
+               (cx, cy - a), (cx + d, cy - q), (cx - d, cy + q)]
+        draw.line(pts, fill=color, width=width, joint="curve")
 
     # ── shared chrome ─────────────────────────────────────────────────────────
     def _header(self, draw, title, now):

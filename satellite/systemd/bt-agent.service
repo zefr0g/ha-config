@@ -1,0 +1,14 @@
+[Unit]
+Description=Bluetooth Just-Works pairing agent (headless A2DP speaker)
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+# NoInputNoOutput → "Just Works" pairing, auto-accepted with no PIN/passkey.
+# Required because the Pi is headless: nothing can confirm a numeric code.
+ExecStart=/usr/bin/bt-agent --capability=NoInputNoOutput
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=bluetooth.target

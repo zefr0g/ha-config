@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config import (STATE_IDLE, STATE_LISTENING, STATE_SPEAKING)
+import display.app as appmod
 from display.app import App
 
 NOW = datetime(2026, 6, 13, 14, 32, 8)
@@ -26,7 +27,10 @@ CTX = {
 }
 
 
-def scene(name, configure, state=STATE_IDLE, ctx=None):
+def scene(name, configure, state=STATE_IDLE, ctx=None, bt=None):
+    # The bluetooth screen reads its status live; stub it for headless previews.
+    appmod.read_bt_status = (lambda: dict(bt)) if bt is not None else \
+        (lambda: {"discoverable": False, "pairing_remaining": 0, "connected": None})
     app = App()
     configure(app)
     img = app.render(state, NOW, ctx or CTX)
@@ -69,6 +73,19 @@ def main():
               a._toast_msg("Lecture impossible", 99, error=True))),
         scene("18_home_wifi_down", lambda a: None,
               ctx={**CTX, "wifi": {"connected": False, "quality": 0}}),
+        scene("19_bluetooth_idle", lambda a: setattr(a, "screen", "bluetooth")),
+        scene("20_bluetooth_connected", lambda a: setattr(a, "screen", "bluetooth"),
+              bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a"}),
+        scene("21_bluetooth_pairing", lambda a: setattr(a, "screen", "bluetooth"),
+              bt={"discoverable": True, "pairing_remaining": 113, "connected": None}),
+        scene("22_home_bluetooth", lambda a: None,
+              bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a",
+                  "playing": True, "title": "How To Turn A Clutch Into Glitter",
+                  "artist": "SuperfastMatt"}),
+        scene("23_home_bt_and_timer", lambda a: None,
+              ctx={**CTX, "timers": [{"name": "minuteur", "remaining_s": 154}]},
+              bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a",
+                  "playing": True, "title": "Lo-fi beats", "artist": ""}),
     ]
     for name, img in scenes:
         path = os.path.join(out, f"{name}.png")
