@@ -1,0 +1,19 @@
+[Unit]
+Description=Voice Assistant — Bluetooth control bridge (pairing / status for the touch UI)
+After=bluetooth.service
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+# Runs as root to match voice-display.service (also root): the display writes
+# /tmp/va_bt_cmd as root, and /tmp is sticky, so the bridge must be root to
+# consume (delete) that file. bluetoothctl works fine as root.
+User=root
+ExecStart=/usr/bin/python3 /home/dd/dev/voice-assistant/src/display/bt_bridge.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

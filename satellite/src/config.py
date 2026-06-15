@@ -60,6 +60,13 @@ MQTT_CREDS_FILE   = "/home/dd/dev/voice-assistant/.mqtt_creds"
 # ── Display config IPC ────────────────────────────────────────────────
 DISPLAY_CONFIG_FILE = "/tmp/display_config.json"
 
+# ── Bluetooth speaker IPC (display ↔ bt_bridge service) ───────────────
+# The display process must never fork, so all bluetoothctl calls live in the
+# bt_bridge service; the two sides talk through these files only.
+BT_STATUS_FILE = "/tmp/va_bt_status.json"   # bridge writes; display reads
+BT_CMD_FILE    = "/tmp/va_bt_cmd"           # display writes; bridge consumes
+BT_PAIR_WINDOW = 120                        # seconds discoverable after a pair request
+
 # ── Log → state mapping (shared parse logic) ─────────────────────────
 # Speaking window: "Playing TTS response" fires when mpv starts the URL;
 # "TTS response finished" fires when playback actually ends — this matches
