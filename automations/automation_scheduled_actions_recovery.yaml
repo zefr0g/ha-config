@@ -1,0 +1,59 @@
+alias: "Programmations — Relance après redémarrage"
+id: scheduled_actions_recovery
+description: >-
+  Au démarrage de HA, réhydrate input_text.scheduled_actions. Les helpers
+  script.delayed_entity_action en attente sont tués par un redémarrage (ou un
+  rechargement des scripts), laissant des entrées orphelines qui n'exécutent
+  jamais leur action. Cette automation exécute immédiatement les actions échues
+  et relance un delayed_entity_action pour celles encore à venir.
+mode: single
+trigger:
+  - platform: homeassistant
+    event: start
+variables:
+  actions: >-
+    {% set raw = states('input_text.scheduled_actions') %}
+    {{ raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] }}
+condition:
+  - condition: template
+    value_template: "{{ actions | length > 0 }}"
+action:
+  # 1) Exécute maintenant les actions déjà échues (helper tué par le redémarrage)
+  - repeat:
+      for_each: "{{ actions | selectattr('t', 'le', now().timestamp()) | list }}"
+      sequence:
+        - variables:
+            op: "{{ 'turn_off' if repeat.item.op == 0 else 'turn_on' }}"
+            resolved: "{{ repeat.item.e }}"
+        - action: >-
+            {%- set d = resolved.split('.')[0] -%}
+            {%- if d == 'valve' -%}
+              {{ 'valve.open_valve' if op == 'turn_on' else 'valve.close_valve' }}
+            {%- elif d == 'cover' -%}
+              {{ 'cover.open_cover' if op == 'turn_on' else 'cover.close_cover' }}
+            {%- else -%}
+              homeassistant.{{ op }}
+            {%- endif -%}
+          continue_on_error: true
+          target:
+            entity_id: "{{ resolved }}"
+  # 2) Réécrit la liste en ne gardant que les entrées encore à venir
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.scheduled_actions
+    data:
+      value: >-
+        {{ (actions | selectattr('t', 'gt', now().timestamp()) | list) | to_json }}
+  # 3) Relance un waiter pour chaque entrée future
+  - repeat:
+      for_each: "{{ actions | selectattr('t', 'gt', now().timestamp()) | list }}"
+      sequence:
+        - action: script.turn_on
+          target:
+            entity_id: script.delayed_entity_action
+          data:
+            variables:
+              resolved: "{{ repeat.item.e }}"
+              op: "{{ 'turn_off' if repeat.item.op == 0 else 'turn_on' }}"
+              minutes: "{{ [((repeat.item.t - now().timestamp()) / 60) | round(0) | int, 1] | max }}"
+              entry_id: "{{ repeat.item.i }}"

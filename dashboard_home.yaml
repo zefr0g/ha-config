@@ -1065,11 +1065,11 @@ views:
               {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
               {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
               {% set ns = namespace(any=false) %}
-              {% for a in actions %}
+              {% for a in actions if a.t - now().timestamp() > -60 %}
               {% set ns.any = true %}
               {% set mins = [((a.t - now().timestamp()) / 60), 0] | max | round(0) | int %}
               {% set label = '🔴 extinction' if a.op == 0 else '🟢 allumage' %}
-              **{{ a.n }}** — {{ label }} dans {{ mins }} min
+              **{{ state_attr(a.e, 'friendly_name') or a.e }}** — {{ label }} dans {{ mins }} min
 
               {% endfor %}
               {% for t in timers %}
@@ -1141,11 +1141,11 @@ views:
                   {% set actions = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] %}
                   {% set timers = state_attr('sensor.assistant_timers', 'timers') or [] %}
                   {% set ns = namespace(any=false) %}
-                  {% for a in actions %}
+                  {% for a in actions if a.t - now().timestamp() > -60 %}
                   {% set ns.any = true %}
                   {% set mins = [((a.t - now().timestamp()) / 60), 0] | max | round(0) | int %}
                   {% set label = '🔴 Extinction' if a.op == 0 else '🟢 Allumage' %}
-                  **{{ a.n }}** — {{ label }} dans **{{ mins }} min**
+                  **{{ state_attr(a.e, 'friendly_name') or a.e }}** — {{ label }} dans **{{ mins }} min**
 
                   {% endfor %}
                   {% for t in timers %}

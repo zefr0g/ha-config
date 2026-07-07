@@ -274,7 +274,7 @@ schedule_entity_action:
         value: >-
           {%- set raw = states('input_text.scheduled_actions') -%}
           {%- set lst = raw | from_json if raw not in ['', 'unknown', 'unavailable'] else [] -%}
-          {%- set new = {"i": entry_id, "n": entity[:20], "op": 0 if op == 'turn_off' else 1, "t": end_ts} -%}
+          {%- set new = {"i": entry_id, "e": resolved, "op": 0 if op == 'turn_off' else 1, "t": end_ts} -%}
           {{ (lst + [new]) | to_json }}
     - action: script.turn_on
       target:
@@ -364,8 +364,9 @@ cancel_scheduled_action:
           {%- else -%}
             {%- set ns = namespace(kept=[]) -%}
             {%- for a in lst -%}
-              {%- set n = a.n | string | lower -%}
-              {%- if not (q in n or n in q) -%}
+              {%- set label = (state_attr(a.e, 'friendly_name') or a.e) | string | lower -%}
+              {%- set eid = a.e | string | lower -%}
+              {%- if not (q in label or label in q or q in eid) -%}
                 {%- set ns.kept = ns.kept + [a] -%}
               {%- endif -%}
             {%- endfor -%}
