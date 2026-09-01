@@ -45,6 +45,12 @@ views:
               action: navigate
               navigation_path: /lovelace-temperatures
           - type: action
+            icon: mdi:weather-partly-rainy
+            icon_color: yellow
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo
+          - type: action
             icon: mdi:cctv
             icon_color: teal
             tap_action:

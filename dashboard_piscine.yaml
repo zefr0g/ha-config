@@ -49,6 +49,12 @@ views:
                   action: navigate
                   navigation_path: /lovelace-temperatures
               - type: action
+                icon: mdi:weather-partly-rainy
+                icon_color: yellow
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo
+              - type: action
                 icon: mdi:cctv
                 icon_color: teal
                 tap_action:
@@ -175,27 +181,21 @@ views:
             mode: vertical
             cards:
               - type: custom:mushroom-template-card
-                entity: sensor.piscine_filtration_auj
-                primary: Filtration du jour
+                entity: sensor.piscine_filtration_jour
+                primary: Filtration du jour (07h → 07h)
                 secondary: >-
-                  {% set temp = states('sensor.temperature_piscine') | float(0) %}
-                  {% set target = temp / 3 %}
-                  {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
-                  {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
-                  {% set done = (hier + auj) if now().hour < 6 else auj %}
+                  {% set target = states('sensor.piscine_filtration_cible') | float(0) %}
+                  {% set done = states('sensor.piscine_filtration_jour') | float(0) %}
                   {% set remaining = [target - done, 0] | max %}
                   {% macro hm(v) %}{{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}{% endmacro %}
                   {{ hm(done) }} / {{ hm(target) }} cible
                   {% if remaining > 0 %} — reste {{ hm(remaining) }}{% else %} — objectif atteint ✓{% endif %}
                 icon: mdi:progress-clock
                 icon_color: >-
-                  {% set temp = states('sensor.temperature_piscine') | float(0) %}
-                  {% set target = temp / 3 %}
-                  {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
-                  {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
-                  {% set done = (hier + auj) if now().hour < 6 else auj %}
-                  {% if done >= target %}green
-                  {% elif done >= target * 0.5 %}orange
+                  {% set target = states('sensor.piscine_filtration_cible') | float(0) %}
+                  {% set done = states('sensor.piscine_filtration_jour') | float(0) %}
+                  {% if target > 0 and done >= target %}green
+                  {% elif target > 0 and done >= target * 0.5 %}orange
                   {% else %}red{% endif %}
                 tap_action:
                   action: more-info
@@ -209,12 +209,12 @@ views:
                 alignment: center
                 chips:
                   - type: template
-                    entity: sensor.piscine_filtration_auj
-                    icon: mdi:water-pump
+                    entity: sensor.piscine_filtration_cible
+                    icon: mdi:water-percent
                     icon_color: cyan
                     content: >-
-                      {% set v = states('sensor.piscine_filtration_auj') | float(0) %}
-                      Auj. {{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}
+                      {% set v = states('sensor.piscine_filtration_cible') | float(0) %}
+                      Cible {{ v | int }}h{{ '%02d' % ((v % 1) * 60) | int }}
                     tap_action:
                       action: more-info
                   - type: template

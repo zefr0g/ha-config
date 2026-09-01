@@ -372,3 +372,32 @@ cancel_scheduled_action:
             {%- endfor -%}
             {{ ns.kept | to_json }}
           {%- endif -%}
+
+frigate_recordings_toggle:
+  alias: "Frigate - Bascule enregistrement"
+  description: >-
+    Active ou coupe l'enregistrement vidéo sur toutes les caméras Frigate d'un
+    coup. Si au moins une caméra enregistre, tout est coupé ; sinon tout est
+    réactivé.
+  icon: mdi:cctv
+  mode: single
+  variables:
+    recordings:
+      - switch.doorbell_recordings
+      - switch.entree_recordings
+      - switch.back_recordings
+      - switch.garage_recordings
+  sequence:
+    - if:
+        - condition: template
+          value_template: >-
+            {{ expand(recordings) | selectattr('state', 'eq', 'on')
+               | list | count > 0 }}
+      then:
+        - action: switch.turn_off
+          target:
+            entity_id: "{{ recordings }}"
+      else:
+        - action: switch.turn_on
+          target:
+            entity_id: "{{ recordings }}"

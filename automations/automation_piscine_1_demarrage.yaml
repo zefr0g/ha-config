@@ -1,5 +1,5 @@
 alias: "Piscine 1 — Démarrer pompe sur surplus solaire"
-description: "Démarre la pompe quand la production solaire est suffisante (> 1000W pendant 3 min) et que l'objectif de filtration n'est pas atteint."
+description: "Démarre la pompe quand la production solaire est suffisante (> 1000W pendant 3 min) et que l'objectif de filtration du jour (sensor.piscine_filtration_cible) n'est pas atteint."
 trigger:
   - platform: numeric_state
     entity_id: sensor.current_power_production
@@ -18,11 +18,9 @@ condition:
     below: 100
   - condition: template
     value_template: >
-      {% set temp = states('sensor.temperature_piscine') | float(0) %}
-      {% set auj = states('sensor.piscine_filtration_auj') | float(0) %}
-      {% set hier = states('sensor.piscine_filtration_hier') | float(0) %}
-      {% set done = (hier + auj) if now().hour < 6 else auj %}
-      {{ temp > 10 and done < (temp / 3) }}
+      {% set done = states('sensor.piscine_filtration_jour') | float(0) %}
+      {% set cible = states('sensor.piscine_filtration_cible') | float(0) %}
+      {{ cible > 0 and done < cible }}
   - condition: sun
     before: sunset
   - condition: state

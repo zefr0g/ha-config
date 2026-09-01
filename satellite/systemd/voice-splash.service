@@ -1,0 +1,24 @@
+[Unit]
+Description=Voice Assistant Boot Splash
+# The earliest point systemd can run anything at all. Deliberately NOT ordered
+# after local-fs.target: that waits on fsck, /boot/firmware and zram swap (~5s)
+# and this needs none of it — it reads the frame off the already-mounted root
+# and writes its marker to /run (a tmpfs systemd mounts before any unit runs).
+# A read-only root is fine too, so it can also precede the rw remount.
+DefaultDependencies=no
+After=-.mount
+# Only the display daemon waits on this. Ordering it before
+# basic.target as well would put its ~0.8s serially in front of
+# docker, NetworkManager and everything else behind that target.
+Before=voice-display.service
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/bin/python3 /home/dd/dev/voice-assistant/src/display/splash.py
+User=root
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

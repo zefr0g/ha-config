@@ -89,7 +89,7 @@ live in [`satellite/`](satellite/README.md) and [`satellite/CLAUDE.md`](satellit
 
 **What it does**
 
-- Wake-word ("Hey Jarvis") → local STT → Ollama → Piper TTS, no cloud round-trip.
+- Wake-word ("Okay Nabu") → local STT → Ollama → Piper TTS, no cloud round-trip.
 - A calm full-bleed clock that shifts colour and grows a voice waveform while
   listening/speaking; a single dirty-rectangle blit keeps idle CPU near zero.
 - Touch control of **radio** (6 stations via Music Assistant) and **timers**, with

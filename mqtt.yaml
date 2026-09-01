@@ -1,0 +1,88 @@
+# Manually-declared MQTT entities.
+#
+# Wired into configuration.yaml via:  mqtt: !include mqtt.yaml
+# (single include — HA only accepts one `mqtt:` key, so everything hand-written
+#  lives here; auto-discovered devices are untouched by this file.)
+#
+# ---------------------------------------------------------------------------
+# 1. Cold PBS (Gen8) backup box
+# ---------------------------------------------------------------------------
+#
+# The Gen8 is powered off most of the time (cold standby, air-gapped), so "offline"
+# is the HEALTHY state — the useful signal is backup *freshness / outcome*.
+#
+# This consumes the RETAINED status the orchestrator already publishes:
+#   prox:/usr/local/bin/pbs-backup-cycle.sh  →  topic  prox/pbs_backup/status
+#   payload: {"result":"ok|fail|running","msg":"...","finished":"YYYY-MM-DD HH:MM:SS"}
+#            (a "running" message carries "started" instead of "finished")
+# Retained means HA shows the last known outcome even while prox AND the Gen8 are
+# asleep, and it survives HA restarts.
+#
+# Consumed by the "Sauvegardes" card at the top of the Proxmox dashboard, which
+# derives ok / stale / failed / running / waiting inline from result + finished-age.
+#
+# ---------------------------------------------------------------------------
+# 2. LaCrosse TX141THBv2 — outdoor sensor, sheltered under the (black) roof
+# ---------------------------------------------------------------------------
+#
+# Why these exist instead of the rtl_433 auto-discovered entities:
+# the TX141THBv2 draws a NEW random id every time its batteries are changed
+# (175 -> 3 so far), so discovery spawns a fresh `sensor.lacrosse_..._<id>_*`
+# set each time, orphaning the old entities, their friendly names AND their
+# history. Subscribing with a wildcard on the id field survives that.
+#
+# Topic layout published by the rtl433-next addon:
+#   rtl_433/<addon-slug>/devices/<model>/<channel>/<id>/<key>
+# Both the addon slug and the id are wildcarded; the channel (0) is what
+# actually identifies this physical sensor.
+#
+# Readings arrive roughly every 50 s; expire_after marks the entity
+# unavailable after 30 min of silence (dead batteries / receiver down) instead
+# of letting a stale value sit there looking live.
+#
+# NOTE: this sensor is shaded but sits under black roofing, so it still reads
+# above true shelter air temperature at midday — less than the roof-mounted
+# Vevor station, more than a proper louvered shelter.
+sensor:
+  - name: "PBS Backup Status"
+    unique_id: pbs_backup_status
+    state_topic: "prox/pbs_backup/status"
+    value_template: "{{ value_json.result }}"
+    json_attributes_topic: "prox/pbs_backup/status"
+    icon: mdi:server
+
+  # Entity ids come out as sensor.capteur_exterieur_abri_<name>: MQTT YAML has no
+  # object_id option (that is discovery-only), so the device name prefixes them.
+  - name: "Température"
+    unique_id: rtl433_lacrosse_ch0_temperature
+    state_topic: "rtl_433/+/devices/LaCrosse-TX141THBv2/0/+/temperature_C"
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    expire_after: 1800
+    device: &lacrosse_ch0
+      identifiers: ["rtl433_lacrosse_ch0"]
+      name: "Capteur extérieur (abri)"
+      model: "TX141THBv2"
+      manufacturer: "LaCrosse"
+
+  - name: "Humidité"
+    unique_id: rtl433_lacrosse_ch0_humidity
+    state_topic: "rtl_433/+/devices/LaCrosse-TX141THBv2/0/+/humidity"
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    expire_after: 1800
+    device: *lacrosse_ch0
+
+binary_sensor:
+  # battery_ok: 1 = fine, 0 = low. device_class battery is inverted (on = low),
+  # hence payload_on "0".
+  - name: "Pile"
+    unique_id: rtl433_lacrosse_ch0_battery
+    state_topic: "rtl_433/+/devices/LaCrosse-TX141THBv2/0/+/battery_ok"
+    payload_on: "0"
+    payload_off: "1"
+    device_class: battery
+    expire_after: 1800
+    device: *lacrosse_ch0

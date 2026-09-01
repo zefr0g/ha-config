@@ -1,0 +1,55 @@
+language: fr
+# Radio à la voix — phrases déterministes.
+#
+# Pourquoi ce fichier, alors que les scripts sont déjà exposés avec des alias :
+# le STT français rend « mets » en « mais » / « met » / « mes » (homophones).
+# Sans verbe reconnu, le moteur local ne matche aucune phrase, la demande part
+# vers l'agent LLM (gemma) — qui répond « Terminé » sans rien faire. Vu en
+# journal LVA le 2026-08-14 :
+#   STT transcript: "Mais la radio RTL"    → speech: "Terminé"  (aucune action)
+#   STT transcript: "Mais la radio RTL 2"  → speech: "Terminé"  (aucune action)
+# On couvre donc les homophones explicitement, et on reste sur HassTurnOn (pas
+# d'intent_script) : cela réutilise l'exposition existante des scripts et évite
+# complètement le LLM, qui n'est pas fiable en appel d'outil.
+#
+# Chaque script de station délègue déjà à script.radio_play (lecture différée
+# qui attend la fin de la réponse TTS), donc les allumer par la voix est bien le
+# bon chemin — la réponse vocale n'écrase pas le flux qui démarre.
+#
+# ⚠ script.radio_nova n'est pas exposé à conversation (les 5 autres le sont).
+# Sa phrase ci-dessous ne matchera pas tant qu'il n'est pas exposé.
+intents:
+  HassTurnOn:
+    data:
+      # RTL 2 avant RTL n'est pas nécessaire (le matching est sur la phrase
+      # entière), mais les variantes d'écriture du « 2 » le sont : le STT écrit
+      # aussi bien « RTL 2 » que « RTL2 » ou « RTL deux ».
+      - sentences:
+          - "<lancer> [<la_radio>] (RTL 2|RTL2|RTL deux)"
+        slots:
+          name: "Radio RTL 2"
+      - sentences:
+          - "<lancer> [<la_radio>] RTL"
+        slots:
+          name: "Radio RTL"
+      - sentences:
+          - "<lancer> [<la_radio>] France Inter"
+        slots:
+          name: "Radio France Inter"
+      - sentences:
+          - "<lancer> [<la_radio>] France Info"
+        slots:
+          name: "Radio France Info"
+      - sentences:
+          - "<lancer> [<la_radio>] (Europe 2|Europe2|Europe deux)"
+        slots:
+          name: "Radio Europe 2"
+      - sentences:
+          - "<lancer> [<la_radio>] Nova"
+        slots:
+          name: "Radio Nova"
+
+expansion_rules:
+  # « mais / met / mes » = ce que le STT produit réellement pour « mets ».
+  lancer: "(mets|met|mes|mais|mettre|lance|lancer|joue|allume|démarre|passe|mets-moi|met moi)"
+  la_radio: "[(la|une)] radio"

@@ -67,6 +67,18 @@ BT_STATUS_FILE = "/tmp/va_bt_status.json"   # bridge writes; display reads
 BT_CMD_FILE    = "/tmp/va_bt_cmd"           # display writes; bridge consumes
 BT_PAIR_WINDOW = 120                        # seconds discoverable after a pair request
 
+# ── Bluetooth ducking (bt_bridge, driven by /tmp/va_state) ────────────
+# Wake-word detection has to fight the music acoustically and cannot be helped
+# from software, but everything *after* it can: once LVA is awake we drop the
+# phone's stream so STT hears the command instead of the song. The duck targets
+# the bluez_input node only — never aec_sink — so the TTS reply stays at full
+# volume and plays over the lowered music.
+VA_STATE_FILE      = "/tmp/va_state"   # written by the LED daemon (log-derived)
+BT_DUCK_LEVEL      = 0.20              # music volume while the assistant is active
+BT_DUCK_STATES     = ("wake", "listening", "processing", "speaking")
+BT_DUCK_MAX_SECONDS = 30               # failsafe: never stay ducked if LVA dies mid-run
+BT_TICK            = 0.1               # duck/command poll period — ducking must feel instant
+
 # ── Log → state mapping (shared parse logic) ─────────────────────────
 # Speaking window: "Playing TTS response" fires when mpv starts the URL;
 # "TTS response finished" fires when playback actually ends — this matches
@@ -74,7 +86,13 @@ BT_PAIR_WINDOW = 120                        # seconds discoverable after a pair 
 # fire before playback completes.
 LOG_STATE_MAP = {
     "Detected wake word":        "wake",
-    "VOICE_ASSISTANT_STT_START":   "listening",
+    # Two paths to "listening", both present in 1.1.15. STT_START is the
+    # canonical one (the enum name comes from aioesphomeapi, so it does not
+    # appear in LVA's own source — grep the running logs, not the source tree).
+    # The audio-streaming line is LVA's own LISTENING emission point and covers
+    # the button/continue-conversation paths too.
+    "VOICE_ASSISTANT_STT_START": "listening",
+    "tarting audio streaming":   "listening",
     "VOICE_ASSISTANT_STT_VAD_END": "processing",
     "Playing TTS response":      "speaking",
     "TTS response finished":     "idle",

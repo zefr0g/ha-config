@@ -34,7 +34,14 @@ GAMMA_OPTIONS = list(_GAMMA_PRESETS)
 
 
 class ST7796S:
-    def __init__(self):
+    def __init__(self, init_panel: bool = True):
+        """init_panel=False attaches to an already-initialised panel.
+
+        The boot splash (splash.py) initialises the panel and paints it before
+        this daemon starts. Re-running the init sequence here would issue a
+        SWRESET and blank that frame, so the daemon attaches instead and simply
+        overwrites the pixels with its first render.
+        """
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(SPI_DC,  GPIO.OUT)
@@ -54,8 +61,9 @@ class ST7796S:
         fd = self._spi.fileno()
         fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-        self._reset()
-        self._init()
+        if init_panel:
+            self._reset()
+            self._init()
         self.backlight(True)
 
     def _reset(self):

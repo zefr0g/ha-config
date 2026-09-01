@@ -14,8 +14,9 @@ ha-config/
 │   ├── src/              — Python daemons (LEDs, display, HA context)
 │   ├── systemd/          — Service unit files
 │   ├── wakeword_training/— microWakeWord training scripts
-│   └── case/             — 3D case designs (hub_case_v3.scad + assets)
+│   └── case/             — 3D case designs (v5 printed & in service, v6 designed)
 ├── dashboard_*.yaml      — Lovelace dashboard files (deployed via push_dashboards.py)
+├── custom_sentences/fr/  — French Assist sentences (radio stations → script.radio_*)
 ├── scripts.yaml          — HA scripts (radio, PTZ camera, alarm, schedule helper)
 ├── sensors_*.yaml        — Template/history_stats sensors
 ├── input_boolean_piscine.yaml
@@ -77,7 +78,7 @@ See `satellite/CLAUDE.md` for full hardware/software detail. Summary:
 - WS2812B DMA channel 5 only (channel 10 = only 1 LED lights)
 - ST7796S: never toggle CS between chunks — resets write-address counter
 
-**Wake word:** "Hey Jarvis" (built-in microWakeWord). A custom "petit pois" model exists at `~/.config/linux-voice-assistant/wakewords/petit_pois.tflite` on pi-satellite but is **not used** — it under-performs. Set via `select.rpi_satellite_mot_d_activation`. Note: recreating the LVA container resets this to a default, so re-select "Hey Jarvis" afterwards.
+**Wake word:** "Okay Nabu" (built-in microWakeWord; trained on en/nl/fr/de/it/es/sv, so French pronunciation is covered). Previously "Hey Jarvis". A custom "petit pois" model exists at `~/.config/linux-voice-assistant/wakewords/petit_pois.tflite` on pi-satellite but is **not used** — it under-performs. Set via `select.rpi_satellite_mot_d_activation`. Note: recreating the LVA container resets this to a default, so re-select "Okay Nabu" afterwards.
 
 **Systemd services** (all running):
 - `lva.service` (user dd) — LVA Docker container, ESPHome API → dd-ha:6053

@@ -32,16 +32,24 @@ import time
 
 sys.path.insert(0, "/home/dd/dev/voice-assistant/src")
 
-from config import BT_STATUS_FILE, BT_CMD_FILE, BT_PAIR_WINDOW
+from config import (BT_STATUS_FILE, BT_CMD_FILE, BT_PAIR_WINDOW, BT_DUCK_LEVEL,
+                    BT_DUCK_STATES, BT_DUCK_MAX_SECONDS, BT_TICK, VA_STATE_FILE)
 
 IDLE_DT = 4.0   # bluetoothctl/busctl poll cadence when no pairing window is open
 _PLAYER_RE = re.compile(r"/org/bluez/hci\d+/dev_[0-9A-F_]+/player\d+")
+_VOL_RE = re.compile(r"Volume:\s*([\d.]+)")
+
+# This service runs as root but PipeWire belongs to user dd, so pw-dump/wpctl
+# need to be pointed at dd's runtime dir to find the socket (same trick the LVA
+# container uses via PULSE_SERVER).
+PW_ENV = {**os.environ, "XDG_RUNTIME_DIR": "/run/user/1000"}
 
 
-def _run(*args, timeout=5) -> str:
+def _run(*args, timeout=5, env=None) -> str:
     """Run a command, return stdout ('' on failure)."""
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(args, capture_output=True, text=True, timeout=timeout,
+                           env=env)
         return r.stdout
     except Exception as e:
         print(f"[BT] {args[0] if args else '?'} failed: {e}", flush=True)
@@ -106,6 +114,42 @@ def _avrcp() -> dict:
     return res
 
 
+# ── Ducking: drop the phone's stream while the assistant is active ───────────
+def _bt_node_id() -> str | None:
+    """PipeWire node id of the phone's A2DP stream.
+
+    Resolved fresh on every duck: the node only exists while audio is actually
+    playing, so a cached id goes stale the moment the phone pauses.
+    """
+    try:
+        for o in json.loads(_run("pw-dump", timeout=8, env=PW_ENV)):
+            if o.get("type") != "PipeWire:Interface:Node":
+                continue
+            props = (o.get("info") or {}).get("props") or {}
+            if str(props.get("node.name", "")).startswith("bluez_input"):
+                return str(o["id"])
+    except Exception:
+        pass
+    return None
+
+
+def _get_volume(node_id: str) -> float | None:
+    m = _VOL_RE.search(_run("wpctl", "get-volume", node_id, env=PW_ENV))
+    return float(m.group(1)) if m else None
+
+
+def _set_volume(node_id: str, vol: float) -> None:
+    _run("wpctl", "set-volume", node_id, f"{vol:.2f}", env=PW_ENV)
+
+
+def _read_va_state() -> str:
+    try:
+        with open(VA_STATE_FILE) as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
 def _read_cmd() -> str | None:
     try:
         with open(BT_CMD_FILE) as f:
@@ -129,13 +173,51 @@ def _write_status(status: dict):
 
 
 def main():
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    # Restore the music on the way out, or stopping the service mid-run would
+    # leave the phone stuck at duck level with nothing left to undo it.
+    ducked: tuple[str, float] | None = None
+
+    def _bail(*_):
+        if ducked:
+            _set_volume(ducked[0], ducked[1])
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _bail)
     print("[BT] bridge starting", flush=True)
     pairing_until = 0.0
     last_poll = 0.0
+    ducked_at = 0.0
+    duck_inhibit = False
 
     while True:
         now = time.monotonic()
+
+        # ── Duck / restore on assistant state ────────────────────────────────
+        va_state = _read_va_state()
+        active = va_state in BT_DUCK_STATES
+        if not active:
+            duck_inhibit = False        # fresh run may duck again
+        if active and ducked is None and not duck_inhibit:
+            nid = _bt_node_id()
+            vol = _get_volume(nid) if nid else None
+            # Only duck if it would actually lower something — and remember the
+            # pre-duck level so a phone-side volume change is restored faithfully.
+            if nid and vol is not None and vol > BT_DUCK_LEVEL:
+                _set_volume(nid, BT_DUCK_LEVEL)
+                ducked, ducked_at = (nid, vol), now
+                print(f"[BT] duck {vol:.2f} → {BT_DUCK_LEVEL:.2f} ({va_state})",
+                      flush=True)
+        elif ducked is not None and (
+                not active or (now - ducked_at) > BT_DUCK_MAX_SECONDS):
+            timed_out = active          # still "active" → the state file is stuck
+            _set_volume(ducked[0], ducked[1])
+            print(f"[BT] restore {ducked[1]:.2f}"
+                  f"{' (timeout)' if timed_out else ''}", flush=True)
+            ducked = None
+            # Latch after a timeout, or we would re-duck on the very next tick
+            # and cycle every BT_DUCK_MAX_SECONDS until the state file moves.
+            duck_inhibit = timed_out
+
         cmd = _read_cmd()
         if cmd == "pair":
             _start_pairing()
@@ -148,9 +230,11 @@ def main():
 
         # Poll at 1 Hz while a pairing window is open (live countdown + catch a
         # new connection); otherwise every IDLE_DT to keep idle CPU low. The
-        # command file is still checked every second, so the button stays snappy.
+        # command file and the VA state are read every tick (BT_TICK), so the
+        # button stays snappy and ducking is effectively instant — both are
+        # small local file reads, unlike the bluetoothctl/busctl calls below.
         window = bool(pairing_until) and now < pairing_until
-        if cmd or window or (now - last_poll) >= IDLE_DT:
+        if cmd or (now - last_poll) >= (1.0 if window else IDLE_DT):
             discoverable = _is_discoverable()
             if not discoverable:
                 pairing_until = 0.0
@@ -165,7 +249,7 @@ def main():
                 "artist": media["artist"],
             })
             last_poll = now
-        time.sleep(1.0)
+        time.sleep(BT_TICK)
 
 
 if __name__ == "__main__":

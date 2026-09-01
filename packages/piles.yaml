@@ -1,0 +1,219 @@
+# Package piles — suivi de l'usure des piles (dashboard_piles.yaml)
+#
+# Activé via configuration.yaml :
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Principe : le niveau brut (%) ne dit pas QUAND changer la pile. On mesure donc
+# la pente de décharge sur 7 jours glissants (platform: statistics,
+# state_characteristic: change → delta signé sur la fenêtre), puis on extrapole
+# linéairement le nombre de jours restants avant 0 %.
+#
+#   autonomie (j) = niveau_actuel / (conso_7j / 7)
+#
+# Limites assumées :
+#   - la décharge d'une CR2032 n'est pas linéaire (elle plonge en fin de vie),
+#     donc l'estimation est OPTIMISTE sur les 20 derniers %. Le seuil d'alerte
+#     du dashboard est calé à 20 % pour compenser.
+#   - recorder purge à 10 j par défaut → la fenêtre de 7 j est le maximum
+#     exploitable au redémarrage de HA.
+#   - les capteurs ATC ne remontent le niveau que par paliers de quelques % :
+#     tant que la fenêtre est plate, l'autonomie est "unknown" (affiché "—").
+#
+# Seuls les appareils à pile REMPLAÇABLE et à niveau continu sont extrapolés.
+# Volontairement exclus :
+#   - Pixel 7a / TabH / NDL-W09 : rechargeables, aucun intérêt.
+#   - Valve Controller (jardin) : rechargé au solaire, niveau non monotone.
+#   - LaCrosse abri + alarme Kyogate : binaires (ok / faible), pas de %.
+#
+# ATTENTION : les capteurs `statistics` ci-dessous HÉRITENT du device_class
+# `battery` de leur source. Ils ressemblent donc à des piles à 0-ish % pour
+# tout filtre générique — d'où le rejet explicite de `conso_pile_` dans la
+# synthèse ci-dessous ET dans la carte auto-entities du dashboard.
+
+sensor:
+  # --- Pente de décharge sur 7 jours (delta signé, en %) ----------------------
+  - platform: statistics
+    name: "Conso pile Salon 7j"
+    unique_id: piles_change_7d_salon
+    entity_id: sensor.atc_0d03_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Cuisine 7j"
+    unique_id: piles_change_7d_cuisine
+    entity_id: sensor.atc_8477_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Chambre principale 7j"
+    unique_id: piles_change_7d_chambre_principale
+    entity_id: sensor.atc_9d9d_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Chambre Lucie 7j"
+    unique_id: piles_change_7d_chambre_lucie
+    entity_id: sensor.atc_501e_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Chambre Ami 7j"
+    unique_id: piles_change_7d_chambre_ami
+    entity_id: sensor.atc_63738e_738e_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Salle de bain 7j"
+    unique_id: piles_change_7d_salle_de_bain
+    entity_id: sensor.atc_335e_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: "Conso pile Piscine 7j"
+    unique_id: piles_change_7d_piscine
+    entity_id: sensor.inkbird_ith20r_64601_battery
+    state_characteristic: change
+    sampling_size: 5000
+    max_age:
+      days: 7
+
+template:
+  # --- Autonomie estimée, en jours -------------------------------------------
+  # Un seul bloc `sensor:` piloté par une macro : la logique de garde
+  # (indisponible / pente nulle / pente positive = pile changée) est identique
+  # partout, autant ne l'écrire qu'une fois.
+  - sensor:
+      - name: "Autonomie pile Salon"
+        unique_id: piles_autonomie_salon
+        state: >
+          {% set n = states('sensor.atc_0d03_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_salon_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_0d03_battery') }}"
+
+      - name: "Autonomie pile Cuisine"
+        unique_id: piles_autonomie_cuisine
+        state: >
+          {% set n = states('sensor.atc_8477_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_cuisine_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_8477_battery') }}"
+
+      - name: "Autonomie pile Chambre principale"
+        unique_id: piles_autonomie_chambre_principale
+        state: >
+          {% set n = states('sensor.atc_9d9d_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_chambre_principale_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_9d9d_battery') }}"
+
+      - name: "Autonomie pile Chambre Lucie"
+        unique_id: piles_autonomie_chambre_lucie
+        state: >
+          {% set n = states('sensor.atc_501e_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_chambre_lucie_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_501e_battery') }}"
+
+      - name: "Autonomie pile Chambre Ami"
+        unique_id: piles_autonomie_chambre_ami
+        state: >
+          {% set n = states('sensor.atc_63738e_738e_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_chambre_ami_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_63738e_738e_battery') }}"
+
+      - name: "Autonomie pile Salle de bain"
+        unique_id: piles_autonomie_salle_de_bain
+        state: >
+          {% set n = states('sensor.atc_335e_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_salle_de_bain_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.atc_335e_battery') }}"
+
+      - name: "Autonomie pile Piscine"
+        unique_id: piles_autonomie_piscine
+        state: >
+          {% set n = states('sensor.inkbird_ith20r_64601_battery') | float(-1) %}
+          {% set d = states('sensor.conso_pile_piscine_7j') | float(0) %}
+          {{ (n / (-d / 7)) | round(0) if n >= 0 and d < 0 else 'unknown' }}
+        unit_of_measurement: "d"
+        state_class: measurement
+        icon: mdi:battery-clock
+        availability: "{{ has_value('sensor.inkbird_ith20r_64601_battery') }}"
+
+      # --- Synthèse : combien de piles réclament une action -------------------
+      # Alimente la carte d'en-tête du dashboard. `piles` (attribut) porte le
+      # détail pour l'affichage ; l'état reste un simple compteur pour pouvoir
+      # servir de déclencheur d'automatisation plus tard.
+      - name: "Piles à surveiller"
+        unique_id: piles_a_surveiller
+        state: >
+          {% set ns = namespace(n=0) %}
+          {% for e in states.sensor
+             | selectattr('attributes.device_class', 'defined')
+             | selectattr('attributes.device_class', 'eq', 'battery')
+             | rejectattr('entity_id', 'search', 'pixel_7a|tabh|ndl_w09|valve_controller|conso_pile_') %}
+            {% if e.state | int(101) <= 20 %}{% set ns.n = ns.n + 1 %}{% endif %}
+          {% endfor %}
+          {% if is_state('binary_sensor.capteur_exterieur_abri_pile', 'on') %}{% set ns.n = ns.n + 1 %}{% endif %}
+          {% if is_state('binary_sensor.espkyogate_alarme_batterie_faible', 'on') %}{% set ns.n = ns.n + 1 %}{% endif %}
+          {{ ns.n }}
+        unit_of_measurement: "piles"
+        state_class: measurement
+        icon: mdi:battery-alert-variant-outline
+        attributes:
+          piles: >
+            {% set ns = namespace(l=[]) %}
+            {% for e in states.sensor
+               | selectattr('attributes.device_class', 'defined')
+               | selectattr('attributes.device_class', 'eq', 'battery')
+               | rejectattr('entity_id', 'search', 'pixel_7a|tabh|ndl_w09|valve_controller|conso_pile_') %}
+              {% if e.state | int(101) <= 20 %}
+                {% set ns.l = ns.l + [e.name ~ ' (' ~ e.state ~ ' %)'] %}
+              {% endif %}
+            {% endfor %}
+            {% if is_state('binary_sensor.capteur_exterieur_abri_pile', 'on') %}
+              {% set ns.l = ns.l + ['Capteur extérieur abri (faible)'] %}
+            {% endif %}
+            {% if is_state('binary_sensor.espkyogate_alarme_batterie_faible', 'on') %}
+              {% set ns.l = ns.l + ['Alarme Kyogate (faible)'] %}
+            {% endif %}
+            {{ ns.l }}

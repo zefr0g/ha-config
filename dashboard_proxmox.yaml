@@ -10,6 +10,137 @@ views:
             mode: vertical
             cards:
               - type: custom:mushroom-title-card
+                title: Sauvegardes
+              # ---- PBS (Gen8) — cold-standby backup box ----
+              # "Offline" is the healthy state (the box is off between windows), so
+              # this shows backup OUTCOME/freshness, not up/down. Health is derived
+              # inline from the retained MQTT status the prox orchestrator already
+              # publishes to prox/pbs_backup/status (see homelab-migration/07-cold-pbs.md):
+              #   sensor.pbs_backup_status = result (ok|fail|running), attrs: msg, finished
+              #   failed  = last cycle reported fail (wake timeout / backup error)
+              #   running = a cycle is in progress right now
+              #   stale   = last result ok but >48h old (timer stopped firing)
+              #   waiting = no report received yet
+              #   ok      = last cycle succeeded, recent
+              - type: custom:mushroom-template-card
+                entity: sensor.pbs_backup_status
+                icon: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set age = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set h = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and age>172800) else 'ok'))) %}
+                  {% if h=='ok' %}mdi:shield-check{% elif h=='failed' %}mdi:shield-alert{% elif h=='stale' %}mdi:shield-alert-outline{% elif h=='running' %}mdi:shield-sync{% else %}mdi:shield-off-outline{% endif %}
+                icon_color: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set age = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set h = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and age>172800) else 'ok'))) %}
+                  {% if h=='ok' %}green{% elif h=='failed' %}red{% elif h=='stale' %}orange{% elif h=='running' %}blue{% else %}grey{% endif %}
+                primary: PBS — Gen8 (cold)
+                secondary: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set msg = state_attr('sensor.pbs_backup_status','msg') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set age = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set m = (age/60)|int %}
+                  {% set rel = (m ~ ' min') if m<60 else (((m//60)) ~ ' h') if m<1440 else (((m//1440)) ~ ' j') %}
+                  {% set h = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and age>172800) else 'ok'))) %}
+                  {% if h=='ok' %}✅ OK · réussi il y a {{ rel }}
+                  {% elif h=='failed' %}❌ Échec{% if msg %} · {{ msg }}{% endif %}
+                  {% elif h=='running' %}🔄 En cours{% if msg %} · {{ msg }}{% endif %}
+                  {% elif h=='stale' %}⚠️ Périmé · dernière exéc il y a {{ rel }}
+                  {% else %}⏳ En attente du premier rapport…{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.pbs_backup_status
+                    icon: mdi:calendar-clock
+                    icon_color: >-
+                      {% set r = states('sensor.pbs_backup_status') %}
+                      {% if r=='ok' %}green{% elif r=='fail' %}red{% elif r=='running' %}blue{% else %}grey{% endif %}
+                    content: >-
+                      {% set t = state_attr('sensor.pbs_backup_status','finished') or state_attr('sensor.pbs_backup_status','started') %}
+                      {% if t %}{{ t[5:16] }}{% else %}jamais{% endif %}
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.pbs_backup_status
+                    icon: mdi:message-text-outline
+                    icon_color: grey
+                    content: >-
+                      {{ state_attr('sensor.pbs_backup_status','msg') or '—' }}
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; }
+              # ---- Config HA (native backup manager) — works today, no plumbing ----
+              - type: custom:mushroom-template-card
+                entity: event.backup_sauvegarde_automatique
+                icon: >-
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set age = (now()-as_datetime(ls)).total_seconds() if ls not in ['unknown','unavailable','','None'] else 999999 %}
+                  {% if ev=='failed' %}mdi:database-alert{% elif ev=='in_progress' %}mdi:database-sync{% elif age>108000 %}mdi:database-alert-outline{% else %}mdi:database-check{% endif %}
+                icon_color: >-
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set age = (now()-as_datetime(ls)).total_seconds() if ls not in ['unknown','unavailable','','None'] else 999999 %}
+                  {% if ev=='failed' %}red{% elif ev=='in_progress' %}blue{% elif age>108000 %}orange{% else %}green{% endif %}
+                primary: Config HA
+                secondary: >-
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set has = ls not in ['unknown','unavailable','','None'] %}
+                  {% set age = (now()-as_datetime(ls)).total_seconds() if has else 999999 %}
+                  {% set rel = relative_time(as_datetime(ls)) if has else '—' %}
+                  {% if ev=='failed' %}❌ Échec · {{ state_attr('event.backup_sauvegarde_automatique','failed_reason') or 'raison inconnue' }}
+                  {% elif ev=='in_progress' %}⏳ En cours…
+                  {% elif age>108000 %}⚠️ Périmé · réussi il y a {{ rel }}
+                  {% else %}✅ OK · réussi il y a {{ rel }}{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.backup_etat_du_gestionnaire_de_sauvegarde
+                    icon: mdi:cog
+                    icon_color: >-
+                      {% if is_state('sensor.backup_etat_du_gestionnaire_de_sauvegarde','idle') %}grey{% else %}blue{% endif %}
+                    content: '{{ states(''sensor.backup_etat_du_gestionnaire_de_sauvegarde'') }}'
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.backup_prochaine_sauvegarde_automatique_programmee
+                    icon: mdi:calendar-clock
+                    icon_color: cyan
+                    content: >-
+                      {% set n = states('sensor.backup_prochaine_sauvegarde_automatique_programmee') %}
+                      {% if n not in ['unknown','unavailable','','None'] %}Prochaine {{ as_timestamp(n) | timestamp_custom('%d/%m %H:%M') }}{% else %}—{% endif %}
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; padding: 0 8px 8px 8px
+                    !important; }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
                 title: Node — prox
                 subtitle: >-
                   Up since {{ as_timestamp(states('sensor.node_prox_last_boot'))
@@ -157,8 +288,8 @@ views:
                       yellow: 70
                       red: 90
                   - type: gauge
-                    entity: sensor.storage_prox_local_lvm_disk_used_percentage
-                    name: local-lvm
+                    entity: sensor.storage_prox_local_zfs_disk_used_percentage
+                    name: local-zfs
                     min: 0
                     max: 100
                     needle: true
@@ -170,42 +301,142 @@ views:
             mode: vertical
             cards:
               - type: custom:mushroom-title-card
+                title: Températures — boîtier
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.prox_hyperviseur_cpu_prox
+                    icon: mdi:cpu-64-bit
+                    icon_color: >-
+                      {% set t = states('sensor.prox_hyperviseur_cpu_prox') | float(0) %}
+                      {% if t < 65 %}green{% elif t < 80 %}orange{% else %}red{% endif %}
+                    content: >-
+                      CPU {{ states('sensor.prox_hyperviseur_cpu_prox') | float | round(0) }}°
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.prox_hyperviseur_carte_mere_prox
+                    icon: mdi:chip
+                    icon_color: >-
+                      {% set t = states('sensor.prox_hyperviseur_carte_mere_prox') | float(0) %}
+                      {% if t < 55 %}green{% elif t < 70 %}orange{% else %}red{% endif %}
+                    content: >-
+                      CM {{ states('sensor.prox_hyperviseur_carte_mere_prox') | float | round(0) }}°
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.prox_hyperviseur_igpu_prox
+                    icon: mdi:expansion-card
+                    icon_color: >-
+                      {% set t = states('sensor.prox_hyperviseur_igpu_prox') | float(0) %}
+                      {% if t < 60 %}green{% elif t < 80 %}orange{% else %}red{% endif %}
+                    content: >-
+                      iGPU {{ states('sensor.prox_hyperviseur_igpu_prox') | float | round(0) }}°
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.prox_hyperviseur_gpu_rtx_3060_prox
+                    icon: mdi:expansion-card-variant
+                    icon_color: >-
+                      {% set t = states('sensor.prox_hyperviseur_gpu_rtx_3060_prox') | float(0) %}
+                      {% if t < 60 %}green{% elif t < 80 %}orange{% else %}red{% endif %}
+                    content: >-
+                      3060 {{ states('sensor.prox_hyperviseur_gpu_rtx_3060_prox') | float | round(0) }}°
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; }
+              - type: custom:mushroom-chips-card
+                alignment: center
+                chips:
+                  - type: template
+                    entity: sensor.prox_hyperviseur_socket_cpu_prox
+                    icon: mdi:thermometer
+                    icon_color: grey
+                    content: >-
+                      Socket {{ states('sensor.prox_hyperviseur_socket_cpu_prox')
+                      | float | round(0) }}°
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.prox_hyperviseur_ventilo_cpu_prox
+                    icon: mdi:fan
+                    icon_color: cyan
+                    content: >-
+                      CPU {{ states('sensor.prox_hyperviseur_ventilo_cpu_prox') |
+                      int(0) }} rpm
+                    tap_action:
+                      action: more-info
+                  - type: template
+                    entity: sensor.prox_hyperviseur_ventilo_boitier_prox
+                    icon: mdi:fan
+                    icon_color: cyan
+                    content: >-
+                      Boîtier {{
+                      states('sensor.prox_hyperviseur_ventilo_boitier_prox') |
+                      int(0) }} rpm
+                    tap_action:
+                      action: more-info
+                card_mod:
+                  style: >
+                    ha-card { --chip-spacing: 4px; border: none !important;
+                    box-shadow: none !important; }
+              - type: custom:mini-graph-card
+                name: Températures
+                icon: mdi:thermometer
+                height: 80
+                line_width: 2
+                hours_to_show: 24
+                points_per_hour: 4
+                show:
+                  labels: true
+                  legend: true
+                entities:
+                  - entity: sensor.prox_hyperviseur_cpu_prox
+                    name: CPU
+                    color: '#e45e33'
+                  - entity: sensor.prox_hyperviseur_carte_mere_prox
+                    name: CM
+                    color: '#0867ec'
+                  - entity: sensor.prox_hyperviseur_igpu_prox
+                    name: iGPU
+                    color: '#8e44ad'
+                  - entity: sensor.prox_hyperviseur_gpu_rtx_3060_prox
+                    name: 3060
+                    color: '#3aaa00'
+                card_mod:
+                  style: >
+                    ha-card { border: none !important; box-shadow: none
+                    !important; }
+          - type: custom:stack-in-card
+            mode: vertical
+            cards:
+              - type: custom:mushroom-title-card
                 title: Physical Disks
               - type: custom:mushroom-chips-card
                 alignment: center
                 chips:
                   - type: template
-                    entity: binary_sensor.disk_prox_flash_disk_health
-                    icon: mdi:usb-flash-drive
+                    entity: binary_sensor.disk_prox_samsung_ssd_980_1tb_health
+                    icon: mdi:expansion-card-variant
                     icon_color: >-
                       {% if
-                      is_state('binary_sensor.disk_prox_flash_disk_health',
+                      is_state('binary_sensor.disk_prox_samsung_ssd_980_1tb_health',
                       'off') %}green {% else %}red{% endif %}
-                    content: >-
-                      Flash {{ states('sensor.disk_prox_flash_disk_size') |
-                      float | round(0) }}GB {% if
-                      is_state('binary_sensor.disk_prox_flash_disk_health',
-                      'on') %}⚠{% endif %}
+                    content: 'Samsung 980 1TB (boot)'
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: binary_sensor.disk_prox_intel_ssdsc2cw120a3_health
+                    entity: binary_sensor.disk_prox_samsung_ssd_870_qvo_1tb_health
                     icon: mdi:harddisk
                     icon_color: >-
                       {% if
-                      is_state('binary_sensor.disk_prox_intel_ssdsc2cw120a3_health',
+                      is_state('binary_sensor.disk_prox_samsung_ssd_870_qvo_1tb_health',
                       'off') %}green {% else %}red{% endif %}
-                    content: Intel 120GB
-                    tap_action:
-                      action: more-info
-                  - type: template
-                    entity: binary_sensor.disk_prox_sandisk_ultra_ii_240gb_health
-                    icon: mdi:harddisk
-                    icon_color: >-
-                      {% if
-                      is_state('binary_sensor.disk_prox_sandisk_ultra_ii_240gb_health',
-                      'off') %}green {% else %}red{% endif %}
-                    content: SanDisk 240GB
+                    content: 'Samsung 870 QVO 1TB'
                     tap_action:
                       action: more-info
                 card_mod:
@@ -260,9 +491,12 @@ views:
                   labels: true
                   legend: true
                 entities:
-                  - entity: sensor.disk_prox_sandisk_ultra_ii_240gb_temperature
-                    name: SanDisk
+                  - entity: sensor.disk_prox_samsung_ssd_980_1tb_temperature
+                    name: 980 boot
                     color: '#0867ec'
+                  - entity: sensor.disk_prox_samsung_ssd_870_qvo_1tb_airflow_temperature
+                    name: 870 QVO
+                    color: '#8e44ad'
                   - entity: sensor.disk_prox_wdc_wd20efrx_68ax9n0_temperature
                     name: WD 2TB
                     color: '#f5b514'
@@ -280,39 +514,39 @@ views:
                 alignment: center
                 chips:
                   - type: template
-                    entity: sensor.disk_prox_intel_ssdsc2cw120a3_wearout
+                    entity: sensor.disk_prox_samsung_ssd_980_1tb_wearout
                     icon: mdi:clipboard-pulse-outline
                     icon_color: >-
                       {% set w =
-                      states('sensor.disk_prox_intel_ssdsc2cw120a3_wearout') |
+                      states('sensor.disk_prox_samsung_ssd_980_1tb_wearout') |
                       float(0) %} {% if w < 50 %}green{% elif w < 80 %}orange{%
                       else %}red{% endif %}
                     content: >-
-                      Intel wear {{
-                      states('sensor.disk_prox_intel_ssdsc2cw120a3_wearout') }}%
+                      980 wear {{
+                      states('sensor.disk_prox_samsung_ssd_980_1tb_wearout') }}%
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.disk_prox_sandisk_ultra_ii_240gb_wearout
+                    entity: sensor.disk_prox_samsung_ssd_870_qvo_1tb_wearout
                     icon: mdi:clipboard-pulse-outline
                     icon_color: >-
                       {% set w =
-                      states('sensor.disk_prox_sandisk_ultra_ii_240gb_wearout')
+                      states('sensor.disk_prox_samsung_ssd_870_qvo_1tb_wearout')
                       | float(0) %} {% if w < 50 %}green{% elif w < 80
                       %}orange{% else %}red{% endif %}
                     content: >-
-                      SanDisk wear {{
-                      states('sensor.disk_prox_sandisk_ultra_ii_240gb_wearout')
+                      870 wear {{
+                      states('sensor.disk_prox_samsung_ssd_870_qvo_1tb_wearout')
                       }}%
                     tap_action:
                       action: more-info
                   - type: template
-                    entity: sensor.disk_prox_intel_ssdsc2cw120a3_power_on_hours
+                    entity: sensor.disk_prox_wdc_wd40efzx_68awun0_power_on_hours
                     icon: mdi:clock-outline
                     icon_color: grey
                     content: >-
-                      Intel {{
-                      (states('sensor.disk_prox_intel_ssdsc2cw120a3_power_on_hours')
+                      WD 4TB {{
+                      (states('sensor.disk_prox_wdc_wd40efzx_68awun0_power_on_hours')
                       | int / 24 / 365.25) | round(1) }}y
                     tap_action:
                       action: more-info

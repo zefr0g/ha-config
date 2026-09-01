@@ -1,0 +1,187 @@
+# Package météo — capteurs dérivés pour le tableau de bord Météo (dashboard_meteo.yaml)
+#
+# Activé via configuration.yaml :
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Source principale : station météo locale (sensor.station_meteo_*).
+# Complément prévisions : Météo-France Avignon (weather.avignon, sensor.avignon_*).
+
+sensor:
+  # --- Min / max / amplitude glissants sur 24 h -------------------------------
+  - platform: statistics
+    name: "Température ext. min 24h"
+    unique_id: meteo_temp_min_24h
+    entity_id: sensor.station_meteo_temperature_exterieure
+    state_characteristic: value_min
+    sampling_size: 5000
+    max_age:
+      hours: 24
+
+  - platform: statistics
+    name: "Température ext. max 24h"
+    unique_id: meteo_temp_max_24h
+    entity_id: sensor.station_meteo_temperature_exterieure
+    state_characteristic: value_max
+    sampling_size: 5000
+    max_age:
+      hours: 24
+
+  - platform: statistics
+    name: "Rafale max 24h"
+    unique_id: meteo_rafale_max_24h
+    entity_id: sensor.station_meteo_rafale_vent
+    state_characteristic: value_max
+    sampling_size: 5000
+    max_age:
+      hours: 24
+
+  - platform: statistics
+    name: "Indice UV max 24h"
+    unique_id: meteo_uv_max_24h
+    entity_id: sensor.station_meteo_indice_uv
+    state_characteristic: value_max
+    sampling_size: 5000
+    max_age:
+      hours: 24
+
+  # --- Tendance barométrique (variation sur 3 h) -----------------------------
+  # Référence météo : |Δ| < 1 hPa/3h = stable, > 2.5 hPa/3h = évolution rapide.
+  - platform: statistics
+    name: "Pression variation 3h"
+    unique_id: meteo_pression_change_3h
+    entity_id: sensor.station_meteo_pression_atmospherique
+    state_characteristic: change
+    sampling_size: 1000
+    max_age:
+      hours: 3
+
+template:
+  - unique_id: meteo_derives
+    sensor:
+      # --- Point de rosée (Magnus-Tetens) ------------------------------------
+      - name: "Point de rosée extérieur"
+        unique_id: meteo_point_de_rosee
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        availability: >-
+          {{ has_value('sensor.station_meteo_temperature_exterieure')
+             and has_value('sensor.station_meteo_humidite_exterieure') }}
+        state: >-
+          {% set t = states('sensor.station_meteo_temperature_exterieure') | float %}
+          {% set rh = [states('sensor.station_meteo_humidite_exterieure') | float, 1] | max %}
+          {% set a = 17.27 %}
+          {% set b = 237.7 %}
+          {% set alpha = (a * t / (b + t)) + log(rh / 100) %}
+          {{ (b * alpha / (a - alpha)) | round(1) }}
+
+      # --- Ressenti : humidex l'été, refroidissement éolien l'hiver ----------
+      - name: "Température ressentie"
+        unique_id: meteo_ressenti
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        availability: >-
+          {{ has_value('sensor.station_meteo_temperature_exterieure')
+             and has_value('sensor.point_de_rosee_exterieur') }}
+        state: >-
+          {% set t = states('sensor.station_meteo_temperature_exterieure') | float %}
+          {% set td = states('sensor.point_de_rosee_exterieur') | float %}
+          {% set v = states('sensor.station_meteo_vitesse_vent') | float(0) %}
+          {% if t >= 20 %}
+            {# Humidex (Masterton & Richardson) #}
+            {% set vp = 6.11 * e ** (5417.7530 * ((1 / 273.16) - (1 / (273.15 + td)))) %}
+            {{ (t + 0.5555 * (vp - 10)) | round(1) }}
+          {% elif t <= 10 and v > 4.8 %}
+            {# Refroidissement éolien (indice canadien) #}
+            {{ (13.12 + 0.6215 * t - 11.37 * v ** 0.16 + 0.3965 * t * v ** 0.16) | round(1) }}
+          {% else %}
+            {{ t | round(1) }}
+          {% endif %}
+
+      # --- Tendance barométrique en clair -----------------------------------
+      - name: "Tendance barométrique"
+        unique_id: meteo_tendance_barometrique
+        icon: >-
+          {% set d = states('sensor.pression_variation_3h') | float(0) %}
+          {% if d >= 1.6 %} mdi:trending-up
+          {% elif d <= -1.6 %} mdi:trending-down
+          {% else %} mdi:trending-neutral
+          {% endif %}
+        state: >-
+          {% set d = states('sensor.pression_variation_3h') | float(0) %}
+          {% if d >= 3.5 %} Hausse rapide
+          {% elif d >= 1.6 %} Hausse
+          {% elif d >= 0.5 %} Légère hausse
+          {% elif d > -0.5 %} Stable
+          {% elif d > -1.6 %} Légère baisse
+          {% elif d > -3.5 %} Baisse
+          {% else %} Baisse rapide
+          {% endif %}
+        attributes:
+          variation_3h: >-
+            {{ states('sensor.pression_variation_3h') | float(0) | round(1) }}
+
+      # --- Échelle de Beaufort sur le vent moyen -----------------------------
+      - name: "Vent Beaufort"
+        unique_id: meteo_beaufort
+        state_class: measurement
+        icon: mdi:windsock
+        availability: "{{ has_value('sensor.wind_average_10min') }}"
+        state: >-
+          {% set v = states('sensor.wind_average_10min') | float(0) %}
+          {% set seuils = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118] %}
+          {{ seuils | select('le', v) | list | count }}
+        attributes:
+          description: >-
+            {% set v = states('sensor.wind_average_10min') | float(0) %}
+            {% set seuils = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118] %}
+            {% set noms = ['Calme', 'Très légère brise', 'Légère brise', 'Petite brise',
+                           'Jolie brise', 'Bonne brise', 'Vent frais', 'Grand frais',
+                           'Coup de vent', 'Fort coup de vent', 'Tempête', 'Violente tempête',
+                           'Ouragan'] %}
+            {{ noms[seuils | select('le', v) | list | count] }}
+
+      # --- Amplitude thermique des dernières 24 h ---------------------------
+      - name: "Amplitude thermique 24h"
+        unique_id: meteo_amplitude_24h
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        icon: mdi:thermometer-lines
+        availability: >-
+          {{ has_value('sensor.temperature_ext_min_24h')
+             and has_value('sensor.temperature_ext_max_24h') }}
+        state: >-
+          {{ (states('sensor.temperature_ext_max_24h') | float
+              - states('sensor.temperature_ext_min_24h') | float) | round(1) }}
+
+      # --- Durée du jour ------------------------------------------------------
+      - name: "Durée du jour"
+        unique_id: meteo_duree_du_jour
+        unit_of_measurement: "h"
+        state_class: measurement
+        icon: mdi:sun-clock
+        availability: >-
+          {{ has_value('sensor.sun_next_rising') and has_value('sensor.sun_next_setting') }}
+        state: >-
+          {% set ri = as_timestamp(states('sensor.sun_next_rising')) %}
+          {% set st = as_timestamp(states('sensor.sun_next_setting')) %}
+          {% if is_state('sun.sun', 'above_horizon') %}
+            {{ ((st - (ri - 86400)) / 3600) | round(2) }}
+          {% else %}
+            {{ (((st + 86400 if st < ri else st) - ri) / 3600) | round(2) }}
+          {% endif %}
+
+  # --- Il pleut maintenant ? --------------------------------------------------
+  - unique_id: meteo_binaires
+    binary_sensor:
+      - name: "Il pleut"
+        unique_id: meteo_il_pleut
+        device_class: moisture
+        icon: mdi:weather-pouring
+        state: >-
+          {{ states('sensor.station_meteo_pluie_heure') | float(0) > 0 }}
+        delay_off:
+          minutes: 20

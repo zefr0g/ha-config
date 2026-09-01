@@ -1,12 +1,54 @@
 - id: tv_salon_chaine_voix
   alias: "TV Salon - Changer de chaîne par la voix"
   description: "Commandes vocales : chaîne 6 / mets M6 / passe sur Arte"
+  # ⚠ Les noms de chaînes sont énumérés explicitement dans le déclencheur.
+  #
+  # Avant, la phrase était « … {channel} » avec un joker : {channel} capturait
+  # N'IMPORTE QUEL texte, donc cette automatisation avalait toutes les commandes
+  # commençant par « mets … » dans la maison — « mets la radio RTL », « mets la
+  # lumière du salon », « mets le chauffage », « mets une minuterie de 5
+  # minutes ». Chacune envoyait la chaîne 0 à la TV (map.get(ch, 0)) et
+  # répondait « Terminé » sans rien faire d'utile. Les déclencheurs de phrase
+  # sont prioritaires sur les intents, donc rien ne rattrapait derrière : c'est
+  # ce qui cassait la radio à la voix (et non le LLM, longtemps soupçonné).
+  #
+  # Vérifier une phrase :
+  #   python3 ha_ws.py '{"type":"conversation/agent/homeassistant/debug",
+  #                      "sentences":["mets RTL"],"language":"fr"}'
+  # `source: trigger` = avalée ici ; `source: custom` = passée aux intents.
+  #
+  # « France Info » est à la fois une chaîne TNT (16) et une radio : « mets
+  # France Info » va sur la TV, « mets la radio France Info » va sur la radio
+  # (« radio » n'est pas un mot de remplissage accepté ci-dessous).
   trigger:
     - platform: conversation
+      id: par_nom
       command:
-        - "(mets|mais|va sur|passe sur|mets la|mais la|passe à|change pour) [la chaîne|chaîne|la] {channel}"
+        - >-
+          (mets|mais|va sur|passe sur|mets la|mais la|passe à|change pour)
+          [la chaîne|chaîne|la]
+          (tf1|la une|un|une|france 2|france deux|la deux|deux|france 3|france trois|la trois|trois|france 4|france quatre|quatre|france 5|france cinq|cinq|m6|la six|six|arte|sept|lcp|huit|w9|neuf|tmc|dix|tfx|onze|gulli|douze|bfm tv|bfm|treize|cnews|c news|quatorze|lci|quinze|france info|franceinfo|seize|cstar|c star|dix-sept|t18|dix-huit|novo 19|novo|dix-neuf|tf1 séries films|séries films|vingt|l equipe|l'équipe|équipe|vingt et un|6ter|six ter|vingt-deux|rmc story|vingt-trois|rmc découverte|rmc decouverte|vingt-quatre|rmc life|vingt-cinq|paris première|paris premiere|vingt-six)
+          [sur (la tv|la télé|la télévision)]
+    - platform: conversation
+      id: par_numero
+      command:
         - "chaîne {channel}"
   condition: []
+  # Le déclencheur par nom n'a plus de slot (une énumération ne capture pas), on
+  # retrouve donc la chaîne depuis le texte prononcé ; le déclencheur par numéro
+  # garde son joker, sans danger car préfixé par « chaîne ».
+  variables:
+    ch: >
+      {% if trigger.id == 'par_numero' %}
+        {{ (trigger.slots.channel | lower | trim).split(' sur ')[0].split(' dans ')[0] | trim }}
+      {% else %}
+        {{ trigger.sentence | lower | trim
+           | regex_replace('[?!.]', '')
+           | regex_replace('^(mets la|mais la|mets|mais|va sur|passe sur|passe à|change pour)\s+', '')
+           | regex_replace('^(la chaîne|chaîne|la)\s+', '')
+           | regex_replace('\s+sur (la tv|la télé|la télévision)$', '')
+           | trim }}
+      {% endif %}
   action:
     - action: media_player.play_media
       target:
@@ -14,7 +56,6 @@
       data:
         media_content_type: channel
         media_content_id: >
-          {% set ch = (trigger.slots.channel | lower | trim).split(' sur ')[0].split(' dans ')[0] | trim %}
           {% set map = {
             "tf1": 1, "la une": 1, "un": 1, "une": 1, "1": 1,
             "france 2": 2, "france deux": 2, "la deux": 2, "deux": 2, "2": 2,
@@ -49,7 +90,6 @@
         entity_id: input_select.chaine_tnt
       data:
         option: >
-          {% set ch = (trigger.slots.channel | lower | trim).split(' sur ')[0].split(' dans ')[0] | trim %}
           {% set map = {
             "tf1": "01 - TF1", "la une": "01 - TF1", "un": "01 - TF1", "une": "01 - TF1", "1": "01 - TF1",
             "france 2": "02 - France 2", "france deux": "02 - France 2", "deux": "02 - France 2", "2": "02 - France 2",

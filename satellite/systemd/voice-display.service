@@ -1,7 +1,12 @@
 [Unit]
-Description=Voice Assistant Display (ST7796S 480x320)
-After=docker.service lva.service
-Wants=lva.service
+Description=Voice Assistant Round Display
+# Independent of docker/lva/network — it only reads /tmp/va_state and polls HA,
+# both of which degrade gracefully — so it comes up with basic.target and shows
+# a live boot checklist until the voice stack answers. It is deliberately NOT
+# pushed earlier than that: numpy/Pillow/font loading from a cold page cache
+# costs a few seconds of CPU and SD bandwidth, which measurably delays the rest
+# of boot. voice-splash.service owns the screen before this point.
+After=local-fs.target voice-splash.service
 
 [Service]
 ExecStart=/usr/bin/python3 /home/dd/dev/voice-assistant/src/display/daemon.py

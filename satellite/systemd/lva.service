@@ -1,10 +1,16 @@
 [Unit]
 Description=Linux Voice Assistant
-After=docker.service network-online.target
+# No network-online ordering: the ESPHome client reconnects on its own, and
+# waiting for it serialized the whole voice stack behind the wifi association.
+After=docker.service user@1000.service
 Requires=docker.service
 
 [Service]
 WorkingDirectory=/home/dd/lva
+# user@1000 being "started" does not mean PipeWire has published its Pulse
+# socket yet, and the container needs it for aec_mic/aec_sink. Wait for the
+# socket itself (up to 10s) instead of leaning on the old network delay.
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 50); do [ -S /run/user/1000/pulse/native ] && exit 0; sleep 0.2; done; exit 0'
 ExecStart=docker compose up
 ExecStop=docker compose down
 Restart=on-failure

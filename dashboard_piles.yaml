@@ -1,0 +1,356 @@
+# Dashboard Piles — /lovelace-piles
+#
+# Déployé par : python3 push_dashboards.py dashboard_piles.yaml
+# Capteurs dérivés (autonomie, synthèse) : packages/piles.yaml
+#
+# Trois niveaux de lecture, du plus urgent au plus prospectif :
+#   1. carte de synthèse  → y a-t-il quelque chose à faire MAINTENANT ?
+#   2. grille par pièce   → niveau + jours restants estimés
+#   3. graphes 90 j       → la pente réelle, pour arbitrer un remplacement groupé
+#
+# La liste "État brut" est en custom:auto-entities (filtre sur device_class:
+# battery) : tout nouvel appareil à pile y apparaît sans toucher à ce fichier.
+# Les blocs 2 et 3 restent explicites, eux, car ils dépendent des capteurs
+# d'autonomie nommés du package.
+views:
+  - title: Piles
+    path: piles
+    icon: mdi:battery-70
+    cards:
+      - type: custom:mushroom-chips-card
+        alignment: center
+        chips:
+          - type: action
+            icon: mdi:home
+            icon_color: blue
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-playground
+            hold_action:
+              action: navigate
+              navigation_path: /config/dashboards
+          - type: action
+            icon: mdi:shield-home
+            icon_color: red
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-alarme
+          - type: action
+            icon: mdi:doorbell-video
+            icon_color: purple
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-interphone
+          - type: action
+            icon: mdi:pool
+            icon_color: cyan
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-piscine
+          - type: action
+            icon: mdi:thermometer
+            icon_color: green
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-temperatures
+          - type: action
+            icon: mdi:weather-partly-rainy
+            icon_color: yellow
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo
+          - type: action
+            icon: mdi:cctv
+            icon_color: teal
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-video
+          - type: action
+            icon: mdi:timer-cog
+            icon_color: orange
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-playground/programmations
+          - type: action
+            icon: mdi:battery-70
+            icon_color: light-green
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-piles
+        card_mod:
+          style: |
+            ha-card {
+              --chip-box-shadow: none;
+              --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+              margin-bottom: 4px;
+            }
+
+      # --- 1. Synthèse ------------------------------------------------------
+      - type: custom:mushroom-template-card
+        entity: sensor.piles_a_surveiller
+        primary: >-
+          {% set n = states('sensor.piles_a_surveiller') | int(0) %}
+          {{ 'Toutes les piles vont bien' if n == 0 else (n ~ ' pile' ~ ('s' if n > 1 else '') ~ ' à remplacer') }}
+        secondary: >-
+          {% set l = state_attr('sensor.piles_a_surveiller', 'piles') %}
+          {{ l | join(' · ') if l else 'Seuil d\'alerte : 20 %' }}
+        icon: >-
+          {{ 'mdi:battery-check' if states('sensor.piles_a_surveiller') | int(0) == 0 else 'mdi:battery-alert-variant-outline' }}
+        icon_color: >-
+          {{ 'green' if states('sensor.piles_a_surveiller') | int(0) == 0 else 'red' }}
+        multiline_secondary: true
+
+      # --- 2. Par pièce : niveau + autonomie estimée -------------------------
+      - type: custom:stack-in-card
+        mode: vertical
+        cards:
+          - type: custom:mushroom-title-card
+            title: Quand changer ?
+            subtitle: Extrapolation linéaire de la pente sur 7 jours
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_0d03_battery
+                primary: Salon
+                secondary: >-
+                  {% set n = states('sensor.atc_0d03_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_salon') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_0d03_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_0d03_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_8477_battery
+                primary: Cuisine
+                secondary: >-
+                  {% set n = states('sensor.atc_8477_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_cuisine') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_8477_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_8477_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_9d9d_battery
+                primary: Chambre principale
+                secondary: >-
+                  {% set n = states('sensor.atc_9d9d_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_chambre_principale') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_9d9d_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_9d9d_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_501e_battery
+                primary: Chambre Lucie
+                secondary: >-
+                  {% set n = states('sensor.atc_501e_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_chambre_lucie') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_501e_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_501e_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_63738e_738e_battery
+                primary: Chambre Ami
+                secondary: >-
+                  {% set n = states('sensor.atc_63738e_738e_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_chambre_ami') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_63738e_738e_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_63738e_738e_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.atc_335e_battery
+                primary: Salle de bain
+                secondary: >-
+                  {% set n = states('sensor.atc_335e_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_salle_de_bain') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.atc_335e_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.atc_335e_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+              - type: custom:mushroom-template-card
+                entity: sensor.inkbird_ith20r_64601_battery
+                primary: Piscine (Inkbird)
+                secondary: >-
+                  {% set n = states('sensor.inkbird_ith20r_64601_battery') | int(-1) %}
+                  {% set j = states('sensor.autonomie_pile_piscine') | int(-1) %}
+                  {{ n ~ ' %' if n >= 0 else '— %' }}{{ ' · reste ~' ~ j ~ ' j' if j >= 0 else ' · pente inconnue' }}
+                icon: >-
+                  {% set n = states('sensor.inkbird_ith20r_64601_battery') | int(-1) %}
+                  {% if n < 0 %}mdi:battery-unknown
+                  {% elif n >= 95 %}mdi:battery
+                  {% elif n < 5 %}mdi:battery-outline
+                  {% else %}mdi:battery-{{ (n / 10) | round(0) * 10 }}
+                  {% endif %}
+                icon_color: >-
+                  {% set n = states('sensor.inkbird_ith20r_64601_battery') | int(101) %}
+                  {% if n <= 20 %}red{% elif n <= 40 %}orange{% else %}green{% endif %}
+                tap_action:
+                  action: more-info
+                card_mod:
+                  style: |
+                    ha-card { border: none !important; box-shadow: none !important; }
+
+      # --- 3. Tendance longue ------------------------------------------------
+      - type: statistics-graph
+        title: Décharge sur 90 jours
+        days_to_show: 90
+        period: day
+        chart_type: line
+        stat_types:
+          - mean
+        entities:
+          - sensor.atc_0d03_battery
+          - sensor.atc_8477_battery
+          - sensor.atc_9d9d_battery
+          - sensor.atc_501e_battery
+          - sensor.atc_63738e_738e_battery
+          - sensor.atc_335e_battery
+          - sensor.inkbird_ith20r_64601_battery
+
+      # --- 4. Appareils sans niveau continu ----------------------------------
+      # Ceux-là ne remontent qu'un booléen ok/faible, ou se rechargent seuls :
+      # pas d'extrapolation possible, on affiche juste l'état.
+      - type: entities
+        title: Autres
+        state_color: true
+        entities:
+          - entity: binary_sensor.capteur_exterieur_abri_pile
+            name: Capteur extérieur (abri)
+          - entity: binary_sensor.espkyogate_alarme_batterie_faible
+            name: Alarme Kyogate
+          - entity: sensor.valve_controller_battery_level
+            name: Vanne arrosage (solaire)
+          - entity: sensor.awning_0001_batterie
+            name: Store banne
+
+      # --- 5. État brut, auto-alimenté ---------------------------------------
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Toutes les piles
+          state_color: true
+        filter:
+          include:
+            - domain: sensor
+              attributes:
+                device_class: battery
+              options:
+                secondary_info: last-changed
+          exclude:
+            # Capteurs dérivés du package : device_class battery hérité, pas des piles.
+            - entity_id: sensor.conso_pile_*
+            - entity_id: sensor.*pixel_7a*
+            - entity_id: sensor.*tabh*
+            - entity_id: sensor.*ndl_w09*
+        sort:
+          method: state
+          numeric: true
+          reverse: false
+
+  - title: Tensions
+    path: tensions
+    icon: mdi:sine-wave
+    cards:
+      # Sur pile bouton, la tension est le signal le plus honnête : le % ATC en
+      # est dérivé, mais la chute de tension se voit avant que le % ne bouge.
+      # Repères CR2032 : ~3,0 V neuve · ~2,6 V à mi-vie · < 2,4 V à remplacer.
+      - type: custom:mini-graph-card
+        name: Tension des capteurs ATC
+        hours_to_show: 720
+        points_per_hour: 0.05
+        height: 200
+        line_width: 2
+        decimals: 2
+        lower_bound: 2.2
+        upper_bound: 3.1
+        show:
+          fill: false
+        entities:
+          - entity: sensor.atc_0d03_voltage
+            name: Salon
+          - entity: sensor.atc_8477_voltage
+            name: Cuisine
+          - entity: sensor.atc_9d9d_voltage
+            name: Ch. principale
+          - entity: sensor.atc_501e_voltage
+            name: Ch. Lucie
+          - entity: sensor.atc_63738e_738e_voltage
+            name: Ch. Ami
+          - entity: sensor.atc_335e_voltage
+            name: Salle de bain

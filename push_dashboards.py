@@ -17,6 +17,8 @@ DASHBOARDS = {
     "dashboard_interphone.yaml": "lovelace-interphone",
     "dashboard_3dprint.yaml":    "3d-print",
     "dashboard_controle.yaml":   "lovelace-controle",
+    "dashboard_meteo.yaml":      "lovelace-meteo",
+    "dashboard_piles.yaml":      "lovelace-piles",
 }
 
 

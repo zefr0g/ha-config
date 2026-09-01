@@ -8,6 +8,7 @@ or GPIO. Used to iterate on the visual design (scp the PNGs back and look).
 
 import os
 import sys
+import time
 from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -16,6 +17,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from config import (STATE_IDLE, STATE_LISTENING, STATE_SPEAKING)
 import display.app as appmod
 from display.app import App
+from display.boot import BootScreen, OK
 
 NOW = datetime(2026, 6, 13, 14, 32, 8)
 CTX = {
@@ -35,6 +37,19 @@ def scene(name, configure, state=STATE_IDLE, ctx=None, bt=None):
     configure(app)
     img = app.render(state, NOW, ctx or CTX)
     return name, img
+
+
+def boot_scene(name, elapsed, resolved):
+    """Boot checklist frozen mid-startup. resolved: key -> (done_at, detail)."""
+    boot = BootScreen()
+    boot.t0 = time.monotonic() - elapsed     # render() reads the monotonic clock
+    boot.detail["sys"] = "6.12.47+rpt-rpi-v8"
+    boot.done_at["sys"] = 0.8
+    for key, (at, detail) in resolved.items():
+        boot.state[key] = OK
+        boot.done_at[key] = at
+        boot.detail[key] = detail
+    return name, boot.render()
 
 
 def main():
@@ -78,6 +93,12 @@ def main():
               bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a"}),
         scene("21_bluetooth_pairing", lambda a: setattr(a, "screen", "bluetooth"),
               bt={"discoverable": True, "pairing_remaining": 113, "connected": None}),
+        boot_scene("26_boot_early", 1.4, {}),
+        boot_scene("27_boot_network", 6.2,
+                   {"net": (5.9, "192.168.x.x"), "docker": (6.0, "")}),
+        boot_scene("28_boot_ready", 14.8,
+                   {"net": (5.9, "192.168.x.x"), "docker": (6.0, ""),
+                    "lva": (12.1, ""), "ha": (13.6, "dd-ha")}),
         scene("22_home_bluetooth", lambda a: None,
               bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a",
                   "playing": True, "title": "How To Turn A Clutch Into Glitter",
@@ -86,6 +107,12 @@ def main():
               ctx={**CTX, "timers": [{"name": "minuteur", "remaining_s": 154}]},
               bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a",
                   "playing": True, "title": "Lo-fi beats", "artist": ""}),
+        scene("24_radio_playing", lambda a: (setattr(a, "screen", "radio"),
+              setattr(a, "active_station", "rtl")), ctx={**CTX, "sat_playing": True}),
+        scene("25_bluetooth_playing", lambda a: setattr(a, "screen", "bluetooth"),
+              bt={"discoverable": False, "pairing_remaining": 0, "connected": "Pixel 7a",
+                  "playing": True, "title": "How To Turn A Clutch Into Glitter",
+                  "artist": "SuperfastMatt"}),
     ]
     for name, img in scenes:
         path = os.path.join(out, f"{name}.png")

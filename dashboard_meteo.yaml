@@ -1,0 +1,1289 @@
+title: Météo
+views:
+  # ===========================================================================
+  # VUE 1 — COUP D'ŒIL
+  # Colonne 1 : ce qu'il fait maintenant. Colonne 2 : les relevés de la station.
+  # Colonne 3 : ce qui arrive et comment ça évolue.
+  # ===========================================================================
+  - title: Coup d'œil
+    path: maintenant
+    icon: mdi:weather-partly-cloudy
+    type: sections
+    max_columns: 3
+    sections:
+      # --- barre de navigation, pleine largeur -------------------------------
+      - type: grid
+        column_span: 3
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:home
+                icon_color: blue
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-playground
+              - type: action
+                icon: mdi:shield-home
+                icon_color: red
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-alarme
+              - type: action
+                icon: mdi:doorbell-video
+                icon_color: purple
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-interphone
+              - type: action
+                icon: mdi:pool
+                icon_color: cyan
+                tap_action:
+                  action: navigate
+                  navigation_path: /dashboard-piscine
+              - type: action
+                icon: mdi:thermometer
+                icon_color: green
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-temperatures
+              - type: action
+                icon: mdi:weather-partly-rainy
+                icon_color: yellow
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo
+              - type: action
+                icon: mdi:cctv
+                icon_color: teal
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-video
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                  margin-bottom: 4px;
+                }
+
+      # =====================================================================
+      # COLONNE 1 — MAINTENANT
+      # =====================================================================
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Maintenant
+            heading_style: title
+            icon: mdi:weather-partly-cloudy
+
+          # Hero : température géante + ciel + ressenti + min/max du jour.
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_temperature_exterieure') | float(0) | round(1) }}°
+            secondary: >-
+              {% set c = states('weather.forecast_maison') %}
+              {% set libelle = {
+                'clear-night': 'Nuit claire', 'cloudy': 'Nuageux', 'fog': 'Brouillard',
+                'hail': 'Grêle', 'lightning': 'Orage', 'lightning-rainy': 'Orage et pluie',
+                'partlycloudy': 'Éclaircies', 'pouring': 'Fortes pluies', 'rainy': 'Pluie',
+                'snowy': 'Neige', 'snowy-rainy': 'Neige et pluie', 'sunny': 'Ensoleillé',
+                'windy': 'Venteux', 'windy-variant': 'Venteux', 'exceptional': 'Exceptionnel'
+              } %}
+              {{ libelle.get(c, c) }} · ressenti
+              {{ states('sensor.temperature_ressentie') | float(0) | round(1) }}°
+              ({{ states('sensor.temperature_ext_min_24h') | float(0) | round(0) }}° /
+              {{ states('sensor.temperature_ext_max_24h') | float(0) | round(0) }}°)
+            icon: >-
+              {% set c = states('weather.forecast_maison') %}
+              {% set ico = {
+                'clear-night': 'mdi:weather-night', 'cloudy': 'mdi:weather-cloudy',
+                'fog': 'mdi:weather-fog', 'hail': 'mdi:weather-hail',
+                'lightning': 'mdi:weather-lightning', 'lightning-rainy': 'mdi:weather-lightning-rainy',
+                'partlycloudy': 'mdi:weather-partly-cloudy', 'pouring': 'mdi:weather-pouring',
+                'rainy': 'mdi:weather-rainy', 'snowy': 'mdi:weather-snowy',
+                'snowy-rainy': 'mdi:weather-snowy-rainy', 'sunny': 'mdi:weather-sunny',
+                'windy': 'mdi:weather-windy', 'windy-variant': 'mdi:weather-windy-variant',
+                'exceptional': 'mdi:alert-circle-outline'
+              } %}
+              {{ ico.get(c, 'mdi:weather-partly-cloudy') }}
+            icon_color: >-
+              {% set t = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% if t >= 35 %} red
+              {% elif t >= 30 %} deep-orange
+              {% elif t >= 25 %} orange
+              {% elif t >= 15 %} green
+              {% elif t >= 5 %} teal
+              {% elif t >= 0 %} blue
+              {% else %} indigo
+              {% endif %}
+            entity: sensor.station_meteo_temperature_exterieure
+            multiline_secondary: true
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 46px;
+                  --card-primary-line-height: 52px;
+                  --card-primary-font-weight: 300;
+                  --card-secondary-font-size: 14px;
+                  --icon-size: 62px;
+                  padding: 14px 12px;
+                }
+
+          # Barre d'état : tout ce qui doit sauter aux yeux, en une ligne.
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: template
+                entity: sensor.84_weather_alert
+                content: >-
+                  {{ states('sensor.84_weather_alert') }}
+                icon: >-
+                  {% set a = states('sensor.84_weather_alert') %}
+                  {% if a in ['Orange', 'Rouge'] %} mdi:alert-octagon
+                  {% elif a == 'Jaune' %} mdi:alert
+                  {% else %} mdi:shield-check
+                  {% endif %}
+                icon_color: >-
+                  {% set a = states('sensor.84_weather_alert') %}
+                  {% if a == 'Rouge' %} red
+                  {% elif a == 'Orange' %} orange
+                  {% elif a == 'Jaune' %} yellow
+                  {% else %} green
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.wind_average_10min
+                content: >-
+                  {% set d = states('sensor.station_meteo_direction_vent') | float(0) %}
+                  {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
+                  {{ states('sensor.wind_average_10min') | float(0) | round(0) }} km/h
+                  {{ dirs[((d + 22.5) / 45) | int % 8] }}
+                icon: mdi:weather-windy
+                icon_color: >-
+                  {% set v = states('sensor.wind_average_10min') | float(0) %}
+                  {% if v < 20 %} teal
+                  {% elif v < 40 %} green
+                  {% elif v < 60 %} orange
+                  {% else %} red
+                  {% endif %}
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/vent
+              - type: template
+                entity: sensor.station_meteo_pluie_journee
+                content: >-
+                  {% if is_state('binary_sensor.il_pleut', 'on') %}
+                    {{ states('sensor.station_meteo_pluie_heure') | float(0) | round(1) }} mm/h
+                  {% else %}
+                    {{ states('sensor.station_meteo_pluie_journee') | float(0) | round(1) }} mm
+                  {% endif %}
+                icon: >-
+                  {% if is_state('binary_sensor.il_pleut', 'on') %} mdi:weather-pouring
+                  {% else %} mdi:weather-rainy
+                  {% endif %}
+                icon_color: >-
+                  {% set p = states('sensor.station_meteo_pluie_journee') | float(0) %}
+                  {% if is_state('binary_sensor.il_pleut', 'on') %} blue
+                  {% elif p > 0 %} cyan
+                  {% else %} grey
+                  {% endif %}
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/pluie
+              - type: template
+                entity: sensor.station_meteo_indice_uv
+                content: >-
+                  UV {{ states('sensor.station_meteo_indice_uv') | float(0) | round(0) }}
+                icon: mdi:sun-wireless
+                icon_color: >-
+                  {% set u = states('sensor.station_meteo_indice_uv') | float(0) %}
+                  {% if u < 3 %} green
+                  {% elif u < 6 %} yellow
+                  {% elif u < 8 %} orange
+                  {% elif u < 11 %} red
+                  {% else %} purple
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.station_meteo_humidite_exterieure
+                content: >-
+                  {{ states('sensor.station_meteo_humidite_exterieure') | float(0) | round(0) }} %
+                icon: mdi:water-percent
+                icon_color: >-
+                  {% set h = states('sensor.station_meteo_humidite_exterieure') | float(0) %}
+                  {% if h >= 80 %} blue
+                  {% elif h >= 40 %} teal
+                  {% else %} orange
+                  {% endif %}
+                tap_action:
+                  action: more-info
+              - type: template
+                entity: sensor.station_meteo_pression_atmospherique
+                content: >-
+                  {{ states('sensor.station_meteo_pression_atmospherique') | float(0) | round(0) }} hPa
+                icon: >-
+                  {% set d = state_attr('sensor.tendance_barometrique', 'variation_3h') | float(0) %}
+                  {% if d >= 1.6 %} mdi:gauge-full
+                  {% elif d <= -1.6 %} mdi:gauge-empty
+                  {% else %} mdi:gauge
+                  {% endif %}
+                icon_color: >-
+                  {% set d = state_attr('sensor.tendance_barometrique', 'variation_3h') | float(0) %}
+                  {% if d >= 1.6 %} green
+                  {% elif d <= -1.6 %} orange
+                  {% else %} grey
+                  {% endif %}
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/pluie
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                }
+
+          # Vigilance Météo-France, en toutes lettres.
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set a = states('sensor.84_weather_alert') %}
+              Vigilance {{ a | lower }}
+            secondary: >-
+              {% set a = states('sensor.84_weather_alert') %}
+              {% if a == 'Vert' %} Aucun phénomène particulier — Vaucluse (84)
+              {% elif a == 'Jaune' %} Soyez attentif — Vaucluse (84)
+              {% elif a == 'Orange' %} Soyez très vigilant — Vaucluse (84)
+              {% elif a == 'Rouge' %} Vigilance absolue — Vaucluse (84)
+              {% else %} Météo-France — Vaucluse (84)
+              {% endif %}
+            icon: >-
+              {% set a = states('sensor.84_weather_alert') %}
+              {% if a in ['Orange', 'Rouge'] %} mdi:alert-octagon
+              {% elif a == 'Jaune' %} mdi:alert
+              {% else %} mdi:shield-check
+              {% endif %}
+            icon_color: >-
+              {% set a = states('sensor.84_weather_alert') %}
+              {% if a == 'Rouge' %} red
+              {% elif a == 'Orange' %} orange
+              {% elif a == 'Jaune' %} yellow
+              {% else %} green
+              {% endif %}
+            entity: sensor.84_weather_alert
+            multiline_secondary: true
+
+          # Une seule phrase actionnable : aérer ou fermer les volets ?
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} Garder les volets fermés
+              {% else %} C'est le moment d'aérer
+              {% endif %}
+            secondary: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {{ (int_ - ext) | abs | round(1) }} °C d'écart avec le salon
+              ({{ int_ | round(1) }} °C)
+            icon: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} mdi:window-shutter
+              {% else %} mdi:window-open-variant
+              {% endif %}
+            icon_color: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} orange
+              {% else %} green
+              {% endif %}
+            entity: sensor.atc_0d03_temperature
+            multiline_secondary: true
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/comparaisons
+
+          - type: heading
+            heading: Aujourd'hui
+            heading_style: subtitle
+            icon: mdi:calendar-today
+
+          # Grille 3 × 2, alignée sur la grille de la section (12 colonnes).
+          - type: statistic
+            entity: sensor.station_meteo_temperature_exterieure
+            name: Min
+            stat_type: min
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+          - type: statistic
+            entity: sensor.station_meteo_temperature_exterieure
+            name: Moyenne
+            stat_type: mean
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+          - type: statistic
+            entity: sensor.station_meteo_temperature_exterieure
+            name: Max
+            stat_type: max
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+
+          - type: statistic
+            entity: sensor.station_meteo_rafale_vent
+            name: Rafale max
+            stat_type: max
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+          - type: statistic
+            entity: sensor.station_meteo_pluie_journee
+            name: Pluie
+            stat_type: change
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+          - type: statistic
+            entity: sensor.station_meteo_humidite_exterieure
+            name: Humidité moy.
+            stat_type: mean
+            period:
+              calendar:
+                period: day
+            grid_options:
+              columns: 4
+
+          - type: tile
+            entity: sensor.amplitude_thermique_24h
+            name: Amplitude thermique 24 h
+            color: purple
+            grid_options:
+              columns: 12
+
+      # =====================================================================
+      # COLONNE 2 — RELEVÉS DE LA STATION
+      # =====================================================================
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Relevés station
+            heading_style: title
+            icon: mdi:home-thermometer-outline
+
+          - type: heading
+            heading: Air
+            heading_style: subtitle
+            icon: mdi:air-filter
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_humidite_exterieure') | float(0) | round(0) }} %
+            secondary: >-
+              Point de rosée {{ states('sensor.point_de_rosee_exterieur') | float(0) | round(1) }} °C
+            icon: mdi:water-percent
+            icon_color: >-
+              {% set h = states('sensor.station_meteo_humidite_exterieure') | float(0) %}
+              {% if h >= 80 %} blue
+              {% elif h >= 40 %} teal
+              {% else %} orange
+              {% endif %}
+            entity: sensor.station_meteo_humidite_exterieure
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_pression_atmospherique') | float(0) | round(1) }} hPa
+            secondary: >-
+              {{ states('sensor.tendance_barometrique') }}
+              ({{ state_attr('sensor.tendance_barometrique', 'variation_3h') }} hPa/3h)
+            icon: >-
+              {% set d = state_attr('sensor.tendance_barometrique', 'variation_3h') | float(0) %}
+              {% if d >= 1.6 %} mdi:gauge-full
+              {% elif d <= -1.6 %} mdi:gauge-empty
+              {% else %} mdi:gauge
+              {% endif %}
+            icon_color: >-
+              {% set d = state_attr('sensor.tendance_barometrique', 'variation_3h') | float(0) %}
+              {% if d >= 1.6 %} green
+              {% elif d <= -1.6 %} orange
+              {% else %} grey
+              {% endif %}
+            entity: sensor.station_meteo_pression_atmospherique
+            multiline_secondary: true
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/pluie
+
+          - type: heading
+            heading: Vent
+            heading_style: subtitle
+            icon: mdi:weather-windy
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.wind_average_10min') | float(0) | round(1) }} km/h
+            secondary: >-
+              {% set d = states('sensor.station_meteo_direction_vent') | float(0) %}
+              {% set dirs = ['N','NE','E','SE','S','SO','O','NO'] %}
+              {{ dirs[((d + 22.5) / 45) | int % 8] }} ({{ d | round(0) | int }}°) ·
+              {{ state_attr('sensor.vent_beaufort', 'description') }}
+            icon: mdi:weather-windy
+            icon_color: >-
+              {% set v = states('sensor.wind_average_10min') | float(0) %}
+              {% if v < 20 %} teal
+              {% elif v < 40 %} green
+              {% elif v < 60 %} orange
+              {% else %} red
+              {% endif %}
+            entity: sensor.wind_average_10min
+            multiline_secondary: true
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/vent
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_rafale_vent') | float(0) | round(1) }} km/h
+            secondary: >-
+              Rafales · max 24 h {{ states('sensor.rafale_max_24h') | float(0) | round(1) }} km/h
+            icon: mdi:windsock
+            icon_color: >-
+              {% set g = states('sensor.station_meteo_rafale_vent') | float(0) %}
+              {% if g < 20 %} teal
+              {% elif g < 40 %} green
+              {% elif g < 60 %} orange
+              {% elif g < 90 %} deep-orange
+              {% else %} red
+              {% endif %}
+            entity: sensor.station_meteo_rafale_vent
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/vent
+
+          - type: custom:windrose-card
+            title: Rose des vents — 8 h
+            refresh_interval: 300
+            windspeed_bar_location: bottom
+            hide_windspeed_bar: true
+            current_direction:
+              show_arrow: true
+            direction_labels:
+              cardinal_direction_letters: NESO
+            wind_direction_entity:
+              entity: sensor.station_meteo_direction_vent
+            windspeed_entities:
+              - entity: sensor.station_meteo_vitesse_vent
+                name: Vitesse
+                speed_unit: kph
+                output_speed_unit: kph
+            buttons_config:
+              location: bottom
+              buttons:
+                - type: period_selector
+                  button_text: 8 heures
+                  period_back: -8h
+                  active: true
+                - type: period_selector
+                  button_text: 1 jour
+                  period_back: -24h
+
+          - type: heading
+            heading: Pluie & soleil
+            heading_style: subtitle
+            icon: mdi:weather-partly-rainy
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_pluie_journee') | float(0) | round(1) }} mm
+            secondary: >-
+              {% if is_state('binary_sensor.il_pleut', 'on') %}
+                Il pleut — {{ states('sensor.station_meteo_pluie_heure') | float(0) | round(1) }} mm/h
+              {% else %}
+                Cumul du jour · {{ states('sensor.avignon_rain_chance') | int(0) }} % de risque
+              {% endif %}
+            icon: >-
+              {% if is_state('binary_sensor.il_pleut', 'on') %} mdi:weather-pouring
+              {% else %} mdi:weather-rainy
+              {% endif %}
+            icon_color: >-
+              {% set p = states('sensor.station_meteo_pluie_journee') | float(0) %}
+              {% if is_state('binary_sensor.il_pleut', 'on') %} blue
+              {% elif p > 0 %} cyan
+              {% else %} grey
+              {% endif %}
+            entity: sensor.station_meteo_pluie_journee
+            multiline_secondary: true
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/pluie
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              UV {{ states('sensor.station_meteo_indice_uv') | float(0) | round(0) }}
+            secondary: >-
+              {% set u = states('sensor.station_meteo_indice_uv') | float(0) %}
+              {% if u < 3 %} Faible
+              {% elif u < 6 %} Modéré
+              {% elif u < 8 %} Élevé
+              {% elif u < 11 %} Très élevé
+              {% else %} Extrême
+              {% endif %} · max 24 h {{ states('sensor.indice_uv_max_24h') | float(0) | round(0) }}
+            icon: mdi:sun-wireless
+            icon_color: >-
+              {% set u = states('sensor.station_meteo_indice_uv') | float(0) %}
+              {% if u < 3 %} green
+              {% elif u < 6 %} yellow
+              {% elif u < 8 %} orange
+              {% elif u < 11 %} red
+              {% else %} purple
+              {% endif %}
+            entity: sensor.station_meteo_indice_uv
+
+      # =====================================================================
+      # COLONNE 3 — PRÉVISIONS & TENDANCE
+      # =====================================================================
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Prévisions
+            heading_style: title
+            icon: mdi:calendar-clock
+
+          - type: weather-forecast
+            entity: weather.forecast_maison
+            forecast_type: daily
+            show_current: false
+            show_forecast: true
+
+          - type: weather-forecast
+            entity: weather.forecast_maison
+            forecast_type: hourly
+            show_current: false
+            show_forecast: true
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% if states('sensor.avignon_next_rain') not in ['unknown', 'unavailable'] %}
+                Pluie vers {{ as_timestamp(states('sensor.avignon_next_rain')) | timestamp_custom('%H:%M') }}
+              {% else %}
+                Pas de pluie dans l'heure
+              {% endif %}
+            secondary: >-
+              {{ states('sensor.avignon_rain_chance') | int(0) }} % de risque ·
+              {{ states('sensor.avignon_cloud_cover') | int(0) }} % de nuages ·
+              UV prévu {{ states('sensor.avignon_uv') | int(0) }}
+            icon: mdi:weather-rainy
+            icon_color: >-
+              {% if states('sensor.avignon_next_rain') not in ['unknown', 'unavailable'] %} blue
+              {% else %} blue-grey
+              {% endif %}
+            entity: sensor.avignon_rain_chance
+            multiline_secondary: true
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-meteo/pluie
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set d = states('sensor.duree_du_jour') | float(0) %}
+              {{ d | int }} h {{ ((d - (d | int)) * 60) | round(0) | int }} min de jour
+            secondary: >-
+              Lever {{ as_timestamp(states('sensor.sun_next_rising')) | timestamp_custom('%H:%M') }} ·
+              coucher {{ as_timestamp(states('sensor.sun_next_setting')) | timestamp_custom('%H:%M') }}
+            icon: mdi:sun-clock
+            icon_color: amber
+            entity: sun.sun
+            multiline_secondary: true
+
+          - type: tile
+            entity: sensor.avignon_cloud_cover
+            name: Nuages
+            color: blue-grey
+            grid_options:
+              columns: 6
+          - type: tile
+            entity: sensor.avignon_uv
+            name: UV prévu
+            color: amber
+            grid_options:
+              columns: 6
+
+          - type: heading
+            heading: Tendance 24 h
+            heading_style: subtitle
+            icon: mdi:chart-bell-curve-cumulative
+
+          - type: custom:mini-graph-card
+            name: Température & humidité
+            hours_to_show: 24
+            points_per_hour: 4
+            height: 130
+            line_width: 2
+            lower_bound_secondary: 0
+            upper_bound_secondary: 100
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_temperature_exterieure
+                name: Temp.
+                color: '#e45e33'
+                show_state: true
+                show_fill: true
+              - entity: sensor.station_meteo_humidite_exterieure
+                name: Humidité
+                color: '#42a5f5'
+                y_axis: secondary
+                show_state: true
+                show_fill: false
+
+          - type: custom:mini-graph-card
+            name: Vent & rafales
+            hours_to_show: 24
+            points_per_hour: 4
+            height: 110
+            line_width: 2
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_vitesse_vent
+                name: Vent
+                color: '#26a69a'
+                show_state: true
+                show_fill: true
+              - entity: sensor.station_meteo_rafale_vent
+                name: Rafales
+                color: '#ef5350'
+                show_state: true
+                show_fill: false
+
+          - type: custom:mini-graph-card
+            name: Pression — 48 h
+            hours_to_show: 48
+            points_per_hour: 2
+            height: 110
+            line_width: 2
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_pression_atmospherique
+                name: Pression
+                color: '#7e57c2'
+                show_state: true
+
+          # Aller plus loin — les vues détaillées.
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:compare-horizontal
+                content: Comparaisons
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/comparaisons
+              - type: action
+                icon: mdi:weather-windy
+                content: Vent
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/vent
+              - type: action
+                icon: mdi:weather-pouring
+                content: Pluie
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/pluie
+              - type: action
+                icon: mdi:chart-line
+                content: Historique
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo/historique
+            card_mod:
+              style: |
+                ha-card {
+                  --chip-box-shadow: none;
+                  --chip-background: rgba(var(--rgb-primary-text-color), 0.05);
+                }
+  # ===========================================================================
+  # VUE 2 — HISTORIQUE
+  # ===========================================================================
+  - title: Historique
+    path: historique
+    icon: mdi:chart-line
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Températures
+            heading_style: title
+            icon: mdi:thermometer
+
+          - type: statistics-graph
+            title: 30 derniers jours (min / moy / max)
+            entities:
+              - sensor.station_meteo_temperature_exterieure
+            days_to_show: 30
+            period: day
+            stat_types:
+              - min
+              - mean
+              - max
+            chart_type: line
+
+          - type: statistics-graph
+            title: 12 derniers mois
+            entities:
+              - sensor.station_meteo_temperature_exterieure
+            days_to_show: 365
+            period: month
+            stat_types:
+              - min
+              - mean
+              - max
+            chart_type: line
+
+          - type: statistics-graph
+            title: Amplitude jour / nuit — 14 jours
+            entities:
+              - sensor.amplitude_thermique_24h
+            days_to_show: 14
+            period: day
+            stat_types:
+              - max
+            chart_type: bar
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pluie
+            heading_style: title
+            icon: mdi:weather-rainy
+
+          - type: statistics-graph
+            title: Cumul quotidien — 30 jours
+            entities:
+              - sensor.station_meteo_pluie_journee
+            days_to_show: 30
+            period: day
+            stat_types:
+              - change
+            chart_type: bar
+
+          - type: statistics-graph
+            title: Cumul mensuel — 12 mois
+            entities:
+              - sensor.station_meteo_pluie_journee
+            days_to_show: 365
+            period: month
+            stat_types:
+              - change
+            chart_type: bar
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Humidité & pression
+            heading_style: title
+            icon: mdi:water-percent
+
+          - type: statistics-graph
+            title: Humidité — 30 jours
+            entities:
+              - sensor.station_meteo_humidite_exterieure
+            days_to_show: 30
+            period: day
+            stat_types:
+              - min
+              - mean
+              - max
+            chart_type: line
+
+          - type: statistics-graph
+            title: Pression — 14 jours
+            entities:
+              - sensor.station_meteo_pression_atmospherique
+            days_to_show: 14
+            period: hour
+            stat_types:
+              - mean
+            chart_type: line
+
+          - type: history-graph
+            title: Température, rosée & humidité — 3 jours
+            hours_to_show: 72
+            entities:
+              - entity: sensor.station_meteo_temperature_exterieure
+                name: Température
+              - entity: sensor.point_de_rosee_exterieur
+                name: Point de rosée
+              - entity: sensor.station_meteo_humidite_exterieure
+                name: Humidité
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Vent
+            heading_style: title
+            icon: mdi:weather-windy
+
+          - type: statistics-graph
+            title: Rafales max — 30 jours
+            entities:
+              - sensor.station_meteo_rafale_vent
+            days_to_show: 30
+            period: day
+            stat_types:
+              - max
+              - mean
+            chart_type: line
+
+          - type: statistics-graph
+            title: Indice UV max — 30 jours
+            entities:
+              - sensor.station_meteo_indice_uv
+            days_to_show: 30
+            period: day
+            stat_types:
+              - max
+            chart_type: bar
+
+  # ===========================================================================
+  # VUE 3 — VENT
+  # ===========================================================================
+  - title: Vent
+    path: vent
+    icon: mdi:weather-windy
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Rose des vents
+            heading_style: title
+            icon: mdi:compass-outline
+
+          - type: custom:windrose-card
+            title: Direction du vent
+            refresh_interval: 300
+            windspeed_bar_location: bottom
+            current_direction:
+              show_arrow: true
+            direction_labels:
+              cardinal_direction_letters: NESO
+            wind_direction_entity:
+              entity: sensor.station_meteo_direction_vent
+            windspeed_entities:
+              - entity: sensor.station_meteo_vitesse_vent
+                name: Vitesse
+                speed_unit: kph
+                output_speed_unit: kph
+              - entity: sensor.station_meteo_rafale_vent
+                name: Rafales
+                speed_unit: kph
+                output_speed_unit: kph
+            buttons_config:
+              location: bottom
+              buttons:
+                - type: period_selector
+                  button_text: 1 heure
+                  period_back: -1h
+                - type: period_selector
+                  button_text: 8 heures
+                  period_back: -8h
+                - type: period_selector
+                  button_text: 1 jour
+                  period_back: -24h
+                  active: true
+                - type: period_selector
+                  button_text: 10 jours
+                  period_back: -10d
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Mesures
+            heading_style: title
+            icon: mdi:speedometer
+
+          - type: horizontal-stack
+            cards:
+              - type: gauge
+                entity: sensor.wind_average_10min
+                name: Vent moyen 10 min
+                min: 0
+                max: 100
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 20
+                  red: 50
+              - type: gauge
+                entity: sensor.station_meteo_rafale_vent
+                name: Rafale
+                min: 0
+                max: 120
+                needle: true
+                severity:
+                  green: 0
+                  yellow: 40
+                  red: 70
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              Force {{ states('sensor.vent_beaufort') }} Beaufort
+            secondary: >-
+              {{ state_attr('sensor.vent_beaufort', 'description') }} ·
+              rafale max 24 h {{ states('sensor.rafale_max_24h') | float(0) | round(1) }} km/h
+            icon: mdi:windsock
+            icon_color: >-
+              {% set b = states('sensor.vent_beaufort') | int(0) %}
+              {% if b <= 2 %} teal
+              {% elif b <= 4 %} green
+              {% elif b <= 6 %} orange
+              {% elif b <= 8 %} deep-orange
+              {% else %} red
+              {% endif %}
+            entity: sensor.vent_beaufort
+            multiline_secondary: true
+
+          - type: custom:mini-graph-card
+            name: Vent & rafales — 48 h
+            hours_to_show: 48
+            points_per_hour: 4
+            height: 130
+            line_width: 2
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_vitesse_vent
+                name: Vent
+                color: '#26a69a'
+                show_state: true
+                show_fill: true
+              - entity: sensor.station_meteo_rafale_vent
+                name: Rafales
+                color: '#ef5350'
+                show_state: true
+
+          - type: custom:mini-graph-card
+            name: Direction du vent — 24 h
+            hours_to_show: 24
+            points_per_hour: 6
+            height: 100
+            line_width: 2
+            lower_bound: 0
+            upper_bound: 360
+            show:
+              icon: false
+              fill: false
+            entities:
+              - entity: sensor.station_meteo_direction_vent
+                name: Direction
+                color: '#ab47bc'
+                show_state: true
+
+  # ===========================================================================
+  # VUE 4 — PLUIE & PRESSION
+  # ===========================================================================
+  - title: Pluie
+    path: pluie
+    icon: mdi:weather-pouring
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Précipitations
+            heading_style: title
+            icon: mdi:weather-rainy
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_pluie_journee') | float(0) | round(1) }} mm aujourd'hui
+            secondary: >-
+              Dernière heure {{ states('sensor.station_meteo_pluie_heure') | float(0) | round(1) }} mm ·
+              {% if states('sensor.avignon_next_rain') not in ['unknown', 'unavailable'] %}
+                pluie vers {{ as_timestamp(states('sensor.avignon_next_rain')) | timestamp_custom('%H:%M') }}
+              {% else %}
+                pas de pluie prévue dans l'heure
+              {% endif %}
+            icon: >-
+              {% if is_state('binary_sensor.il_pleut', 'on') %} mdi:weather-pouring
+              {% else %} mdi:weather-rainy
+              {% endif %}
+            icon_color: >-
+              {% if is_state('binary_sensor.il_pleut', 'on') %} blue
+              {% else %} blue-grey
+              {% endif %}
+            entity: sensor.station_meteo_pluie_journee
+            multiline_secondary: true
+
+          - type: horizontal-stack
+            cards:
+              - type: tile
+                entity: sensor.avignon_rain_chance
+                name: Risque de pluie
+                color: blue
+              - type: tile
+                entity: sensor.avignon_cloud_cover
+                name: Nuages
+                color: blue-grey
+
+          - type: statistics-graph
+            title: Cumul quotidien — 60 jours
+            entities:
+              - sensor.station_meteo_pluie_journee
+            days_to_show: 60
+            period: day
+            stat_types:
+              - change
+            chart_type: bar
+
+          - type: custom:mini-graph-card
+            name: Intensité horaire — 48 h
+            hours_to_show: 48
+            points_per_hour: 2
+            height: 110
+            line_width: 2
+            show:
+              icon: false
+              graph: bar
+            entities:
+              - entity: sensor.station_meteo_pluie_heure
+                name: mm/h
+                color: '#29b6f6'
+                show_state: true
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Baromètre
+            heading_style: title
+            icon: mdi:gauge
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {{ states('sensor.station_meteo_pression_atmospherique') | float(0) | round(1) }} hPa
+            secondary: >-
+              {{ states('sensor.tendance_barometrique') }}
+              ({{ state_attr('sensor.tendance_barometrique', 'variation_3h') }} hPa sur 3 h)
+            icon: mdi:gauge
+            icon_color: >-
+              {% set p = states('sensor.station_meteo_pression_atmospherique') | float(0) %}
+              {% if p >= 1020 %} green
+              {% elif p >= 1005 %} teal
+              {% elif p >= 995 %} orange
+              {% else %} red
+              {% endif %}
+            entity: sensor.station_meteo_pression_atmospherique
+            multiline_secondary: true
+
+          - type: gauge
+            entity: sensor.station_meteo_pression_atmospherique
+            name: Pression
+            min: 970
+            max: 1050
+            needle: true
+            segments:
+              - from: 970
+                color: '#ef5350'
+                label: Tempête
+              - from: 995
+                color: '#ffa726'
+                label: Pluie
+              - from: 1010
+                color: '#66bb6a'
+                label: Variable
+              - from: 1025
+                color: '#26c6da'
+                label: Beau
+
+          - type: custom:mini-graph-card
+            name: Pression — 7 jours
+            hours_to_show: 168
+            points_per_hour: 1
+            height: 130
+            line_width: 2
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_pression_atmospherique
+                name: Pression
+                color: '#7e57c2'
+                show_state: true
+
+  # ===========================================================================
+  # VUE 5 — COMPARAISONS
+  # ===========================================================================
+  - title: Comparaisons
+    path: comparaisons
+    icon: mdi:compare-horizontal
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Sources extérieures
+            heading_style: title
+            icon: mdi:home-group
+
+          - type: custom:mini-graph-card
+            name: Extérieur — 48 h
+            hours_to_show: 48
+            points_per_hour: 2
+            height: 150
+            line_width: 2
+            show:
+              icon: false
+              extrema: true
+            entities:
+              - entity: sensor.station_meteo_temperature_exterieure
+                name: Station
+                color: '#e45e33'
+                show_state: true
+              - entity: sensor.capteur_exterieur_abri_temperature
+                name: Abri
+                color: '#66bb6a'
+                show_state: true
+              - entity: sensor.garage_temperature
+                name: Garage
+                color: '#42a5f5'
+                show_state: true
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              Écart station / abri :
+              {{ (states('sensor.station_meteo_temperature_exterieure') | float(0)
+                  - states('sensor.capteur_exterieur_abri_temperature') | float(0)) | round(1) }} °C
+            secondary: >-
+              La station est exposée, le capteur sous abri sert de référence
+            icon: mdi:compare-vertical
+            icon_color: >-
+              {% set d = (states('sensor.station_meteo_temperature_exterieure') | float(0)
+                          - states('sensor.capteur_exterieur_abri_temperature') | float(0)) | abs %}
+              {% if d < 1 %} green
+              {% elif d < 3 %} orange
+              {% else %} red
+              {% endif %}
+            entity: sensor.capteur_exterieur_abri_temperature
+            multiline_secondary: true
+
+          - type: horizontal-stack
+            cards:
+              - type: tile
+                entity: sensor.temperature_piscine
+                name: Piscine
+                color: cyan
+              - type: tile
+                entity: sensor.garage_pressure
+                name: Pression garage
+                color: purple
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Intérieur
+            heading_style: title
+            icon: mdi:home-thermometer
+
+          - type: custom:mini-graph-card
+            name: Pièces — 24 h
+            hours_to_show: 24
+            points_per_hour: 2
+            height: 170
+            line_width: 2
+            show:
+              icon: false
+            entities:
+              - entity: sensor.atc_0d03_temperature
+                name: Salon
+                color: '#ef5350'
+                show_state: true
+              - entity: sensor.atc_8477_temperature
+                name: Cuisine
+                color: '#ffa726'
+                show_state: true
+              - entity: sensor.atc_9d9d_temperature
+                name: Ch. principale
+                color: '#66bb6a'
+                show_state: true
+              - entity: sensor.atc_501e_temperature
+                name: Ch. Lucie
+                color: '#42a5f5'
+                show_state: true
+              - entity: sensor.atc_63738e_738e_temperature
+                name: Ch. Ami
+                color: '#ab47bc'
+                show_state: true
+              - entity: sensor.atc_335e_temperature
+                name: Salle de bain
+                color: '#26c6da'
+                show_state: true
+
+          - type: custom:mushroom-template-card
+            primary: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {{ (int_ - ext) | round(1) }} °C d'écart intérieur / extérieur
+            secondary: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} Il fait plus frais dedans — garder les volets fermés
+              {% else %} Il fait plus frais dehors — c'est le moment d'aérer
+              {% endif %}
+            icon: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} mdi:window-shutter
+              {% else %} mdi:window-open-variant
+              {% endif %}
+            icon_color: >-
+              {% set ext = states('sensor.station_meteo_temperature_exterieure') | float(0) %}
+              {% set int_ = states('sensor.atc_0d03_temperature') | float(0) %}
+              {% if ext > int_ %} orange
+              {% else %} green
+              {% endif %}
+            entity: sensor.atc_0d03_temperature
+            multiline_secondary: true
+
+          - type: statistics-graph
+            title: Salon — 30 jours
+            entities:
+              - sensor.atc_0d03_temperature
+            days_to_show: 30
+            period: day
+            stat_types:
+              - min
+              - mean
+              - max
+            chart_type: line

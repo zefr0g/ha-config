@@ -52,6 +52,12 @@ views:
                   action: navigate
                   navigation_path: /lovelace-temperatures
               - type: action
+                icon: mdi:weather-partly-rainy
+                icon_color: yellow
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo
+              - type: action
                 icon: mdi:cctv
                 icon_color: teal
                 tap_action:
@@ -165,6 +171,8 @@ views:
                   perform_action: wake_on_lan.send_magic_packet
                   data:
                     mac: AA:BB:CC:DD:EE:FF
+                  confirmation:
+                    text: Réveiller dd-room ?
               - type: template
                 icon: mdi:power-sleep
                 icon_color: blue

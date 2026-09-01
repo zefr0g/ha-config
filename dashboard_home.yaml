@@ -50,6 +50,12 @@ views:
                   action: navigate
                   navigation_path: /lovelace-temperatures
               - type: action
+                icon: mdi:weather-partly-rainy
+                icon_color: yellow
+                tap_action:
+                  action: navigate
+                  navigation_path: /lovelace-meteo
+              - type: action
                 icon: mdi:cctv
                 icon_color: teal
                 tap_action:
@@ -428,14 +434,32 @@ views:
             chips:
               - type: template
                 entity: binary_sensor.lxc_dd_frigate_106_status
-                icon: mdi:cctv
+                icon: >-
+                  {% set recs =
+                  ['switch.doorbell_recordings','switch.entree_recordings','switch.back_recordings','switch.garage_recordings']
+                  %} {% set on = expand(recs) | selectattr('state','eq','on') |
+                  list | count %} {% if on == 0 %}mdi:cctv-off{% else
+                  %}mdi:cctv{% endif %}
                 icon_color: >-
-                  {% if is_state('binary_sensor.lxc_dd_frigate_106_status',
-                  'on') %}green {% else %}red{% endif %}
+                  {% set recs =
+                  ['switch.doorbell_recordings','switch.entree_recordings','switch.back_recordings','switch.garage_recordings']
+                  %} {% set on = expand(recs) | selectattr('state','eq','on') |
+                  list | count %} {% if not
+                  is_state('binary_sensor.lxc_dd_frigate_106_status','on')
+                  %}red{% elif on == 0 %}red{% else %}green{% endif %}
                 content: >-
-                  {{ states('sensor.lxc_dd_frigate_106_cpu_used') | float |
-                  round(0) }}%
+                  {% set recs =
+                  ['switch.doorbell_recordings','switch.entree_recordings','switch.back_recordings','switch.garage_recordings']
+                  %} {% set on = expand(recs) | selectattr('state','eq','on') |
+                  list | count %} {% if on == 0 %}OFF{% else %}{{
+                  states('sensor.lxc_dd_frigate_106_cpu_used') | float | round(0)
+                  }}%{% endif %}
                 tap_action:
+                  action: perform-action
+                  perform_action: script.frigate_recordings_toggle
+                  confirmation:
+                    text: Basculer l'enregistrement vidéo de toutes les caméras ?
+                hold_action:
                   action: more-info
               - type: template
                 entity: binary_sensor.qemu_dd_haos_103_status
@@ -467,6 +491,55 @@ views:
                   {% else %}red{% endif %}
                 content: '{{ states(''sensor.node_prox_cpu_used'') | float | round(0) }}%'
                 tap_action:
+                  action: more-info
+              # ---- Sauvegardes — worst-of PBS cold (Gen8) + config HA native ----
+              # Same health derivation as the "Sauvegardes" card on the Proxmox
+              # dashboard, collapsed into one chip. Ranks: failed>stale>running>waiting>ok.
+              - type: template
+                entity: sensor.pbs_backup_status
+                icon: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set page = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set pbs = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and page>172800) else 'ok'))) %}
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set cage = (now()-as_datetime(ls)).total_seconds() if ls not in ['unknown','unavailable','','None'] else 999999 %}
+                  {% set cfg = 'failed' if ev=='failed' else ('running' if ev=='in_progress' else ('stale' if cage>108000 else 'ok')) %}
+                  {% set rank = {'failed':4,'stale':3,'running':2,'waiting':1,'ok':0} %}
+                  {% set h = pbs if rank[pbs] >= rank[cfg] else cfg %}
+                  {% if h=='ok' %}mdi:shield-check{% elif h=='failed' %}mdi:shield-alert{% elif h=='stale' %}mdi:shield-alert-outline{% elif h=='running' %}mdi:shield-sync{% else %}mdi:shield-off-outline{% endif %}
+                icon_color: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set page = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set pbs = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and page>172800) else 'ok'))) %}
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set cage = (now()-as_datetime(ls)).total_seconds() if ls not in ['unknown','unavailable','','None'] else 999999 %}
+                  {% set cfg = 'failed' if ev=='failed' else ('running' if ev=='in_progress' else ('stale' if cage>108000 else 'ok')) %}
+                  {% set rank = {'failed':4,'stale':3,'running':2,'waiting':1,'ok':0} %}
+                  {% set h = pbs if rank[pbs] >= rank[cfg] else cfg %}
+                  {% if h=='ok' %}green{% elif h=='failed' %}red{% elif h=='stale' %}orange{% elif h=='running' %}blue{% else %}grey{% endif %}
+                content: >-
+                  {% set r = states('sensor.pbs_backup_status') %}
+                  {% set fin = state_attr('sensor.pbs_backup_status','finished') %}
+                  {% set page = (now().timestamp() - as_timestamp(fin)) if fin else 999999 %}
+                  {% set pbs = 'waiting' if r in ['unknown','unavailable','','None'] else ('running' if r=='running' else ('failed' if r=='fail' else ('stale' if (r=='ok' and page>172800) else 'ok'))) %}
+                  {% set ev = state_attr('event.backup_sauvegarde_automatique','event_type') %}
+                  {% set ls = states('sensor.backup_derniere_sauvegarde_automatique_reussie') %}
+                  {% set cage = (now()-as_datetime(ls)).total_seconds() if ls not in ['unknown','unavailable','','None'] else 999999 %}
+                  {% set cfg = 'failed' if ev=='failed' else ('running' if ev=='in_progress' else ('stale' if cage>108000 else 'ok')) %}
+                  {% set rank = {'failed':4,'stale':3,'running':2,'waiting':1,'ok':0} %}
+                  {% set h = pbs if rank[pbs] >= rank[cfg] else cfg %}
+                  {% set age = [page, cage] | min %}
+                  {% set m = (age/60)|int %}
+                  {% set rel = (m ~ 'min') if m<60 else ((m//60) ~ 'h') if m<1440 else ((m//1440) ~ 'j') %}
+                  {% if h=='failed' %}Échec{% elif h=='running' %}…{% elif h=='stale' %}Périmé{% elif h=='waiting' %}—{% else %}{{ rel }}{% endif %}
+                tap_action:
+                  action: navigate
+                  navigation_path: /playground-ai/proxmox
+                hold_action:
                   action: more-info
             card_mod:
               style: |

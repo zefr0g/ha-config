@@ -6,7 +6,13 @@ triggers:
   - entity_id: binary_sensor.doorbell_person_occupancy
     from: "off"
     to: "on"
+    for: "00:00:02"
     trigger: state
+conditions:
+  - condition: template
+    value_template: >-
+      {{ this.attributes.last_triggered is none
+         or now() - this.attributes.last_triggered > timedelta(minutes=3) }}
 actions:
   - target:
       entity_id: camera.sonette_clair

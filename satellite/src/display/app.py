@@ -34,7 +34,7 @@ _MON_FR = {1: "janvier", 2: "février", 3: "mars", 4: "avril", 5: "mai", 6: "jui
            11: "novembre", 12: "décembre"}
 
 MENU_TIMEOUT = 12.0   # seconds of no touch before the menu/sub-screens return home
-TIMER_PRESETS = [1, 4, 8, 11]   # quick-add minutes (5th button = custom)
+TIMER_PRESETS = [5, 10, 15, 30]   # quick-add minutes (5th button = custom)
 CUSTOM_MIN, CUSTOM_MAX = 1, 90  # bounds for custom duration
 
 # Menu tiles (box, icon, label, target screen) — three across.
@@ -49,6 +49,13 @@ OFF_BTN_BOX     = (140, 258, 340, 300)   # "Éteindre" button under the tiles
 OFF_CARD_BOX    = (50, 84, 430, 250)     # confirm dialog card
 OFF_CANCEL_BOX  = (80, 190, 230, 238)
 OFF_CONFIRM_BOX = (250, 190, 400, 238)
+
+# Timer screen: "Annuler", centred directly under the countdown ring
+CANCEL_BTN_BOX = (150, 190, 330, 236)
+# Radio screen: labelled stop button, right of the volume slider
+STOP_BTN_BOX = (386, 250, 462, 308)
+# Custom-duration screen: the −5 / +5 step pills
+STEP5_BOXES = ((146, 168, 234, 216), (246, 168, 334, 216))
 
 # Bluetooth screen geometry
 BT_PAIR_BTN_BOX = (90, 150, 390, 220)    # primary "make discoverable" / "stop" button
@@ -127,10 +134,12 @@ def _draw_waveform(img: Image.Image, state, t, accent, strength=1.0):
     amp = _wave_amp(state, t) * 95.0 * strength
     line = (H - 8) - amp[None, :]                       # baseline near bottom
     dist = _yb - line                                   # <0 above, >0 below
-    core = 1.5 * np.exp(-(dist ** 2) / (2 * 3.0 ** 2))
-    halo = 0.5 * (dist < 0) * np.exp(-(dist ** 2) / (2 * 22.0 ** 2))
-    fill = ((_yb >= line) & (_yb <= H - 8)) * 0.18
-    glow = np.clip(core + halo + fill, 0, 2.2)[:, :, None] * np.array(accent, np.float32)
+    # Restrained glow: a crisp core with a short halo. A wide, bright bloom read
+    # as "gaming RGB" against the calm palette of every other screen.
+    core = 1.05 * np.exp(-(dist ** 2) / (2 * 2.6 ** 2))
+    halo = 0.26 * (dist < 0) * np.exp(-(dist ** 2) / (2 * 15.0 ** 2))
+    fill = ((_yb >= line) & (_yb <= H - 8)) * 0.14
+    glow = np.clip(core + halo + fill, 0, 1.5)[:, :, None] * np.array(accent, np.float32)
 
     band = np.asarray(img.crop((0, _BAND_TOP, W, H)), np.float32)
     band = np.clip(band + glow, 0, 255).astype(np.uint8)
@@ -155,6 +164,7 @@ class App:
         self._home_radio_box = None              # tappable status pills on home
         self._home_timer_box = None
         self._home_bt_box = None                 # tappable bluetooth now-playing pill
+        self._home_stop_box = None               # stop-radio button beside the radio pill
         self._home_vol_box = None                # tappable volume slider on home
         self.timer_custom = False                # custom-duration entry mode
         self.custom_min = 15
@@ -207,6 +217,14 @@ class App:
                 print(f"[UI] home volume -> {pct}", flush=True)
                 if not set_volume(pct):
                     self._toast_msg("Volume indisponible", error=True)
+            elif self._home_stop_box and _hit(self._home_stop_box, x, y):
+                print("[UI] stop_radio (home pill)", flush=True)
+                if stop_radio():
+                    self.active_station = None
+                    self._station_set_at = time.monotonic()
+                    self._toast_msg("Radio arrêtée")
+                else:
+                    self._toast_msg("Échec de l'arrêt", error=True)
             elif self._home_radio_box and _hit(self._home_radio_box, x, y):
                 self.screen = "radio"
             elif self._home_timer_box and _hit(self._home_timer_box, x, y):
@@ -255,7 +273,7 @@ class App:
                 else:
                     self._toast_msg("Lecture impossible", error=True)
                 return
-        if _hit((392, 258, 462, 308), x, y):        # stop
+        if _hit(STOP_BTN_BOX, x, y):                # stop
             print("[UI] stop_radio (stop button)", flush=True)
             if stop_radio():
                 self.active_station = None
@@ -264,8 +282,8 @@ class App:
             else:
                 self._toast_msg("Échec de l'arrêt", error=True)
             return
-        if _hit((18, 262, 372, 304), x, y):         # volume slider
-            pct = int(round((x - 30) / (360 - 30) * 100))
+        if _hit((20, 262, 348, 304), x, y):         # volume slider
+            pct = int(round((x - 64) / (322 - 64) * 100))
             pct = max(0, min(100, pct))
             self._vol, self._vol_set_at = pct, time.monotonic()
             if not set_volume(pct):
@@ -281,9 +299,9 @@ class App:
                 self.custom_min = max(CUSTOM_MIN, self.custom_min - 1)
             elif _hit((360, 90, 420, 150), x, y):        # +1
                 self.custom_min = min(CUSTOM_MAX, self.custom_min + 1)
-            elif _hit((150, 176, 230, 214), x, y):       # −5
+            elif _hit(STEP5_BOXES[0], x, y):             # −5
                 self.custom_min = max(CUSTOM_MIN, self.custom_min - 5)
-            elif _hit((250, 176, 330, 214), x, y):       # +5
+            elif _hit(STEP5_BOXES[1], x, y):             # +5
                 self.custom_min = min(CUSTOM_MAX, self.custom_min + 5)
             elif _hit((110, 250, 370, 302), x, y):       # Démarrer
                 print(f"[UI] start_timer {self.custom_min} (custom)", flush=True)
@@ -293,7 +311,7 @@ class App:
                 else:
                     self._toast_msg("Minuteur impossible", error=True)
             return
-        if (ctx or {}).get("timers") and _hit((286, 158, 446, 202), x, y):  # cancel
+        if (ctx or {}).get("timers") and _hit(CANCEL_BTN_BOX, x, y):  # cancel
             print("[UI] cancel_timers", flush=True)
             if cancel_timers():
                 self._toast_msg("Minuteurs annulés")
@@ -333,11 +351,11 @@ class App:
                     self._toast_msg("Bluetooth indisponible", error=True)
 
     # ── geometry ──────────────────────────────────────────────────────────────
-    def _station_box(self, i):
-        col, row = i % 2, i // 2
-        x0 = 18 + col * 234
-        y0 = 70 + row * 56
-        return (x0, y0, x0 + 210, y0 + 46)
+    def _station_box(self, i):       # 3×2 grid of logo tiles
+        col, row = i % 3, i // 3
+        x0 = 14 + col * 153
+        y0 = 60 + row * 98
+        return (x0, y0, x0 + 145, y0 + 90)
 
     def _preset_box(self, i):       # 4 presets + "Perso" (5 across)
         x0 = 18 + i * 90
@@ -386,7 +404,7 @@ class App:
     # ── HOME (ambient) ──────────────────────────────────────────────────────
     def _render_home(self, draw, img, state, now, ctx, accent):
         self._home_radio_box = self._home_timer_box = self._home_vol_box = None
-        self._home_bt_box = None
+        self._home_bt_box = self._home_stop_box = None
         timers = (ctx or {}).get("timers", [])
         # Ring state comes from the LED daemon's log tail (HA hides finished timers).
         ringing = bool((ctx or {}).get("timer_ringing"))
@@ -395,12 +413,11 @@ class App:
         weather = (ctx or {}).get("weather") or {}
         temp, cond = weather.get("temp"), weather.get("condition")
         if temp is not None and not voice_active:
+            # Floating icon + temp — chipless reads calmer on the ambient screen.
             label = f"{temp}°"
             tw = draw.textlength(label, font=T.F_TEMP)
-            chip = (int(W - 22 - tw - 46), 14, W - 14, 52)
-            T.card(img, draw, chip, radius=19, fill=T.CARD, elevate=False)
-            _weather_icon(draw, chip[0] + 24, 33, 13, cond, accent)
-            draw.text((W - 26, 33), label, font=T.F_TEMP, fill=T.INK, anchor="rm")
+            _weather_icon(draw, int(W - 30 - tw - 22), 33, 13, cond, accent)
+            draw.text((W - 24, 33), label, font=T.F_TEMP, fill=T.INK, anchor="rm")
 
         # Wi-Fi signal (top-left). Subtle when ambient; a red apex dot flags a
         # network drop. Hidden during voice so the waveform stays clean.
@@ -412,9 +429,19 @@ class App:
         f = 0.25 if voice_active else 1.0
         yb = 138 if voice_active else 196          # text baseline
         col = T.dim(T.INK, f)
-        # HH:MM hero + smaller trailing seconds, baseline-aligned
-        draw.text((_CLOCK_RIGHT, yb), now.strftime("%H:%M"),
-                  font=T.F_CLOCK, fill=col, anchor="rs")
+        # HH:MM hero: digits carry a white→steel vertical gradient (dimmed flat
+        # while a voice state animates over them), the colon carries the state
+        # accent — the one place the accent lives on an idle home screen.
+        hh, mm = now.strftime("%H"), now.strftime("%M")
+        colon_col = T.dim(T.mix(accent, T.INK, 0.15), f)
+        grad_top, grad_bot = (146, 158, 186), (246, 249, 255)
+        x = _CLOCK_RIGHT - draw.textlength(f"{hh}:{mm}", font=T.F_CLOCK)
+        for part, fill in ((hh, col), (":", colon_col), (mm, col)):
+            if part != ":" and not voice_active:
+                T.hero_text(img, (x, yb), part, T.F_CLOCK, grad_top, grad_bot)
+            else:
+                draw.text((x, yb), part, font=T.F_CLOCK, fill=fill, anchor="ls")
+            x += draw.textlength(part, font=T.F_CLOCK)
         draw.text((_CLOCK_RIGHT + _CLK_GAP, yb), now.strftime("%S"),
                   font=T.F_CLOCK_S, fill=T.dim(col, 0.62), anchor="ls")
 
@@ -425,7 +452,8 @@ class App:
         # slider take the space) or while a timer is ringing (the stop button does).
         if not voice_active and not media_active and not ringing:
             date_str = f"{_DAY_FR[now.weekday()]} {now.day} {_MON_FR[now.month]}"
-            T.text_center(draw, T.CX, 232, date_str, T.F_DATE, T.INK_DIM)
+            T.text_tracked(draw, T.CX, 238, date_str, T.F_MICRO, T.INK_DIM,
+                           tracking=3.5)
 
         if ringing and not self.menu_open:
             # A finished timer takes over the lower band with a "say stop" hint.
@@ -480,7 +508,11 @@ class App:
         PAD, ICON, GAP, h = 16, 20, 12, 34
         widths = [int(PAD + ICON + 8 + draw.textlength(t, font=T.F_SMALL) + PAD)
                   for _, t in pills]
-        x = T.CX - (sum(widths) + GAP * (len(pills) - 1)) // 2
+        # A round stop button rides beside the radio pill so playback can be killed
+        # from home without a detour through the Radio screen.
+        show_stop = any(k == "radio" for k, _ in pills)
+        total = sum(widths) + GAP * (len(pills) - 1) + (GAP + h if show_stop else 0)
+        x = T.CX - total // 2
         for (kind, txt), w in zip(pills, widths):
             box = (x, y, x + w, y + h)
             T.card(img, draw, box, radius=h // 2, fill=T.CARD_HI, elevate=False)
@@ -503,6 +535,16 @@ class App:
                 self._home_timer_box = box
             draw.text((x + PAD + ICON + 8, icy), txt, font=T.F_SMALL, fill=T.INK, anchor="lm")
             x += w + GAP
+            if kind == "radio":
+                sbox = (x, y, x + h, y + h)
+                T.card(img, draw, sbox, radius=h // 2, fill=T.CARD_HI, elevate=False)
+                scx, scy = x + h // 2, y + h // 2
+                draw.rounded_rectangle([scx - 6, scy - 6, scx + 6, scy + 6], 2,
+                                       fill=(255, 95, 72))
+                # Slightly generous hit box (resistive panel), but padded away from
+                # the pill on the left so a mis-tap opens Radio rather than stopping it.
+                self._home_stop_box = (sbox[0], y - 8, sbox[2] + 10, y + h + 8)
+                x += h + GAP
 
     def _home_volume(self, draw, ctx, accent):
         """Tappable volume slider on home, shown while audio plays."""
@@ -536,8 +578,10 @@ class App:
         draw.ellipse([cx - 3, cy + 8, cx + 3, cy + 14], fill=color)
 
     def _render_menu(self, draw, img, accent):
-        # Dim the ambient home behind the menu (in place, keeps `draw` valid).
-        img.paste(Image.blend(img, Image.new("RGB", img.size, (2, 3, 7)), 0.80))
+        # The menu sits on a fresh background gradient (in place, keeps `draw`
+        # valid) — any partial scrim leaves the giant clock glyphs ghosting
+        # between the tiles, which reads as a rendering artifact, not as depth.
+        img.paste(T.background(accent))
         if self.menu_confirm_off:
             self._render_confirm_off(draw, img, accent)
             return
@@ -556,16 +600,21 @@ class App:
                   fill=T.INK_DIM, anchor="lm")
 
     def _icon_chip(self, draw, cx, cy, accent, kind, r=36):
-        """A tinted disc behind a glyph — gives every icon a consistent home."""
+        """A tinted disc behind a glyph — gives every icon a consistent home.
+
+        One idiom for all three: outline glyphs, 3 px stroke, ~44 px optical
+        box. Mixing an outline radio with a hairline timer and a chunky filled
+        Bluetooth rune stopped the row reading as a set.
+        """
         draw.ellipse([cx - r, cy - r, cx + r, cy + r],
                      fill=T.mix(T.CARD_HI, accent, 0.22))
         glyph = T.lighten(accent, 0.55)   # bright glyph reads on the tinted disc
         if kind == "radio":
-            self._icon_radio(draw, cx, cy + 3, glyph)
+            self._icon_radio(draw, cx, cy + 1, glyph)
         elif kind == "bluetooth":
-            self._icon_bt(draw, cx, cy, glyph, a=17, width=4)
+            self._icon_bt(draw, cx, cy, glyph, a=22, width=3)
         else:
-            self._icon_timer(draw, cx, cy + 1, glyph)
+            self._icon_timer(draw, cx, cy + 2, glyph)
 
     def _render_confirm_off(self, draw, img, accent):
         red = (255, 110, 90)
@@ -592,35 +641,48 @@ class App:
         for i, st in enumerate(STATIONS):
             box = self._station_box(i)
             active = playing and self.active_station == st["id"]
-            T.card(img, draw, box, radius=13,
-                   fill=T.CARD_HI if active else T.CARD, elevate=False)
+            # Tile idiom: big centred logo over its name, like a wall of album
+            # art. The playing tile gets the accent edge (an active-state
+            # marker, not decoration) + CARD_HI + a small EQ in the corner.
+            T.card(img, draw, box, radius=16,
+                   fill=T.CARD_HI if active else T.CARD, elevate=False,
+                   edge=accent if active else T.HAIRLINE)
             x0, y0, x1, y1 = box
-            cy = (y0 + y1) // 2
-            icon = T.station_icon(st["id"], 36)
+            cx = (x0 + x1) // 2
+            icon = T.station_icon(st["id"], 40)
             if icon is not None:
-                img.paste(icon, (x0 + 12, cy - 18), icon)
-                text_x = x0 + 60
+                img.paste(icon, (cx - 20, y0 + 12), icon)
             else:                                        # fallback: brand dot
-                draw.ellipse([x0 + 24, cy - 6, x0 + 36, cy + 6], fill=st["color"])
-                text_x = x0 + 50
-            draw.text((text_x, cy), st["label"], font=T.F_LABEL,
-                      fill=T.INK if active else T.INK_DIM, anchor="lm")
+                draw.ellipse([cx - 14, y0 + 18, cx + 14, y0 + 46], fill=st["color"])
+            # Every label stays at full ink: dimming the inactive tiles made
+            # the whole grid read as disabled.
+            T.text_center(draw, cx, y0 + 60, st["label"], T.F_SMALL, T.INK)
             if active:
-                self._icon_eq(draw, x1 - 28, cy, accent)
+                self._icon_eq(draw, x1 - 18, y0 + 16, accent)
 
-        # volume slider
-        vx0, vx1, vy = 30, 360, 283
+        # volume row: speaker glyph · slider · % — one inline row under the grid
+        vx0, vx1, vy = 64, 322, 283
         pct = self._volume(ctx)
+        sx = 32
+        draw.polygon([(sx - 6, vy - 5), (sx, vy - 5), (sx + 7, vy - 11),
+                      (sx + 7, vy + 11), (sx, vy + 5), (sx - 6, vy + 5)],
+                     fill=T.INK_DIM)
         self._slider(draw, vx0, vx1, vy, pct, accent)
-        draw.text((vx0, vy - 30), "Volume", font=T.F_SMALL, fill=T.INK_DIM)
-        draw.text((vx1, vy - 30), f"{pct}%", font=T.F_SMALL, fill=T.INK_DIM, anchor="ra")
+        draw.text((vx1 + 16, vy), f"{pct}%", font=T.F_SMALL,
+                  fill=T.INK_DIM, anchor="lm")
 
-        # stop button — a clear round control, red while playing, muted when idle
-        sx, sy = 427, 283
-        T.card(img, draw, (sx - 27, sy - 27, sx + 27, sy + 27), radius=27,
-               fill=T.CARD_HI, elevate=False)
-        sq = (255, 95, 72) if playing else T.INK_FAINT
-        draw.rounded_rectangle([sx - 9, sy - 9, sx + 9, sy + 9], 3, fill=sq)
+        # Stop — the second most important control here, so it gets a red-tinted
+        # surface and a labelled glyph rather than a grey square that reads as
+        # disabled. Muted (but never invisible) when nothing is playing.
+        red = (255, 95, 72)
+        box = STOP_BTN_BOX
+        T.card(img, draw, box, radius=18,
+               fill=T.mix(T.CARD, red, 0.20 if playing else 0.07), elevate=False)
+        scx = (box[0] + box[2]) // 2
+        sq = red if playing else T.mix(T.INK_FAINT, red, 0.35)
+        draw.rounded_rectangle([scx - 10, 261, scx + 10, 281], 3, fill=sq)
+        T.text_center(draw, scx, 288, "Stop", T.F_SMALL,
+                      T.INK if playing else T.INK_DIM)
 
     # ── TIMER ───────────────────────────────────────────────────────────────
     def _render_timer(self, draw, img, now, ctx, accent):
@@ -636,15 +698,18 @@ class App:
             rem = max(0, t0.get("remaining_s", 0))
             self._timer_init[key] = max(self._timer_init.get(key, 0), rem)
             frac = rem / self._timer_init[key] if self._timer_init[key] else 0
-            self._ring(draw, 120, 150, 78, frac, rem, t0.get("ringing"), accent)
+            # Ring centred with Annuler stacked under it: the old left-ring /
+            # floating-right-pill split left the screen visibly unbalanced.
+            self._ring(draw, T.CX, 122, 58, frac, rem, t0.get("ringing"), accent)
             for j, tm in enumerate(timers[1:3]):
                 r = max(0, tm.get("remaining_s", 0))
                 m, s = divmod(r, 60)
-                draw.text((262, 92 + j * 32), f"• {m}:{s:02d}",
-                          font=T.F_BODY, fill=T.INK_DIM)
+                draw.text((W - 26, 84 + j * 30), f"• {m}:{s:02d}",
+                          font=T.F_BODY, fill=T.INK_DIM, anchor="ra")
             self._cancel_btn(draw, img)
         else:
-            T.text_center(draw, T.CX, 150, "Aucun minuteur", T.F_BODY, T.INK_DIM)
+            T.text_center(draw, T.CX, 122, "Aucun minuteur", T.F_BODY, T.INK_DIM,
+                          anchor="mm")
 
         # 4 quick presets + "Perso" (custom)
         for i in range(5):
@@ -662,10 +727,11 @@ class App:
 
     def _cancel_btn(self, draw, img):
         red = (255, 95, 72)
-        box = (286, 158, 446, 202)
+        box = CANCEL_BTN_BOX
         T.card(img, draw, box, radius=22, fill=T.mix(T.CARD, red, 0.16), elevate=False)
         cy = (box[1] + box[3]) // 2
-        cx = box[0] + 32
+        tw = draw.textlength("Annuler", font=T.F_LABEL)
+        cx = int((box[0] + box[2]) / 2 - (22 + tw) / 2)   # cross + label as one group
         draw.line([cx - 8, cy - 8, cx + 8, cy + 8], fill=red, width=3)
         draw.line([cx - 8, cy + 8, cx + 8, cy - 8], fill=red, width=3)
         draw.text((cx + 22, cy), "Annuler", font=T.F_LABEL,
@@ -682,26 +748,45 @@ class App:
             draw.line([cx2 - 12, 120, cx2 + 12, 120], fill=T.INK, width=3)
             if plus:
                 draw.line([cx2, 108, cx2, 132], fill=T.INK, width=3)
-        # −5 / +5 pills
-        for bx, label in (((150, 176, 230, 214), "-5"), ((250, 176, 330, 214), "+5")):
+        # −5 / +5 pills — sized for a resistive panel (they were 38 px tall next
+        # to the 60 px ± discs directly above them, and easy to miss).
+        for bx, label in ((STEP5_BOXES[0], "-5"), (STEP5_BOXES[1], "+5")):
             T.card(img, draw, bx, radius=15, fill=T.CARD, elevate=False)
             draw.text(((bx[0] + bx[2]) // 2, (bx[1] + bx[3]) // 2), label,
                       font=T.F_LABEL, fill=T.INK, anchor="mm")
-        # Démarrer (primary action — accent-tinted fill)
-        T.card(img, draw, (110, 250, 370, 302), radius=18,
-               fill=T.mix(T.CARD_HI, accent, 0.30), elevate=False)
-        T.text_center(draw, T.CX, (250 + 302) // 2,
-                      f"Démarrer · {self.custom_min} min", T.F_LABEL, T.INK, anchor="mm")
+        # Démarrer — the primary action gets a full accent fill, not a tint.
+        self._primary_btn(img, draw, (110, 250, 370, 302), accent,
+                          f"Démarrer · {self.custom_min} min")
+
+    def _primary_btn(self, img, draw, box, accent, label):
+        """Accent-filled pill — reserved for the single primary action of a
+        screen. A faint top bevel keeps it from looking like a flat sticker."""
+        x0, y0, x1, y1 = box
+        r = (y1 - y0) // 2
+        T.card(img, draw, box, radius=r, fill=accent, elevate=True,
+               edge=T.lighten(accent, 0.18))
+        T.text_center(draw, (x0 + x1) // 2, (y0 + y1) // 2, label,
+                      T.F_LABEL, (255, 255, 255), anchor="mm")
 
     def _ring(self, draw, cx, cy, r, frac, rem, ringing, accent):
         col = (255, 70, 50) if ringing else accent
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=T.CARD, width=10)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=T.CARD_HI, width=10)
         frac = 1.0 if ringing else max(0.0, min(1.0, frac))
         end = -90 + 360 * frac
         draw.arc([cx - r, cy - r, cx + r, cy + r], -90, end, fill=col, width=10)
+        # Rounded caps: a dot at 12 o'clock and one at the arc's live end.
+        if 0.0 < frac < 1.0:
+            for ang in (-90.0, end):
+                a = math.radians(ang)
+                ex, ey = cx + r * math.cos(a), cy + r * math.sin(a)
+                draw.ellipse([ex - 5, ey - 5, ex + 5, ey + 5], fill=col)
         m, s = divmod(rem, 60)
         txt = f"{m}:{s:02d}" if m < 60 else f"{m//60}:{m%60:02d}:{s:02d}"
-        T.text_center(draw, cx, cy, txt, T.F_RING, T.INK, anchor="mm")
+        # Fit the digits inside the ring's inner diameter (stroke is 10 px).
+        fnt = T.F_RING
+        while draw.textlength(txt, font=fnt) > 2 * r - 34 and fnt.size > 26:
+            fnt = T.font("light", fnt.size - 4)
+        T.text_center(draw, cx, cy, txt, fnt, T.INK, anchor="mm")
 
     # ── BLUETOOTH ─────────────────────────────────────────────────────────────
     def _render_bluetooth(self, draw, img, now, accent):
@@ -736,20 +821,38 @@ class App:
                           f"Détectable · {m}:{s:02d}", T.F_LABEL, T.INK)
             T.text_center(draw, bcx, BT_PAIR_BTN_BOX[1] + 40,
                           "touchez pour arrêter", T.F_SMALL, T.INK_DIM)
-            T.text_center(draw, T.CX, 244,
+            T.text_center(draw, T.CX, 240,
                           "Cherchez « pi-satellite » sur le téléphone",
                           T.F_SMALL, T.INK_DIM)
         else:
-            T.card(img, draw, BT_PAIR_BTN_BOX, radius=18,
-                   fill=T.mix(T.CARD_HI, accent, 0.22), elevate=False)
+            self._primary_btn(img, draw, BT_PAIR_BTN_BOX, accent, "")
             bcx = (BT_PAIR_BTN_BOX[0] + BT_PAIR_BTN_BOX[2]) // 2
             bcy = (BT_PAIR_BTN_BOX[1] + BT_PAIR_BTN_BOX[3]) // 2
-            self._icon_bt(draw, bcx - 78, bcy, T.lighten(accent, 0.4), a=14, width=4)
+            self._icon_bt(draw, bcx - 78, bcy, (255, 255, 255), a=14, width=4)
             draw.text((bcx - 52, bcy), "Appairer un appareil", font=T.F_LABEL,
-                      fill=T.INK, anchor="lm")
-            T.text_center(draw, T.CX, 244,
+                      fill=(255, 255, 255), anchor="lm")
+            T.text_center(draw, T.CX, 240,
                           "Rend le satellite détectable pendant 2 min",
                           T.F_SMALL, T.INK_DIM)
+
+        # Now playing — fills the otherwise dead bottom third with the one thing
+        # worth knowing here: what the connected phone is actually streaming.
+        if self._bt.get("playing"):
+            nb = (24, 264, 456, 312)
+            T.card(img, draw, nb, radius=16, fill=T.CARD, elevate=False)
+            ncy = (nb[1] + nb[3]) // 2
+            self._icon_eq(draw, nb[0] + 28, ncy, accent)
+            artist = _short(self._bt.get("artist") or "", 18)
+            aw = draw.textlength(artist, font=T.F_SMALL) if artist else 0
+            if artist:
+                draw.text((nb[2] - 18, ncy), artist, font=T.F_SMALL,
+                          fill=T.INK_DIM, anchor="rm")
+            # Truncate the title to whatever the artist left free, never into it.
+            title = self._bt.get("title") or "Lecture"
+            avail = (nb[2] - 18 - aw - 14) - (nb[0] + 52)
+            while len(title) > 1 and draw.textlength(title, font=T.F_LABEL) > avail:
+                title = title[:-2] + "…"
+            draw.text((nb[0] + 52, ncy), title, font=T.F_LABEL, fill=T.INK, anchor="lm")
 
     def _icon_bt(self, draw, cx, cy, color, a=15, width=3):
         """The Bluetooth rune as a single stroke (two right knees + left crossbars)."""
@@ -761,7 +864,10 @@ class App:
 
     # ── shared chrome ─────────────────────────────────────────────────────────
     def _header(self, draw, title, now):
-        draw.text((22, 28), "‹", font=T.font("thin", 44), fill=T.INK, anchor="lm")
+        # Crisp drawn chevron (the font's "‹" renders soft and sits oddly).
+        cx, cy = 32, 29
+        draw.line([(cx + 7, cy - 11), (cx - 5, cy), (cx + 7, cy + 11)],
+                  fill=T.INK, width=3, joint="curve")
         T.text_center(draw, T.CX, 14, title, T.F_TITLE, T.INK)
         draw.text((W - 18, 28), now.strftime("%H:%M"), font=T.F_CLOCK2,
                   fill=T.INK_DIM, anchor="rm")
@@ -770,31 +876,44 @@ class App:
         if time.monotonic() >= self._toast_until or not self._toast:
             return
         w, _ = T.text_size(draw, self._toast, T.F_LABEL)
-        box = (T.CX - w // 2 - 20, H - 46, T.CX + w // 2 + 20, H - 12)
+        ICON = 24
+        box = (T.CX - (w + ICON) // 2 - 20, H - 46,
+               T.CX + (w + ICON) // 2 + 20, H - 12)
         fill = T.mix(T.CARD_HI, (255, 70, 55), 0.5) if self._toast_error else T.CARD_HI
         T.rounded(draw, box, 17, fill=fill)
-        T.text_center(draw, T.CX, H - 40, self._toast, T.F_LABEL, T.INK)
+        icx, icy = box[0] + 22, (box[1] + box[3]) // 2
+        if self._toast_error:
+            draw.line([icx, icy - 7, icx, icy + 2], fill=T.INK, width=3)
+            draw.ellipse([icx - 1, icy + 5, icx + 2, icy + 8], fill=T.INK)
+        else:
+            draw.line([(icx - 7, icy), (icx - 2, icy + 5), (icx + 7, icy - 5)],
+                      fill=(90, 220, 140), width=3, joint="curve")
+        draw.text((icx + 14, icy), self._toast, font=T.F_LABEL,
+                  fill=T.INK, anchor="lm")
 
     # ── menu icons ─────────────────────────────────────────────────────────────
+    # All three menu glyphs share a stroke weight (3 px) and a ~44 px optical
+    # box, and are drawn about their own centre so `_icon_chip` can place them.
     def _icon_radio(self, draw, cx, cy, accent):
-        draw.rounded_rectangle([cx - 30, cy - 8, cx + 30, cy + 26], 6,
+        draw.rounded_rectangle([cx - 24, cy - 6, cx + 24, cy + 20], 5,
                                outline=accent, width=3)
-        draw.line([cx - 18, cy - 8, cx + 6, cy - 26], fill=accent, width=3)
-        draw.ellipse([cx + 8, cy + 2, cx + 24, cy + 18], outline=accent, width=3)
+        draw.line([cx - 14, cy - 6, cx + 5, cy - 22], fill=accent, width=3)
+        draw.ellipse([cx + 5, cy + 1, cx + 19, cy + 15], outline=accent, width=3)
 
     def _icon_timer(self, draw, cx, cy, accent):
-        draw.arc([cx - 24, cy - 22, cx + 24, cy + 26], 0, 360, fill=accent, width=3)
-        draw.line([cx - 8, cy - 30, cx + 8, cy - 30], fill=accent, width=3)
-        draw.line([cx, cy + 2, cx, cy - 12], fill=accent, width=3)
+        draw.arc([cx - 21, cy - 19, cx + 21, cy + 23], 0, 360, fill=accent, width=3)
+        draw.line([cx - 8, cy - 27, cx + 8, cy - 27], fill=accent, width=3)
+        draw.line([cx, cy + 2, cx, cy - 10], fill=accent, width=3)
 
     def _slider(self, draw, x0, x1, y, pct, accent):
-        """A filled track with a rounded fill and a clean knob."""
+        """Rounded-cap track, accent fill, white knob with an accent ring."""
         pct = max(0, min(100, pct))
         fillx = x0 + int((x1 - x0) * pct / 100)
-        draw.line([x0, y, x1, y], fill=T.INK_FAINT, width=5)
-        if fillx > x0:
-            draw.line([x0, y, fillx, y], fill=accent, width=5)
-        draw.ellipse([fillx - 10, y - 10, fillx + 10, y + 10], fill=T.INK)
+        draw.rounded_rectangle([x0, y - 3, x1, y + 3], 3, fill=T.CARD_HI)
+        if fillx > x0 + 6:
+            draw.rounded_rectangle([x0, y - 3, fillx, y + 3], 3, fill=accent)
+        draw.ellipse([fillx - 10, y - 10, fillx + 10, y + 10], fill=accent)
+        draw.ellipse([fillx - 7, y - 7, fillx + 7, y + 7], fill=T.INK)
 
     def _icon_eq(self, draw, cx, cy, color):
         """Three little bars — a 'now playing' mark."""
